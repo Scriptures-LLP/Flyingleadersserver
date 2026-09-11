@@ -1,0 +1,36 @@
+import { Schema, model } from "mongoose";
+
+import { mysqlSyncFields } from "./shared/mysqlSyncFields.js";
+
+// Merges the legacy app's two overlapping date-pricing tables into one clean
+// concept: airportId set = mirrors `tour_airport_custom_dates` (the primary,
+// airport-specific mechanism); airportId null = mirrors `tour_travel_dates`
+// (a global fallback that applies to any airport).
+const tourDateSchema = new Schema(
+  {
+    ...mysqlSyncFields,
+
+    tourId: { type: Schema.Types.ObjectId, ref: "Tour", required: true },
+    airportId: { type: Schema.Types.ObjectId, ref: "Airport", default: null },
+    date: { type: Date, required: true },
+    price: { type: Number, required: true, min: 0 },
+    label: { type: String, trim: true },
+    isActive: { type: Boolean, default: true },
+    sortOrder: { type: Number, default: 0 },
+    legacySourceTable: {
+      type: String,
+      enum: ["tour_airport_custom_dates", "tour_travel_dates"],
+    },
+  },
+  { timestamps: true },
+);
+
+tourDateSchema.index({ tourId: 1, airportId: 1, date: 1 }, { unique: true });
+
+tourDateSchema.pre("validate", function () {
+  if (!this.legacySourceTable) {
+    this.legacySourceTable = this.airportId ? "tour_airport_custom_dates" : "tour_travel_dates";
+  }
+});
+
+export const TourDate = model("TourDate", tourDateSchema);

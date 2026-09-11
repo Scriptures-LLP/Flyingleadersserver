@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+uploads/**
+!uploads/tours/.gitkeep
+!uploads/gallery/.gitkeep
+!uploads/covers/.gitkeep
+!uploads/countries/.gitkeep
+*.log
+.DS_Store

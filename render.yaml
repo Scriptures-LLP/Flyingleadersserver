@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: flying-leader-server
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4001
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_CUSTOMER_EXPIRES_IN
+        value: 30d
+      - key: JWT_ADMIN_EXPIRES_IN
+        value: 8h
+      - key: BCRYPT_SALT_ROUNDS
+        value: 12
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: UPLOAD_ROOT
+        value: ./uploads
+      - key: PUBLIC_UPLOAD_BASE_URL
+        value: https://flying-leader-server.onrender.com/uploads
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      # MySQL sync stays off here — this deployment doesn't have network access
+      # to flyingdotcom's MySQL. It gets enabled once co-located on Flying
+      # Leader's own server, per the contract's hosting arrangement.
+      - key: MYSQL_SYNC_ENABLED
+        value: false
+      - key: LLM_API_KEY
+        sync: false
