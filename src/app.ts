@@ -11,9 +11,14 @@ import { publicRoutes } from "./routes/public/index.js";
 
 export const app = express();
 
+// CORS_ORIGINS="*" (or unset) allows any origin — fine for a public read API
+// consumed mainly by a native app (which doesn't enforce CORS at all). A
+// comma-separated allowlist restricts it once real browser clients (the
+// admin panel, a future public website) need to be locked down.
+const allowAnyOrigin = corsOrigins.length === 0 || corsOrigins.includes("*");
 app.use(
   cors({
-    origin: corsOrigins.length > 0 ? corsOrigins : true,
+    origin: allowAnyOrigin ? true : corsOrigins,
     credentials: true,
   }),
 );
