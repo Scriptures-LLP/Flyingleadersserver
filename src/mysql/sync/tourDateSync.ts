@@ -5,8 +5,8 @@ import { Tour } from "../../models/Tour.js";
 import { getMysqlPool } from "../pool.js";
 
 type TourDateSyncInput = {
-  tourId: string;
-  airportId?: string | null;
+  tourId: { toString(): string };
+  airportId?: { toString(): string } | null;
   date: Date;
   price: number;
   label?: string | null;
@@ -33,11 +33,11 @@ export async function syncTourDateUpsert(tourDate: TourDateSyncInput): Promise<n
   const pool = getMysqlPool();
   if (!pool) return;
 
-  const legacyTourId = await resolveTourLegacyId(tourDate.tourId);
+  const legacyTourId = await resolveTourLegacyId(tourDate.tourId.toString());
   const dateStr = tourDate.date.toISOString().slice(0, 10);
 
   if (tourDate.airportId) {
-    const legacyAirportId = await resolveAirportLegacyId(tourDate.airportId);
+    const legacyAirportId = await resolveAirportLegacyId(tourDate.airportId.toString());
     const values = {
       tour_id: legacyTourId,
       airport_id: legacyAirportId,
@@ -72,7 +72,10 @@ export async function syncTourDateUpsert(tourDate: TourDateSyncInput): Promise<n
   return result.insertId;
 }
 
-export async function syncTourDateRemove(legacySourceTable: string, legacyMysqlId?: number): Promise<void> {
+export async function syncTourDateRemove(
+  legacySourceTable: string | null | undefined,
+  legacyMysqlId?: number,
+): Promise<void> {
   const pool = getMysqlPool();
   if (!pool || !legacyMysqlId) return;
   const table = legacySourceTable === "tour_travel_dates" ? "tour_travel_dates" : "tour_airport_custom_dates";
