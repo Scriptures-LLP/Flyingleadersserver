@@ -12,6 +12,12 @@ export interface ICustomer {
   authProvider: "password" | "google";
   googleId?: string;
   isActive: boolean;
+  notificationPreferences: {
+    bookingUpdates: boolean;
+    promotions: boolean;
+    tripReminders: boolean;
+  };
+  languagePreference: string;
 }
 
 interface CustomerMethods {
@@ -32,6 +38,12 @@ const customerSchema = new Schema<ICustomer, CustomerModel, CustomerMethods>(
     authProvider: { type: String, enum: ["password", "google"], default: "password" },
     googleId: { type: String },
     isActive: { type: Boolean, default: true },
+    notificationPreferences: {
+      bookingUpdates: { type: Boolean, default: true },
+      promotions: { type: Boolean, default: true },
+      tripReminders: { type: Boolean, default: true },
+    },
+    languagePreference: { type: String, default: "en" },
   },
   { timestamps: true },
 );

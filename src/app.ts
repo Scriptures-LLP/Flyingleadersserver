@@ -5,6 +5,8 @@ import express from "express";
 import morgan from "morgan";
 
 import { corsOrigins, env } from "./config/env.js";
+import { checkoutPage } from "./controllers/public/checkout.controller.js";
+import { webhook } from "./controllers/public/payment.controller.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware.js";
 import { adminRoutes } from "./routes/admin/index.js";
 import { publicRoutes } from "./routes/public/index.js";
@@ -24,14 +26,16 @@ app.use(
 );
 app.use(morgan(env.NODE_ENV === "development" ? "dev" : "combined"));
 
-// NOTE: the Razorpay webhook route (added in Phase 2) must be mounted here,
-// BEFORE express.json(), using express.raw() — otherwise the raw request
-// body needed for signature verification is lost.
+// Mounted BEFORE express.json() with express.raw() — the raw request body
+// (not the parsed JSON) is what the webhook signature is computed over.
+app.post("/api/v1/payments/webhook", express.raw({ type: "application/json" }), webhook);
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(path.resolve(env.UPLOAD_ROOT)));
+
+app.get("/checkout", checkoutPage);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

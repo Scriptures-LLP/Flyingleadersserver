@@ -16,8 +16,40 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   res.json(session);
 });
 
+function serializeCustomer(customer: InstanceType<typeof Customer>) {
+  return {
+    id: customer.id,
+    name: customer.name,
+    email: customer.email,
+    phone: customer.phone,
+    notificationPreferences: customer.notificationPreferences,
+    languagePreference: customer.languagePreference,
+  };
+}
+
 export const me = asyncHandler(async (req: Request, res: Response) => {
   const customer = await Customer.findById(req.customer!.sub);
   if (!customer) throw ApiError.notFound("Account not found");
-  res.json({ user: { id: customer.id, name: customer.name, email: customer.email } });
+  res.json({ user: serializeCustomer(customer) });
+});
+
+export const updateMe = asyncHandler(async (req: Request, res: Response) => {
+  const customer = await Customer.findById(req.customer!.sub);
+  if (!customer) throw ApiError.notFound("Account not found");
+
+  const { name, notificationPreferences, languagePreference } = req.body as {
+    name?: string;
+    notificationPreferences?: Partial<typeof customer.notificationPreferences>;
+    languagePreference?: string;
+  };
+
+  if (name) customer.name = name;
+  if (notificationPreferences) {
+    Object.assign(customer.notificationPreferences, notificationPreferences);
+    customer.markModified("notificationPreferences");
+  }
+  if (languagePreference) customer.languagePreference = languagePreference;
+
+  await customer.save();
+  res.json({ user: serializeCustomer(customer) });
 });

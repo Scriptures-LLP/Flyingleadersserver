@@ -1,0 +1,112 @@
+import crypto from "node:crypto";
+
+import type { Request, Response } from "express";
+
+import { Airport } from "../../models/Airport.js";
+import { Booking } from "../../models/Booking.js";
+import { Tour } from "../../models/Tour.js";
+import { TourAirportPrice } from "../../models/TourAirportPrice.js";
+import { TourDate } from "../../models/TourDate.js";
+import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
+import { ApiError } from "../../utils/ApiError.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
+
+function generateBookingRef(): string {
+  return `FL${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+}
+
+export const create = asyncHandler(async (req: Request, res: Response) => {
+  const body = req.body as {
+    tourId: string;
+    tourDateId?: string;
+    airportId?: string;
+    travelDate: Date;
+    contactName: string;
+    contactEmail: string;
+    contactPhone: string;
+    travellers: { name: string; age?: number; gender?: string; type: "adult" | "child" | "infant" }[];
+    promoCode?: string;
+  };
+
+  const tour = await Tour.findOne({ _id: body.tourId, isActive: true });
+  if (!tour) throw ApiError.notFound("Tour not found");
+
+  if (tour.seatsAvailable != null && tour.seatsAvailable < body.travellers.length) {
+    throw ApiError.badRequest("Not enough seats available for this tour");
+  }
+
+  let addOnPerPerson = 0;
+  let tourDateId: string | null = null;
+
+  if (body.airportId) {
+    const airport = await Airport.findOne({ _id: body.airportId, isActive: true });
+    if (!airport) throw ApiError.badRequest("Selected airport is not available");
+    const airportPrice = await TourAirportPrice.findOne({
+      tourId: tour._id,
+      airportId: airport._id,
+      isActive: true,
+    });
+    addOnPerPerson += airportPrice?.addonPrice ?? 0;
+  }
+
+  if (body.tourDateId) {
+    const tourDate = await TourDate.findOne({ _id: body.tourDateId, tourId: tour._id, isActive: true });
+    if (!tourDate) throw ApiError.badRequest("Selected travel date is not available");
+    if (tourDate.airportId && String(tourDate.airportId) !== (body.airportId ?? "")) {
+      throw ApiError.badRequest("Selected travel date doesn't match the selected airport");
+    }
+    addOnPerPerson += tourDate.price;
+    tourDateId = String(tourDate._id);
+  }
+
+  const baseAmount = computeBaseAmount(tour, body.travellers, addOnPerPerson);
+
+  let discountAmount = 0;
+  let promoCodeId: string | undefined;
+  let promoCode: string | undefined;
+  if (body.promoCode) {
+    const result = await validatePromoCode(body.promoCode, String(tour._id), baseAmount, req.customer!.sub);
+    discountAmount = result.discountAmount;
+    promoCodeId = String(result.promo!._id);
+    promoCode = result.promo!.code;
+  }
+
+  const finalAmount = Math.round((baseAmount - discountAmount) * 100) / 100;
+  const tokenAmount = tour.allowTokenPayment ? Math.min(tour.tokenAmount ?? 0, finalAmount) : 0;
+
+  const booking = await Booking.create({
+    bookingRef: generateBookingRef(),
+    customerId: req.customer!.sub,
+    tourId: tour._id,
+    tourDateId,
+    airportId: body.airportId ?? null,
+    travelDate: body.travelDate,
+    contactName: body.contactName,
+    contactEmail: body.contactEmail,
+    contactPhone: body.contactPhone,
+    travellers: body.travellers,
+    pricing: { baseAmount, discountAmount, promoCode, promoCodeId, finalAmount, tokenAmount },
+    itinerarySnapshot: {
+      title: tour.title,
+      slug: tour.slug,
+      image: tour.coverImage,
+      duration: tour.duration,
+      inclusions: tour.inclusions,
+      exclusions: tour.exclusions,
+      itinerary: tour.itinerary,
+    },
+  });
+
+  res.status(201).json({ item: booking });
+});
+
+export const listMine = asyncHandler(async (req: Request, res: Response) => {
+  const bookings = await Booking.find({ customerId: req.customer!.sub }).sort({ createdAt: -1 });
+  res.json({ items: bookings });
+});
+
+export const getOne = asyncHandler(async (req: Request, res: Response) => {
+  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
+  if (!booking) throw ApiError.notFound("Booking not found");
+  res.json({ item: booking });
+});
