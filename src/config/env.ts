@@ -19,6 +19,18 @@ const envSchema = z.object({
   UPLOAD_ROOT: z.string().default("./uploads"),
   PUBLIC_UPLOAD_BASE_URL: z.string().default("http://localhost:4000/uploads"),
 
+  // AWS S3 — used for profile avatars (see storage/s3Adapter.ts).
+  AWS_ACCESS_KEY_ID: z.string().optional().default(""),
+  AWS_SECRET_ACCESS_KEY: z.string().optional().default(""),
+  AWS_BUCKET_NAME: z.string().optional().default(""),
+  AWS_REGION: z.string().default("us-east-1"),
+  /** Object-key prefix so this app's files stay isolated inside a shared bucket. */
+  AWS_S3_KEY_PREFIX: z.string().optional().default("flying-leader"),
+  /** Override the public base URL (e.g. a CloudFront domain). Empty = derive from bucket+region. */
+  AWS_S3_PUBLIC_URL: z.string().optional().default(""),
+  /** ACL applied to uploads. Set empty if the bucket has ACLs disabled (BucketOwnerEnforced). */
+  AWS_S3_ACL: z.string().optional().default("public-read"),
+
   CORS_ORIGINS: z.string().default(""),
 
   SEED_ADMIN_EMAIL: z.string().optional(),

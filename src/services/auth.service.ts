@@ -1,5 +1,6 @@
 import { AdminUser, type AdminUserDoc } from "../models/AdminUser.js";
 import { Customer, type CustomerDoc } from "../models/Customer.js";
+import { serializeCustomer } from "../serializers/customer.serializer.js";
 import { ApiError } from "../utils/ApiError.js";
 import { signAdminToken, signCustomerToken } from "../utils/jwt.js";
 
@@ -39,7 +40,7 @@ export async function loginCustomer(email: string, password: string) {
 function toSession(customer: CustomerDoc) {
   return {
     token: signCustomerToken(customer.id),
-    user: { id: customer.id, name: customer.name, email: customer.email },
+    user: serializeCustomer(customer),
   };
 }
 

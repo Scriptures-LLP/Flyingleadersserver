@@ -8,6 +8,9 @@ export interface ICustomer {
   email: string;
   phone?: string;
   phoneCode?: string;
+  address?: string;
+  /** Storage key for the avatar (relative to the storage root), not a URL. */
+  avatar?: string;
   passwordHash?: string;
   authProvider: "password" | "google";
   googleId?: string;
@@ -34,6 +37,8 @@ const customerSchema = new Schema<ICustomer, CustomerModel, CustomerMethods>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     phoneCode: { type: String, trim: true },
+    address: { type: String, trim: true },
+    avatar: { type: String, trim: true },
     passwordHash: { type: String },
     authProvider: { type: String, enum: ["password", "google"], default: "password" },
     googleId: { type: String },

@@ -13,6 +13,9 @@ export const addressSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).optional(),
+  email: z.string().trim().email().optional(),
+  phone: z.string().trim().max(20).optional(),
+  address: z.string().trim().max(300).optional(),
   notificationPreferences: z
     .object({
       bookingUpdates: z.boolean().optional(),
