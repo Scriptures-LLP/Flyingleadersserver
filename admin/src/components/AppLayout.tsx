@@ -4,6 +4,7 @@ import { useAuth, type AdminRole } from "../lib/auth";
 
 const NAV_ITEMS: { to: string; label: string; roles: AdminRole[] }[] = [
   { to: "/bookings", label: "Bookings", roles: ["admin"] },
+  { to: "/customers", label: "Customers", roles: ["admin"] },
   { to: "/tours", label: "Tours", roles: ["admin"] },
   { to: "/tour-dates", label: "Tour Dates", roles: ["admin"] },
   { to: "/tour-airport-prices", label: "Tour Airport Prices", roles: ["admin"] },

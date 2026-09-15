@@ -13,8 +13,14 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  const session = await authService.loginCustomer(email, password);
+  const { identifier, password } = req.body;
+  const session = await authService.loginCustomer(identifier, password);
+  res.json(session);
+});
+
+export const phoneVerify = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken, name } = req.body as { idToken: string; name?: string };
+  const session = await authService.verifyFirebasePhoneToken(idToken, name);
   res.json(session);
 });
 

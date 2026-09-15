@@ -9,6 +9,7 @@ import { countriesRoutes } from "./countries.routes.js";
 import { homeRoutes } from "./home.routes.js";
 import { paymentsRoutes } from "./payments.routes.js";
 import { toursRoutes } from "./tours.routes.js";
+import { wishlistRoutes } from "./wishlist.routes.js";
 
 export const publicRoutes = Router();
 
@@ -21,3 +22,4 @@ publicRoutes.use("/bookings", bookingsRoutes);
 publicRoutes.use("/payments", paymentsRoutes);
 publicRoutes.use("/addresses", addressesRoutes);
 publicRoutes.use("/chat", chatRoutes);
+publicRoutes.use("/wishlist", wishlistRoutes);

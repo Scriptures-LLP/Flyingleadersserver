@@ -26,7 +26,7 @@ const transactionSchema = new Schema(
     amount: { type: Number, required: true, min: 0 },
     currency: { type: String, default: "INR" },
 
-    type: { type: String, enum: ["token", "full", "refund"], required: true },
+    type: { type: String, enum: ["token", "full", "balance", "refund"], required: true },
     status: { type: String, enum: ["created", "paid", "failed", "refunded"], default: "created" },
 
     refund: { type: refundSchema },

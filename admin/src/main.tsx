@@ -11,6 +11,7 @@ import { AirportsPage } from "./pages/Airports";
 import { BookingsPage } from "./pages/Bookings";
 import { CategoriesPage } from "./pages/Categories";
 import { CountriesPage } from "./pages/Countries";
+import { CustomersPage } from "./pages/Customers";
 import { GalleryImagesPage } from "./pages/GalleryImages";
 import { HomeCoversPage } from "./pages/HomeCovers";
 import { LoginPage } from "./pages/Login";
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
         children: [
           { path: "/", element: <Navigate to="/tours" replace /> },
           { path: "/bookings", element: <BookingsPage /> },
+          { path: "/customers", element: <CustomersPage /> },
           { path: "/tours", element: <ToursPage /> },
           { path: "/countries", element: <CountriesPage /> },
           { path: "/airports", element: <AirportsPage /> },

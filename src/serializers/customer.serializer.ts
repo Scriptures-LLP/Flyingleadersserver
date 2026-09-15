@@ -10,7 +10,7 @@ export function serializeCustomer(customer: CustomerDoc) {
   return {
     id: customer.id,
     name: customer.name,
-    email: customer.email,
+    email: customer.email ?? null,
     phone: customer.phone ?? null,
     address: customer.address ?? null,
     avatar: customer.avatar ? s3Adapter.urlFor(customer.avatar) : null,

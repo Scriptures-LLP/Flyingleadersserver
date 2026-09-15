@@ -45,3 +45,5 @@ services:
         value: false
       - key: LLM_API_KEY
         sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_B64
+        sync: false

@@ -5,15 +5,17 @@ import { env } from "../config/env.js";
 
 export interface ICustomer {
   name: string;
-  email: string;
+  /** At least one of email/phone is always present — enforced in auth.service.ts, not the schema. */
+  email?: string;
   phone?: string;
   phoneCode?: string;
   address?: string;
   /** Storage key for the avatar (relative to the storage root), not a URL. */
   avatar?: string;
   passwordHash?: string;
-  authProvider: "password" | "google";
+  authProvider: "password" | "google" | "phone";
   googleId?: string;
+  phoneVerifiedAt?: Date;
   isActive: boolean;
   notificationPreferences: {
     bookingUpdates: boolean;
@@ -34,14 +36,15 @@ type CustomerModel = Model<ICustomer, object, CustomerMethods> & {
 const customerSchema = new Schema<ICustomer, CustomerModel, CustomerMethods>(
   {
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    phone: { type: String, trim: true },
+    email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+    phone: { type: String, unique: true, sparse: true, trim: true },
     phoneCode: { type: String, trim: true },
     address: { type: String, trim: true },
     avatar: { type: String, trim: true },
     passwordHash: { type: String },
-    authProvider: { type: String, enum: ["password", "google"], default: "password" },
+    authProvider: { type: String, enum: ["password", "google", "phone"], default: "password" },
     googleId: { type: String },
+    phoneVerifiedAt: { type: Date },
     isActive: { type: Boolean, default: true },
     notificationPreferences: {
       bookingUpdates: { type: Boolean, default: true },

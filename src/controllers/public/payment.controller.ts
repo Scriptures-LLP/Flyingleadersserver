@@ -9,14 +9,29 @@ import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
-  const { bookingId, mode } = req.body as { bookingId: string; mode: "full" | "token" };
+  const { bookingId, mode } = req.body as { bookingId: string; mode: "full" | "token" | "balance" };
 
   const booking = await Booking.findOne({ _id: bookingId, customerId: req.customer!.sub });
   if (!booking) throw ApiError.notFound("Booking not found");
-  if (booking.status !== "pending_payment") throw ApiError.badRequest("This booking is no longer payable");
+  if (booking.paymentStatus === "paid" || booking.status === "cancelled") {
+    throw ApiError.badRequest("This booking is no longer payable");
+  }
 
-  const amount = mode === "token" ? booking.pricing.tokenAmount : booking.pricing.finalAmount;
+  // "full" only makes sense before anything's been paid — once a token
+  // payment has landed, the only way to finish paying is "balance".
+  if (mode === "full" && booking.amountPaid > 0) {
+    throw ApiError.badRequest("Part of this booking is already paid — pay the remaining balance instead");
+  }
+
+  const amount =
+    mode === "token"
+      ? booking.pricing.tokenAmount
+      : mode === "balance"
+        ? Math.round((booking.pricing.finalAmount - booking.amountPaid) * 100) / 100
+        : booking.pricing.finalAmount;
+
   if (mode === "token" && amount <= 0) throw ApiError.badRequest("Token payment isn't available for this booking");
+  if (mode === "balance" && amount <= 0) throw ApiError.badRequest("Nothing outstanding on this booking");
 
   const order = await razorpay.createOrder(amount, booking.bookingRef, {
     bookingId: String(booking._id),

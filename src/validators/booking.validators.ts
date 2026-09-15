@@ -21,7 +21,7 @@ export const createBookingSchema = z.object({
 
 export const createPaymentOrderSchema = z.object({
   bookingId: z.string().min(1),
-  mode: z.enum(["full", "token"]),
+  mode: z.enum(["full", "token", "balance"]),
 });
 
 export const verifyPaymentSchema = z.discriminatedUnion("status", [
