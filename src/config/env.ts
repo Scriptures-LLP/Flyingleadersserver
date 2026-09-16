@@ -30,8 +30,11 @@ const envSchema = z.object({
   AWS_S3_KEY_PREFIX: z.string().optional().default("flying-leader"),
   /** Override the public base URL (e.g. a CloudFront domain). Empty = derive from bucket+region. */
   AWS_S3_PUBLIC_URL: z.string().optional().default(""),
-  /** ACL applied to uploads. Set empty if the bucket has ACLs disabled (BucketOwnerEnforced). */
-  AWS_S3_ACL: z.string().optional().default("public-read"),
+  // Empty by default — the bucket actually in use (cardude-images) has ACLs
+  // disabled (BucketOwnerEnforced) with a public-read bucket policy instead;
+  // sending any ACL on PutObject throws AccessControlListNotSupported. Only
+  // set this if a *different* bucket that does support ACLs is used instead.
+  AWS_S3_ACL: z.string().optional().default(""),
 
   CORS_ORIGINS: z.string().default(""),
 
