@@ -37,7 +37,12 @@ app.use("/uploads", express.static(path.resolve(env.UPLOAD_ROOT)));
 
 app.get("/checkout", checkoutPage);
 
-app.get("/health", (_req, res) => res.json({ ok: true }));
+// commit/bootedAt let us tell from the outside whether a push has actually
+// been picked up by a redeploy yet, instead of guessing from timing alone.
+const bootedAt = new Date().toISOString();
+app.get("/health", (_req, res) =>
+  res.json({ ok: true, commit: process.env.RENDER_GIT_COMMIT ?? null, bootedAt }),
+);
 
 app.use("/api/v1", publicRoutes);
 app.use("/api/v1/admin", adminRoutes);
