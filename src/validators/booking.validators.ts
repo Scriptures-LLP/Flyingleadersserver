@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { zStrictBoolean } from "../utils/zodHelpers.js";
+
 const travellerSchema = z.object({
   name: z.string().trim().min(1),
   age: z.coerce.number().min(0).optional(),
@@ -17,6 +19,7 @@ export const createBookingSchema = z.object({
   contactPhone: z.string().trim().min(1),
   travellers: z.array(travellerSchema).min(1),
   promoCode: z.string().trim().min(1).optional(),
+  useWalletCredit: zStrictBoolean.optional(),
 });
 
 export const createPaymentOrderSchema = z.object({

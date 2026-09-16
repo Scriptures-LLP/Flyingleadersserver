@@ -7,6 +7,7 @@ export const signupSchema = z
     password: z.string().min(6, "Password must be at least 6 characters"),
     phone: z.string().trim().min(7).optional(),
     phoneCode: z.string().trim().optional(),
+    referralCode: z.string().trim().optional(),
   })
   .refine((v) => !!v.email || !!v.phone, {
     message: "Provide an email address or mobile number",

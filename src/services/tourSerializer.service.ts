@@ -47,6 +47,7 @@ export function serializeTourDetail(tour: TourLike) {
     hotelDetails: tour.showHotelDetails ? tour.hotelDetails ?? "" : "",
     priceChild: tour.priceChild ?? null,
     priceInfant: tour.priceInfant ?? null,
+    childPricingTiers: tour.childPricingTiers ?? [],
     tokenAmount: tour.tokenAmount ?? 0,
     allowTokenPayment: tour.allowTokenPayment ?? false,
     seatsAvailable: tour.seatsAvailable ?? null,

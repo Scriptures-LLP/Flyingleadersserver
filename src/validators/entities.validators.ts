@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { zStrictBoolean } from "../utils/zodHelpers.js";
+
 export const idParamSchema = z.object({ id: z.string().min(1) });
 
 export const promoCodeSchema = z.object({
@@ -13,7 +15,7 @@ export const promoCodeSchema = z.object({
   perUserLimit: z.coerce.number().min(0).optional(),
   startsAt: z.coerce.date().optional(),
   expiresAt: z.coerce.date().optional(),
-  isActive: z.coerce.boolean().optional(),
+  isActive: zStrictBoolean.optional(),
   note: z.string().trim().optional(),
 });
 
@@ -23,30 +25,30 @@ export const tourDateSchema = z.object({
   date: z.coerce.date(),
   price: z.coerce.number().min(0),
   label: z.string().trim().optional(),
-  isActive: z.coerce.boolean().optional(),
-  sortOrder: z.coerce.number().optional(),
+  isActive: zStrictBoolean.optional(),
+  sortOrder: z.coerce.number().min(0).optional(),
 });
 
 export const tourAirportPriceSchema = z.object({
   tourId: z.string().min(1),
   airportId: z.string().min(1),
   addonPrice: z.coerce.number().min(0),
-  isActive: z.coerce.boolean().optional(),
+  isActive: zStrictBoolean.optional(),
 });
 
 export const galleryImageSchema = z.object({
   title: z.string().trim().optional(),
   altText: z.string().trim().optional(),
   kind: z.enum(["tour", "celebration"]).optional(),
-  isFeatured: z.coerce.boolean().optional(),
-  isActive: z.coerce.boolean().optional(),
-  sortOrder: z.coerce.number().optional(),
+  isFeatured: zStrictBoolean.optional(),
+  isActive: zStrictBoolean.optional(),
+  sortOrder: z.coerce.number().min(0).optional(),
 });
 
 export const homeCoverSchema = z.object({
   title: z.string().trim().optional(),
-  isActive: z.coerce.boolean().optional(),
-  sortOrder: z.coerce.number().optional(),
+  isActive: zStrictBoolean.optional(),
+  sortOrder: z.coerce.number().min(0).optional(),
 });
 
 export const settingValueSchema = z.object({

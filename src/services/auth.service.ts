@@ -11,6 +11,7 @@ export async function signupCustomer(input: {
   phone?: string;
   password: string;
   phoneCode?: string;
+  referralCode?: string;
 }) {
   const email = input.email?.toLowerCase();
   const phone = input.phone?.trim();
@@ -34,6 +35,11 @@ export async function signupCustomer(input: {
     passwordHash,
     authProvider: "password",
   });
+
+  if (input.referralCode) {
+    const { captureReferralSignup } = await import("./referral.service.js");
+    await captureReferralSignup(input.referralCode, String(customer._id));
+  }
 
   return toSession(customer);
 }

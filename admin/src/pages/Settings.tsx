@@ -1,14 +1,74 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { RichTextEditor } from "../components/RichTextEditor";
 import { api, apiErrorMessage } from "../lib/api";
 
-export function SettingsPage() {
+function useSetting(key: string) {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
-    queryKey: ["/admin/settings/terms_html"],
-    queryFn: async () => (await api.get("/admin/settings/terms_html")).data.item as { key: string; value: string },
+    queryKey: ["/admin/settings", key],
+    queryFn: async () => (await api.get(`/admin/settings/${key}`)).data.item as { key: string; value: string },
   });
+
+  const saveMutation = useMutation({
+    mutationFn: async (value: string) => api.put(`/admin/settings/${key}`, { value }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/admin/settings", key] }),
+  });
+
+  return { data, isLoading, saveMutation };
+}
+
+function ReferralRewardSetting() {
+  const { data, isLoading, saveMutation } = useSetting("referral_reward_amount");
+  const [value, setValue] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (data) setValue(data.value || "500");
+  }, [data]);
+
+  return (
+    <div className="mt-6">
+      <h2 className="mb-1 text-base font-semibold text-slate-900">Referral Reward</h2>
+      <p className="mb-3 text-sm text-slate-500">
+        Wallet credit given to a customer when someone they referred completes their first payment.
+      </p>
+      {isLoading ? (
+        <p className="text-slate-500">Loading…</p>
+      ) : (
+        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4">
+          <span className="text-sm text-slate-600">₹</span>
+          <input
+            type="number"
+            min="0"
+            className="input max-w-[140px]"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <button
+            onClick={() =>
+              saveMutation.mutate(value, {
+                onSuccess: () => {
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2000);
+                },
+              })
+            }
+            disabled={saveMutation.isPending}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {saveMutation.isPending ? "Saving…" : "Save"}
+          </button>
+          {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function SettingsPage() {
+  const { data, isLoading, saveMutation } = useSetting("terms_html");
 
   const [value, setValue] = useState("");
   const [saved, setSaved] = useState(false);
@@ -17,20 +77,11 @@ export function SettingsPage() {
     if (data) setValue(data.value);
   }, [data]);
 
-  const saveMutation = useMutation({
-    mutationFn: async () => api.put("/admin/settings/terms_html", { value }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/admin/settings/terms_html"] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    },
-  });
-
   return (
     <div>
       <h1 className="mb-4 text-lg font-semibold text-slate-900">Terms & Conditions</h1>
       <p className="mb-3 text-sm text-slate-500">
-        Raw HTML shown on the public terms page. Edited here, takes effect immediately.
+        Shown on the public terms page. Formatted here — no HTML tags to write or read.
       </p>
 
       {isLoading ? (
@@ -42,15 +93,17 @@ export function SettingsPage() {
               {apiErrorMessage(saveMutation.error)}
             </div>
           )}
-          <textarea
-            className="w-full rounded-md border border-slate-300 p-3 font-mono text-sm outline-none focus:border-slate-500"
-            rows={16}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
+          <RichTextEditor value={value} onChange={setValue} />
           <div className="mt-3 flex items-center gap-3">
             <button
-              onClick={() => saveMutation.mutate()}
+              onClick={() =>
+                saveMutation.mutate(value, {
+                  onSuccess: () => {
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2000);
+                  },
+                })
+              }
               disabled={saveMutation.isPending}
               className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
@@ -60,6 +113,8 @@ export function SettingsPage() {
           </div>
         </div>
       )}
+
+      <ReferralRewardSetting />
     </div>
   );
 }

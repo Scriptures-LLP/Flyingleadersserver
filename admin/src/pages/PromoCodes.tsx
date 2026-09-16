@@ -13,6 +13,8 @@ type PromoCode = {
   minCart?: number;
   usageLimit?: number;
   perUserLimit?: number;
+  startsAt?: string;
+  expiresAt?: string;
   isActive: boolean;
   note?: string;
 };
@@ -34,6 +36,14 @@ export function PromoCodesPage() {
         { key: "type", label: "Type" },
         { key: "value", label: "Value" },
         { key: "tourId", label: "Scope", render: (p) => (p.tourId ? tours?.find((t) => t._id === p.tourId)?.title ?? "…" : "All tours") },
+        {
+          key: "startsAt",
+          label: "Valid",
+          render: (p) =>
+            p.startsAt || p.expiresAt
+              ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN") : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN") : "no end"}`
+              : "Always",
+        },
         { key: "isActive", label: "Active", render: (p) => (p.isActive ? "Yes" : "No") },
       ]}
       fields={[
@@ -54,6 +64,8 @@ export function PromoCodesPage() {
         { name: "minCart", label: "Minimum booking amount (₹)", type: "number" },
         { name: "usageLimit", label: "Total usage limit", type: "number" },
         { name: "perUserLimit", label: "Per-customer usage limit", type: "number" },
+        { name: "startsAt", label: "Start date & time (leave blank for no start restriction)", type: "datetime-local" },
+        { name: "expiresAt", label: "End date & time (leave blank for no expiry)", type: "datetime-local" },
         {
           name: "tourId",
           label: "Applies to",

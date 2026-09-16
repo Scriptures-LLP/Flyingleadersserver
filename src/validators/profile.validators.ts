@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { zStrictBoolean } from "../utils/zodHelpers.js";
+
 export const addressSchema = z.object({
   label: z.string().trim().min(1).optional(),
   line1: z.string().trim().min(1),
@@ -8,7 +10,7 @@ export const addressSchema = z.object({
   state: z.string().trim().optional(),
   postalCode: z.string().trim().min(1),
   country: z.string().trim().optional(),
-  isDefault: z.coerce.boolean().optional(),
+  isDefault: zStrictBoolean.optional(),
 });
 
 export const updateProfileSchema = z.object({

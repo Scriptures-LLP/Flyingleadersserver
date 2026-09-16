@@ -16,6 +16,8 @@ import { GalleryImagesPage } from "./pages/GalleryImages";
 import { HomeCoversPage } from "./pages/HomeCovers";
 import { LoginPage } from "./pages/Login";
 import { PromoCodesPage } from "./pages/PromoCodes";
+import { ReferralsPage } from "./pages/Referrals";
+import { ReviewsPage } from "./pages/Reviews";
 import { SettingsPage } from "./pages/Settings";
 import { TourAirportPricesPage } from "./pages/TourAirportPrices";
 import { TourDatesPage } from "./pages/TourDates";
@@ -39,6 +41,8 @@ const router = createBrowserRouter([
           { path: "/airports", element: <AirportsPage /> },
           { path: "/categories", element: <CategoriesPage /> },
           { path: "/promo-codes", element: <PromoCodesPage /> },
+          { path: "/reviews", element: <ReviewsPage /> },
+          { path: "/referrals", element: <ReferralsPage /> },
           { path: "/tour-dates", element: <TourDatesPage /> },
           { path: "/tour-airport-prices", element: <TourAirportPricesPage /> },
           { path: "/gallery-images", element: <GalleryImagesPage /> },

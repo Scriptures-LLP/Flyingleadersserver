@@ -16,6 +16,7 @@ type Tour = {
   price: number;
   priceChild?: number;
   priceInfant?: number;
+  childPricingTiers?: ChildPricingTier[];
   tokenAmount?: number;
   allowTokenPayment?: boolean;
   itinerary?: string;
@@ -33,6 +34,7 @@ type Tour = {
   isActive?: boolean;
 };
 
+type ChildPricingTier = { minAge: number; maxAge: number; price: number };
 type Category = { _id: string; label: string; slug: string };
 type Country = { _id: string; name: string };
 
@@ -49,6 +51,7 @@ const emptyForm: Record<string, unknown> = {
   price: "",
   priceChild: "",
   priceInfant: "",
+  childPricingTiers: [] as ChildPricingTier[],
   tokenAmount: "",
   allowTokenPayment: false,
   itinerary: "",
@@ -108,6 +111,10 @@ export function ToursPage() {
         if (key === "_id" || key === "slug") continue;
         if (typeof value === "boolean") {
           body.append(key, String(value));
+          continue;
+        }
+        if (Array.isArray(value)) {
+          body.append(key, JSON.stringify(value));
           continue;
         }
         // Omit blank optional fields entirely rather than sending "" — an empty
@@ -242,13 +249,13 @@ export function ToursPage() {
                 </select>
               </Field>
               <Field label="Price (adult, ₹)" required>
-                <input type="number" className="input" value={form.price as string} onChange={(e) => set("price", e.target.value)} required />
+                <input type="number" min="0" className="input" value={form.price as string} onChange={(e) => set("price", e.target.value)} required />
               </Field>
-              <Field label="Price (child, ₹)">
-                <input type="number" className="input" value={form.priceChild as string} onChange={(e) => set("priceChild", e.target.value)} />
+              <Field label="Price (child, ₹) — fallback if no age tiers below">
+                <input type="number" min="0" className="input" value={form.priceChild as string} onChange={(e) => set("priceChild", e.target.value)} />
               </Field>
               <Field label="Price (infant, ₹)">
-                <input type="number" className="input" value={form.priceInfant as string} onChange={(e) => set("priceInfant", e.target.value)} />
+                <input type="number" min="0" className="input" value={form.priceInfant as string} onChange={(e) => set("priceInfant", e.target.value)} />
               </Field>
               <Field label="Group size label">
                 <input className="input" value={form.groupSizeLabel as string} onChange={(e) => set("groupSizeLabel", e.target.value)} />
@@ -257,10 +264,10 @@ export function ToursPage() {
                 <input className="input" value={form.hotelClassLabel as string} onChange={(e) => set("hotelClassLabel", e.target.value)} />
               </Field>
               <Field label="Total seats">
-                <input type="number" className="input" value={form.totalSeats as string} onChange={(e) => set("totalSeats", e.target.value)} />
+                <input type="number" min="0" className="input" value={form.totalSeats as string} onChange={(e) => set("totalSeats", e.target.value)} />
               </Field>
               <Field label="Seats available">
-                <input type="number" className="input" value={form.seatsAvailable as string} onChange={(e) => set("seatsAvailable", e.target.value)} />
+                <input type="number" min="0" className="input" value={form.seatsAvailable as string} onChange={(e) => set("seatsAvailable", e.target.value)} />
               </Field>
               <Field label="Seats remark">
                 <select className="input" value={form.seatsRemark as string} onChange={(e) => set("seatsRemark", e.target.value)}>
@@ -295,6 +302,80 @@ export function ToursPage() {
               </Field>
             </div>
 
+            <div className="mt-4 rounded-lg border border-slate-200 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-700">Child pricing by age (optional)</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    set("childPricingTiers", [
+                      ...((form.childPricingTiers as ChildPricingTier[]) ?? []),
+                      { minAge: 0, maxAge: 0, price: 0 },
+                    ])
+                  }
+                  className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  + Add age band
+                </button>
+              </div>
+              <p className="mb-2 text-xs text-slate-500">
+                If set, a child's exact age picks the matching band below; otherwise the flat "Price (child)" above is used.
+              </p>
+              {((form.childPricingTiers as ChildPricingTier[]) ?? []).map((tier, i) => (
+                <div key={i} className="mb-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min age"
+                    className="input"
+                    value={tier.minAge}
+                    onChange={(e) => {
+                      const tiers = [...((form.childPricingTiers as ChildPricingTier[]) ?? [])];
+                      tiers[i] = { ...tiers[i], minAge: Number(e.target.value) };
+                      set("childPricingTiers", tiers);
+                    }}
+                  />
+                  <span className="text-slate-400">to</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max age"
+                    className="input"
+                    value={tier.maxAge}
+                    onChange={(e) => {
+                      const tiers = [...((form.childPricingTiers as ChildPricingTier[]) ?? [])];
+                      tiers[i] = { ...tiers[i], maxAge: Number(e.target.value) };
+                      set("childPricingTiers", tiers);
+                    }}
+                  />
+                  <span className="text-slate-400">yrs @ ₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Price"
+                    className="input"
+                    value={tier.price}
+                    onChange={(e) => {
+                      const tiers = [...((form.childPricingTiers as ChildPricingTier[]) ?? [])];
+                      tiers[i] = { ...tiers[i], price: Number(e.target.value) };
+                      set("childPricingTiers", tiers);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tiers = [...((form.childPricingTiers as ChildPricingTier[]) ?? [])];
+                      tiers.splice(i, 1);
+                      set("childPricingTiers", tiers);
+                    }}
+                    className="shrink-0 text-red-600 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
             <div className="mt-3 flex flex-wrap gap-4 text-sm">
               <label className="flex items-center gap-2">
                 <input
@@ -326,9 +407,27 @@ export function ToursPage() {
               </label>
             </div>
 
+            {!!form.showFlightDetails && (
+              <Field label="Flight details" className="mt-3">
+                <textarea
+                  className="input"
+                  rows={3}
+                  placeholder="e.g. Delhi (DEL) → Male (MLE), Air India AI441, 10:30 – 13:15"
+                  value={form.flightDetails as string}
+                  onChange={(e) => set("flightDetails", e.target.value)}
+                />
+              </Field>
+            )}
+
+            {!!form.showHotelDetails && (
+              <Field label="Hotel details" className="mt-3">
+                <textarea className="input" rows={3} value={form.hotelDetails as string} onChange={(e) => set("hotelDetails", e.target.value)} />
+              </Field>
+            )}
+
             {!!form.allowTokenPayment && (
               <Field label="Token amount (₹)" className="mt-3 max-w-xs">
-                <input type="number" className="input" value={form.tokenAmount as string} onChange={(e) => set("tokenAmount", e.target.value)} />
+                <input type="number" min="0" className="input" value={form.tokenAmount as string} onChange={(e) => set("tokenAmount", e.target.value)} />
               </Field>
             )}
 

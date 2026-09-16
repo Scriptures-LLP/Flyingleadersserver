@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { z } from "zod";
 
+import { zStrictBoolean } from "../utils/zodHelpers.js";
+
 const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -39,7 +41,7 @@ const envSchema = z.object({
   // MySQL sync (module E — mirrors catalog/content edits into flyingdotcom's
   // legacy database so its unmodified public PHP pages keep working).
   // Off by default: every sync call becomes a no-op until this is true.
-  MYSQL_SYNC_ENABLED: z.coerce.boolean().default(false),
+  MYSQL_SYNC_ENABLED: zStrictBoolean.default(false),
   MYSQL_HOST: z.string().default("localhost"),
   MYSQL_PORT: z.coerce.number().default(3306),
   MYSQL_DATABASE: z.string().default(""),

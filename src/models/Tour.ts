@@ -21,6 +21,20 @@ const tourSchema = new Schema(
     price: { type: Number, required: true, min: 0 },
     priceChild: { type: Number, min: 0 },
     priceInfant: { type: Number, min: 0 },
+    // Age-banded child pricing (e.g. 2-6yrs, 6-10yrs). When set, takes
+    // priority over the flat priceChild for any child traveller whose age
+    // falls in one of the bands — see pricing.service.ts#childPrice.
+    childPricingTiers: {
+      type: [
+        {
+          _id: false,
+          minAge: { type: Number, required: true, min: 0 },
+          maxAge: { type: Number, required: true, min: 0 },
+          price: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [],
+    },
     tokenAmount: { type: Number, min: 0, default: 0 },
     allowTokenPayment: { type: Boolean, default: false },
 
@@ -42,7 +56,10 @@ const tourSchema = new Schema(
       default: "Available",
     },
 
+    // Falls back to this placeholder until real approved reviews exist —
+    // see reviewAggregate.service.ts, which overwrites both once ratingCount > 0.
     rating: { type: Number, min: 0, max: 5, default: 4.5 },
+    ratingCount: { type: Number, min: 0, default: 0 },
     groupSizeLabel: { type: String, trim: true },
     hotelClassLabel: { type: String, trim: true },
 

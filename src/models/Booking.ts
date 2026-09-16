@@ -20,6 +20,9 @@ const pricingSchema = new Schema(
     // The token (partial-payment) amount available for this booking, copied
     // from the tour at booking time — 0 if the tour doesn't allow it.
     tokenAmount: { type: Number, required: true, min: 0, default: 0 },
+    // Referral wallet credit spent on this booking (already subtracted from
+    // finalAmount above) — kept here purely for display/receipt purposes.
+    walletCreditApplied: { type: Number, min: 0, default: 0 },
   },
   { _id: false },
 );

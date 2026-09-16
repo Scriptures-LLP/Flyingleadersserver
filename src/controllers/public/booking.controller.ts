@@ -26,6 +26,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     contactPhone: string;
     travellers: { name: string; age?: number; gender?: string; type: "adult" | "child" | "infant" }[];
     promoCode?: string;
+    useWalletCredit?: boolean;
   };
 
   const tour = await Tour.findOne({ _id: body.tourId, isActive: true });
@@ -71,7 +72,16 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     promoCode = result.promo!.code;
   }
 
-  const finalAmount = Math.round((baseAmount - discountAmount) * 100) / 100;
+  let finalAmount = Math.round((baseAmount - discountAmount) * 100) / 100;
+
+  let walletCreditApplied = 0;
+  if (body.useWalletCredit) {
+    const { getWalletBalance } = await import("../../services/referral.service.js");
+    const walletBalance = await getWalletBalance(req.customer!.sub);
+    walletCreditApplied = Math.min(walletBalance, finalAmount);
+    finalAmount = Math.round((finalAmount - walletCreditApplied) * 100) / 100;
+  }
+
   const tokenAmount = tour.allowTokenPayment ? Math.min(tour.tokenAmount ?? 0, finalAmount) : 0;
 
   const booking = await Booking.create({
@@ -85,7 +95,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     contactEmail: body.contactEmail,
     contactPhone: body.contactPhone,
     travellers: body.travellers,
-    pricing: { baseAmount, discountAmount, promoCode, promoCodeId, finalAmount, tokenAmount },
+    pricing: { baseAmount, discountAmount, promoCode, promoCodeId, finalAmount, tokenAmount, walletCreditApplied },
     itinerarySnapshot: {
       title: tour.title,
       slug: tour.slug,
@@ -96,6 +106,11 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       itinerary: tour.itinerary,
     },
   });
+
+  if (walletCreditApplied > 0) {
+    const { redeemWalletCredit } = await import("../../services/referral.service.js");
+    await redeemWalletCredit(req.customer!.sub, walletCreditApplied, String(booking._id));
+  }
 
   res.status(201).json({ item: booking });
 });
@@ -109,4 +124,21 @@ export const getOne = asyncHandler(async (req: Request, res: Response) => {
   const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
   if (!booking) throw ApiError.notFound("Booking not found");
   res.json({ item: booking });
+});
+
+export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) => {
+  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
+  if (!booking) throw ApiError.notFound("Booking not found");
+  // Only worth having once money has actually changed hands — an unpaid or
+  // cancelled booking has nothing confirmed to summarize.
+  if (booking.paymentStatus === "unpaid" || booking.status === "cancelled") {
+    throw ApiError.badRequest("Trip summary is available once at least the token/partial payment is made");
+  }
+
+  const { renderTripSummaryPdf } = await import("../../services/tripSummaryPdf.service.js");
+  const pdfBytes = await renderTripSummaryPdf(booking as any);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-trip-summary.pdf"`);
+  res.send(Buffer.from(pdfBytes));
 });

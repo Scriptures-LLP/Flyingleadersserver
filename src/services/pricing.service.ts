@@ -4,11 +4,24 @@ import { PromoCode } from "../models/PromoCode.js";
 import { ApiError } from "../utils/ApiError.js";
 
 type TourLike = HydratedDocument<any>;
-type Traveller = { type: "adult" | "child" | "infant" };
+type Traveller = { type: "adult" | "child" | "infant"; age?: number };
+type ChildPricingTier = { minAge: number; maxAge: number; price: number };
 
-function perPersonBase(tour: TourLike, type: Traveller["type"]): number {
-  if (type === "child") return tour.priceChild ?? tour.price;
-  if (type === "infant") return tour.priceInfant ?? 0;
+// Age-banded tiers take priority when configured and the traveller's age
+// falls in one of them; otherwise falls back to the flat priceChild (or the
+// adult price if that isn't set either) so tours without tiers keep working.
+function childPrice(tour: TourLike, age: number | undefined): number {
+  const tiers = tour.childPricingTiers as ChildPricingTier[] | undefined;
+  if (tiers?.length && age !== undefined) {
+    const tier = tiers.find((t) => age >= t.minAge && age <= t.maxAge);
+    if (tier) return tier.price;
+  }
+  return tour.priceChild ?? tour.price;
+}
+
+function perPersonBase(tour: TourLike, traveller: Traveller): number {
+  if (traveller.type === "child") return childPrice(tour, traveller.age);
+  if (traveller.type === "infant") return tour.priceInfant ?? 0;
   return tour.price;
 }
 
@@ -23,7 +36,7 @@ export function computeBaseAmount(
   travellers: Traveller[],
   addOnPerPerson: number,
 ): number {
-  return travellers.reduce((sum, t) => sum + perPersonBase(tour, t.type) + addOnPerPerson, 0);
+  return travellers.reduce((sum, t) => sum + perPersonBase(tour, t) + addOnPerPerson, 0);
 }
 
 export type PromoResult = {

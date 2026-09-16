@@ -29,6 +29,18 @@ type Props<T extends { _id: string }> = {
   fields: FieldConfig[];
 };
 
+// A bare "datetime-local" input value ("2026-09-20T09:00") has no timezone,
+// so `new Date(...)` on the server interprets it in the SERVER's timezone —
+// wrong whenever that isn't also IST. The admin panel and its users are both
+// India-only, so pin it to IST explicitly rather than trusting either side's
+// ambient timezone.
+function withIstOffset(value: unknown): unknown {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
+    return `${value}:00+05:30`;
+  }
+  return value;
+}
+
 function buildPayload(fields: FieldConfig[], values: Record<string, unknown>, files: Record<string, File | null>) {
   const hasFile = fields.some((f) => f.type === "file" && files[f.name]);
   if (!hasFile) {
@@ -43,7 +55,7 @@ function buildPayload(fields: FieldConfig[], values: Record<string, unknown>, fi
       // ObjectId cast on a "select" ref field, and is meaningless for others too.
       const v = values[f.name];
       if (v === "" || v === null || v === undefined) continue;
-      body[f.name] = v;
+      body[f.name] = f.type === "datetime-local" ? withIstOffset(v) : v;
     }
     return body;
   }
@@ -55,7 +67,7 @@ function buildPayload(fields: FieldConfig[], values: Record<string, unknown>, fi
       continue;
     }
     const v = f.type === "checkbox" ? !!values[f.name] : (values[f.name] ?? "");
-    form.append(f.name, String(v));
+    form.append(f.name, String(f.type === "datetime-local" ? withIstOffset(v) : v));
   }
   return form;
 }
@@ -81,14 +93,40 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
 
   function openCreate() {
     setModalItem(null);
-    setFormValues(Object.fromEntries(fields.map((f) => [f.name, f.type === "checkbox" ? true : ""])));
+    setFormValues(
+      Object.fromEntries(
+        fields.map((f) => {
+          if (f.type === "checkbox") return [f.name, true];
+          // A required select with no blank option can't actually represent ""
+          // in the DOM — the browser silently falls back to showing the first
+          // option while our state stays at "", so an untouched field looks
+          // filled in but submits as missing and fails server-side validation.
+          // Seed it with the first real option so state matches what's shown.
+          if (f.type === "select" && f.allowBlank === false && f.options.length > 0) {
+            return [f.name, f.options[0].value];
+          }
+          return [f.name, ""];
+        }),
+      ),
+    );
     setFormFiles({});
     setFormError(null);
   }
 
   function openEdit(item: T) {
     setModalItem(item);
-    setFormValues({ ...item });
+    const values: Record<string, unknown> = { ...item };
+    // Server sends full ISO timestamps; a datetime-local input needs exactly
+    // "YYYY-MM-DDTHH:mm" in IST wall-clock time to display correctly.
+    for (const f of fields) {
+      if (f.type !== "datetime-local") continue;
+      const raw = values[f.name];
+      if (typeof raw === "string" && raw) {
+        const ist = new Date(new Date(raw).getTime() + 5.5 * 60 * 60 * 1000).toISOString();
+        values[f.name] = ist.slice(0, 16);
+      }
+    }
+    setFormValues(values);
     setFormFiles({});
     setFormError(null);
   }
@@ -233,6 +271,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                     <input
                       type={f.type}
                       required={f.required}
+                      min={f.type === "number" ? 0 : undefined}
                       value={(formValues[f.name] as string | number | undefined) ?? ""}
                       onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
                       className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"

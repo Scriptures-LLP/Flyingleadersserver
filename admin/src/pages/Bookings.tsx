@@ -55,6 +55,17 @@ function name(v: Booking["tourId"] | Booking["customerId"]): string {
   return "title" in v ? v.title : v.name;
 }
 
+function travellerSummary(travellers: Traveller[]): string {
+  const counts = { adult: 0, child: 0, infant: 0 };
+  for (const t of travellers) counts[t.type]++;
+  const parts = [
+    counts.adult && `${counts.adult} adult${counts.adult > 1 ? "s" : ""}`,
+    counts.child && `${counts.child} child${counts.child > 1 ? "ren" : ""}`,
+    counts.infant && `${counts.infant} infant${counts.infant > 1 ? "s" : ""}`,
+  ].filter(Boolean);
+  return `${travellers.length} — ${parts.join(", ")}`;
+}
+
 export function BookingsPage() {
   const queryClient = useQueryClient();
   const { data: bookings, isLoading, error } = useQuery({
@@ -106,6 +117,7 @@ export function BookingsPage() {
                 <th className="px-4 py-2 font-medium">Tour</th>
                 <th className="px-4 py-2 font-medium">Customer</th>
                 <th className="px-4 py-2 font-medium">Travel date</th>
+                <th className="px-4 py-2 font-medium">Travellers</th>
                 <th className="px-4 py-2 font-medium">Amount</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Payment</th>
@@ -119,6 +131,7 @@ export function BookingsPage() {
                   <td className="px-4 py-2 text-slate-700">{name(b.tourId)}</td>
                   <td className="px-4 py-2 text-slate-700">{name(b.customerId)}</td>
                   <td className="px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
                   <td className="px-4 py-2 text-slate-700">
                     {inr(b.amountPaid)} / {inr(b.pricing?.finalAmount)}
                   </td>
@@ -141,7 +154,7 @@ export function BookingsPage() {
               ))}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                     No bookings yet.
                   </td>
                 </tr>
@@ -189,11 +202,14 @@ export function BookingsPage() {
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-1 text-sm font-medium text-slate-700">Travellers</p>
+                  <p className="mb-1 text-sm font-medium text-slate-700">
+                    Travellers ({detail.item.travellers.length})
+                  </p>
                   <ul className="text-sm text-slate-600">
                     {detail.item.travellers.map((t, i) => (
                       <li key={i}>
-                        {t.name} ({t.type})
+                        {t.name} — {t.type}
+                        {t.age !== undefined && t.age !== null ? `, age ${t.age}` : ""}
                       </li>
                     ))}
                   </ul>
@@ -221,6 +237,8 @@ export function BookingsPage() {
                     <div className="flex gap-2">
                       <input
                         type="number"
+                        min="0"
+                        max={detail.item.amountPaid}
                         placeholder={`Amount (max ${detail.item.amountPaid})`}
                         className="input"
                         value={refundAmount}

@@ -81,6 +81,8 @@ async function confirmBookingPayment(booking: InstanceType<typeof Booking>, txn:
         { $inc: { seatsAvailable: -booking.travellers.length } },
       );
     }
+    const { rewardReferralIfQualifying } = await import("../../services/referral.service.js");
+    await rewardReferralIfQualifying(String(booking.customerId), String(booking._id));
   }
   await booking.save();
 }

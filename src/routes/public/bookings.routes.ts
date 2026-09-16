@@ -12,3 +12,8 @@ bookingsRoutes.use(requireAuth);
 bookingsRoutes.post("/", validate({ body: createBookingSchema }), bookingController.create);
 bookingsRoutes.get("/mine", bookingController.listMine);
 bookingsRoutes.get("/:id", validate({ params: idParamSchema }), bookingController.getOne);
+bookingsRoutes.get(
+  "/:id/trip-summary.pdf",
+  validate({ params: idParamSchema }),
+  bookingController.tripSummaryPdf,
+);
