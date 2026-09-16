@@ -4,7 +4,7 @@ import { GalleryImage } from "../../models/GalleryImage.js";
 import { syncGalleryImageRemove, syncGalleryImageUpsert } from "../../mysql/sync/galleryImageSync.js";
 import { runMysqlSync } from "../../mysql/syncStatus.js";
 import { attachUploadedImage } from "../../services/imageUpload.service.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -45,7 +45,7 @@ export const galleryImageController = {
   remove: asyncHandler(async (req: Request, res: Response) => {
     const item = await GalleryImage.findByIdAndDelete(req.params.id);
     if (!item) throw ApiError.notFound("Gallery image not found");
-    if (item.file) await localDiskAdapter.remove(item.file as string).catch(() => undefined);
+    if (item.file) await s3Adapter.remove(item.file as string).catch(() => undefined);
     await syncGalleryImageRemove(item.legacyMysqlId as number | undefined).catch((err) =>
       console.error("[mysql-sync] failed to remove gallery image:", err),
     );

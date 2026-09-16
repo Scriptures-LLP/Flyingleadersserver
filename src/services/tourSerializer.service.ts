@@ -1,6 +1,6 @@
 import type { HydratedDocument } from "mongoose";
 
-import { localDiskAdapter } from "../storage/localDiskAdapter.js";
+import { s3Adapter } from "../storage/s3Adapter.js";
 import { placeholderImage } from "../utils/placeholderImage.js";
 
 type TourLike = HydratedDocument<any>;
@@ -14,7 +14,7 @@ type TourLike = HydratedDocument<any>;
  * TourMedia) is built — for now every tour just shows its own cover image.
  */
 export function serializeTourSummary(tour: TourLike) {
-  const image = tour.coverImage ? localDiskAdapter.urlFor(tour.coverImage) : placeholderImage(tour.slug, 900, 1200);
+  const image = tour.coverImage ? s3Adapter.urlFor(tour.coverImage) : placeholderImage(tour.slug, 900, 1200);
   return {
     id: tour.id,
     slug: tour.slug,

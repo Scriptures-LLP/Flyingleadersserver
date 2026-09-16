@@ -4,7 +4,7 @@ import { Category } from "../../models/Category.js";
 import { Country } from "../../models/Country.js";
 import { HomeCover } from "../../models/HomeCover.js";
 import { Tour } from "../../models/Tour.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { serializeTourSummary } from "../../services/tourSerializer.service.js";
 import { serializeCategory } from "./category.controller.js";
@@ -28,7 +28,7 @@ export const getHome = asyncHandler(async (_req: Request, res: Response) => {
     homeCovers: homeCovers.map((c) => ({
       id: c.id,
       title: c.title ?? "",
-      image: localDiskAdapter.urlFor(c.image as string),
+      image: s3Adapter.urlFor(c.image as string),
     })),
   });
 });

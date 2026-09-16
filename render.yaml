@@ -47,3 +47,21 @@ services:
         sync: false
       - key: FIREBASE_SERVICE_ACCOUNT_B64
         sync: false
+      # S3 now backs every uploaded image (tours/countries/categories/gallery/
+      # home covers/avatars) — Render's own disk is wiped on every restart, so
+      # local storage silently lost every uploaded file.
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_BUCKET_NAME
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+      - key: AWS_S3_KEY_PREFIX
+        value: flying-leader
+      # This bucket has ACLs disabled (BucketOwnerEnforced) with a public-read
+      # bucket policy instead — sending an ACL on PutObject would error, so
+      # this must stay empty here too.
+      - key: AWS_S3_ACL
+        value: ""

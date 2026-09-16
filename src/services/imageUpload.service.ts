@@ -1,6 +1,6 @@
 import type { Request } from "express";
 
-import { localDiskAdapter } from "../storage/localDiskAdapter.js";
+import { s3Adapter as storageAdapter } from "../storage/s3Adapter.js";
 
 /**
  * If a file was uploaded (req.file, via multer's .single(fieldName)), stores it under `folder`,
@@ -15,7 +15,7 @@ export async function attachUploadedImage(
   previousKey?: string | null,
 ) {
   if (!req.file) return;
-  const stored = await localDiskAdapter.save(folder, req.file.path, req.file.originalname);
+  const stored = await storageAdapter.save(folder, req.file.path, req.file.originalname);
   updates[fieldName] = stored.key;
-  if (previousKey) await localDiskAdapter.remove(previousKey).catch(() => undefined);
+  if (previousKey) await storageAdapter.remove(previousKey).catch(() => undefined);
 }

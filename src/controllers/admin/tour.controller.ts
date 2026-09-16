@@ -4,7 +4,7 @@ import { Tour } from "../../models/Tour.js";
 import { syncTourRemove, syncTourUpsert } from "../../mysql/sync/tourSync.js";
 import { runMysqlSync } from "../../mysql/syncStatus.js";
 import { attachUploadedImage } from "../../services/imageUpload.service.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -43,7 +43,7 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
 export const remove = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findByIdAndDelete(req.params.id);
   if (!tour) throw ApiError.notFound("Tour not found");
-  if (tour.coverImage) await localDiskAdapter.remove(tour.coverImage as string).catch(() => undefined);
+  if (tour.coverImage) await s3Adapter.remove(tour.coverImage as string).catch(() => undefined);
   await syncTourRemove(tour.legacyMysqlId as number | undefined).catch((err) =>
     console.error("[mysql-sync] failed to remove tour:", err),
   );

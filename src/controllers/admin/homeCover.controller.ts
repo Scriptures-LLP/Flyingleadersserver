@@ -4,7 +4,7 @@ import { HomeCover } from "../../models/HomeCover.js";
 import { syncHomeCoverRemove, syncHomeCoverUpsert } from "../../mysql/sync/homeCoverSync.js";
 import { runMysqlSync } from "../../mysql/syncStatus.js";
 import { attachUploadedImage } from "../../services/imageUpload.service.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -45,7 +45,7 @@ export const homeCoverController = {
   remove: asyncHandler(async (req: Request, res: Response) => {
     const item = await HomeCover.findByIdAndDelete(req.params.id);
     if (!item) throw ApiError.notFound("Home cover not found");
-    if (item.image) await localDiskAdapter.remove(item.image as string).catch(() => undefined);
+    if (item.image) await s3Adapter.remove(item.image as string).catch(() => undefined);
     await syncHomeCoverRemove(item.legacyMysqlId as number | undefined).catch((err) =>
       console.error("[mysql-sync] failed to remove home cover:", err),
     );

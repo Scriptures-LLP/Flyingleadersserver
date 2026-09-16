@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { Country } from "../../models/Country.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { placeholderImage } from "../../utils/placeholderImage.js";
@@ -13,7 +13,7 @@ export function serializeCountry(country: any) {
     name: country.name,
     title: country.name,
     location: country.name,
-    image: country.coverImage ? localDiskAdapter.urlFor(country.coverImage) : placeholderImage(country.slug, 400, 500),
+    image: country.coverImage ? s3Adapter.urlFor(country.coverImage) : placeholderImage(country.slug, 400, 500),
   };
 }
 

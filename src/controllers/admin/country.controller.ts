@@ -4,7 +4,7 @@ import { Country } from "../../models/Country.js";
 import { syncCountryRemove, syncCountryUpsert } from "../../mysql/sync/countrySync.js";
 import { runMysqlSync } from "../../mysql/syncStatus.js";
 import { attachUploadedImage } from "../../services/imageUpload.service.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -44,7 +44,7 @@ export const countryController = {
   remove: asyncHandler(async (req: Request, res: Response) => {
     const item = await Country.findByIdAndDelete(req.params.id);
     if (!item) throw ApiError.notFound("Country not found");
-    if (item.coverImage) await localDiskAdapter.remove(item.coverImage as string).catch(() => undefined);
+    if (item.coverImage) await s3Adapter.remove(item.coverImage as string).catch(() => undefined);
     await syncCountryRemove(item.legacyMysqlId as number | undefined).catch((err) =>
       console.error("[mysql-sync] failed to remove country:", err),
     );

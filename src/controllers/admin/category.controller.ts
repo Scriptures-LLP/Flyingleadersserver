@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { Category } from "../../models/Category.js";
 import { attachUploadedImage } from "../../services/imageUpload.service.js";
-import { localDiskAdapter } from "../../storage/localDiskAdapter.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -40,7 +40,7 @@ export const categoryController = {
   remove: asyncHandler(async (req: Request, res: Response) => {
     const item = await Category.findByIdAndDelete(req.params.id);
     if (!item) throw ApiError.notFound("Category not found");
-    if (item.image) await localDiskAdapter.remove(item.image as string).catch(() => undefined);
+    if (item.image) await s3Adapter.remove(item.image as string).catch(() => undefined);
     res.status(204).send();
   }),
 };
