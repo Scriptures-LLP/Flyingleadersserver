@@ -10,6 +10,7 @@ import { homeRoutes } from "./home.routes.js";
 import { paymentsRoutes } from "./payments.routes.js";
 import { referralsRoutes } from "./referrals.routes.js";
 import { reviewsRoutes } from "./reviews.routes.js";
+import { termsRoutes } from "./terms.routes.js";
 import { toursRoutes } from "./tours.routes.js";
 import { wishlistRoutes } from "./wishlist.routes.js";
 
@@ -27,3 +28,4 @@ publicRoutes.use("/chat", chatRoutes);
 publicRoutes.use("/wishlist", wishlistRoutes);
 publicRoutes.use("/reviews", reviewsRoutes);
 publicRoutes.use("/referrals", referralsRoutes);
+publicRoutes.use("/terms", termsRoutes);

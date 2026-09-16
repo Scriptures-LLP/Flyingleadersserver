@@ -16,6 +16,26 @@ type BookingLike = {
 
 const inr = (n: number) => `Rs. ${n.toLocaleString("en-IN")}`;
 
+const HTML_ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " ",
+};
+
+// pdf-lib draws plain text only — the admin's rich-text fields are stored as
+// HTML, so this recovers readable plain text (block tags become line
+// breaks, <li> gets a bullet) rather than dumping raw markup into the PDF.
+function htmlToLines(html: string): string[] {
+  const withBreaks = html
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&(#39|amp|lt|gt|quot|apos|nbsp);/g, (_, e) => HTML_ENTITIES[e] ?? "");
+  return withBreaks
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
+
 export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -92,7 +112,23 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
   if (booking.itinerarySnapshot.itinerary) {
     divider();
     text("Itinerary", { size: 13, bold: true, gap: 20 });
-    for (const line of booking.itinerarySnapshot.itinerary.split("\n").filter(Boolean)) {
+    for (const line of htmlToLines(booking.itinerarySnapshot.itinerary)) {
+      text(line, { size: 10 });
+    }
+  }
+
+  if (booking.itinerarySnapshot.inclusions) {
+    divider();
+    text("Inclusions", { size: 13, bold: true, gap: 20 });
+    for (const line of htmlToLines(booking.itinerarySnapshot.inclusions)) {
+      text(line, { size: 10 });
+    }
+  }
+
+  if (booking.itinerarySnapshot.exclusions) {
+    divider();
+    text("Exclusions", { size: 13, bold: true, gap: 20 });
+    for (const line of htmlToLines(booking.itinerarySnapshot.exclusions)) {
       text(line, { size: 10 });
     }
   }

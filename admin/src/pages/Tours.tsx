@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { RichTextEditor } from "../components/RichTextEditor";
 import { api, apiErrorMessage } from "../lib/api";
 
 type Tour = {
@@ -284,21 +285,26 @@ export function ToursPage() {
             </div>
 
             <Field label="Short description" className="mt-3">
-              <textarea className="input" rows={2} value={form.shortDesc as string} onChange={(e) => set("shortDesc", e.target.value)} />
+              <RichTextEditor
+                value={form.shortDesc as string}
+                onChange={(html) => set("shortDesc", html)}
+                minHeight={70}
+                placeholder="A one-line teaser shown near the title"
+              />
             </Field>
             <Field label="Full description" className="mt-3">
-              <textarea className="input" rows={3} value={form.fullDesc as string} onChange={(e) => set("fullDesc", e.target.value)} />
+              <RichTextEditor value={form.fullDesc as string} onChange={(html) => set("fullDesc", html)} minHeight={160} />
             </Field>
             <Field label="Itinerary" className="mt-3">
-              <textarea className="input" rows={3} value={form.itinerary as string} onChange={(e) => set("itinerary", e.target.value)} />
+              <RichTextEditor value={form.itinerary as string} onChange={(html) => set("itinerary", html)} minHeight={200} />
             </Field>
 
             <div className="mt-3 grid grid-cols-2 gap-3">
               <Field label="Inclusions">
-                <textarea className="input" rows={2} value={form.inclusions as string} onChange={(e) => set("inclusions", e.target.value)} />
+                <RichTextEditor value={form.inclusions as string} onChange={(html) => set("inclusions", html)} minHeight={140} />
               </Field>
               <Field label="Exclusions">
-                <textarea className="input" rows={2} value={form.exclusions as string} onChange={(e) => set("exclusions", e.target.value)} />
+                <RichTextEditor value={form.exclusions as string} onChange={(html) => set("exclusions", html)} minHeight={140} />
               </Field>
             </div>
 
