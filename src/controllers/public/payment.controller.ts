@@ -136,7 +136,9 @@ export const verify = asyncHandler(async (req: Request, res: Response) => {
 
 export const listMine = asyncHandler(async (req: Request, res: Response) => {
   const bookingIds = await Booking.find({ customerId: req.customer!.sub }).distinct("_id");
-  const transactions = await Transaction.find({ bookingId: { $in: bookingIds } }).sort({ createdAt: -1 });
+  const transactions = await Transaction.find({ bookingId: { $in: bookingIds } })
+    .populate("bookingId", "bookingRef itinerarySnapshot paymentStatus")
+    .sort({ createdAt: -1 });
   res.json({ items: transactions });
 });
 

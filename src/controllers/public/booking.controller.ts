@@ -7,7 +7,8 @@ import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
 import { TourAirportPrice } from "../../models/TourAirportPrice.js";
 import { TourDate } from "../../models/TourDate.js";
-import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
+import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
+import { computeBaseAmount, groupPriceBreakdown, validatePromoCode } from "../../services/pricing.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -36,8 +37,18 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     throw ApiError.badRequest("Not enough seats available for this tour");
   }
 
-  let addOnPerPerson = 0;
+  // The client-supplied type is never trusted for pricing — age is the
+  // source of truth everywhere (admin, app, pricing, invoice), derived from
+  // the same configurable thresholds, so a traveller can't be priced as one
+  // category while showing as another anywhere else in the system.
+  const ageConfig = await getAgeCategoryConfig();
+  const travellers = body.travellers.map((t) =>
+    t.age !== undefined ? { ...t, type: categorizeAge(t.age, ageConfig) } : t,
+  );
+
+  let airportAddOnPerPerson = 0;
   let tourDateId: string | null = null;
+  let tourDateDoc: InstanceType<typeof TourDate> | null = null;
 
   if (body.airportId) {
     const airport = await Airport.findOne({ _id: body.airportId, isActive: true });
@@ -47,7 +58,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       airportId: airport._id,
       isActive: true,
     });
-    addOnPerPerson += airportPrice?.addonPrice ?? 0;
+    airportAddOnPerPerson += airportPrice?.addonPrice ?? 0;
   }
 
   if (body.tourDateId) {
@@ -56,11 +67,12 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     if (tourDate.airportId && String(tourDate.airportId) !== (body.airportId ?? "")) {
       throw ApiError.badRequest("Selected travel date doesn't match the selected airport");
     }
-    addOnPerPerson += tourDate.price;
+    tourDateDoc = tourDate;
     tourDateId = String(tourDate._id);
   }
 
-  const baseAmount = computeBaseAmount(tour, body.travellers, addOnPerPerson);
+  const { baseAmount, entries } = computeBaseAmount(tour, travellers, tourDateDoc, airportAddOnPerPerson);
+  const breakdown = groupPriceBreakdown(entries);
 
   let discountAmount = 0;
   let promoCodeId: string | undefined;
@@ -94,8 +106,17 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     contactName: body.contactName,
     contactEmail: body.contactEmail,
     contactPhone: body.contactPhone,
-    travellers: body.travellers,
-    pricing: { baseAmount, discountAmount, promoCode, promoCodeId, finalAmount, tokenAmount, walletCreditApplied },
+    travellers,
+    pricing: {
+      baseAmount,
+      discountAmount,
+      promoCode,
+      promoCodeId,
+      finalAmount,
+      tokenAmount,
+      walletCreditApplied,
+      breakdown,
+    },
     itinerarySnapshot: {
       title: tour.title,
       slug: tour.slug,
@@ -116,12 +137,17 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const listMine = asyncHandler(async (req: Request, res: Response) => {
-  const bookings = await Booking.find({ customerId: req.customer!.sub }).sort({ createdAt: -1 });
+  const bookings = await Booking.find({ customerId: req.customer!.sub })
+    .populate("airportId", "code name")
+    .sort({ createdAt: -1 });
   res.json({ items: bookings });
 });
 
 export const getOne = asyncHandler(async (req: Request, res: Response) => {
-  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
+  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub }).populate(
+    "airportId",
+    "code name",
+  );
   if (!booking) throw ApiError.notFound("Booking not found");
   res.json({ item: booking });
 });

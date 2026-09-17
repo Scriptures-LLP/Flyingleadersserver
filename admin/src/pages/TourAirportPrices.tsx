@@ -27,7 +27,7 @@ export function TourAirportPricesPage() {
       columns={[
         { key: "tourId", label: "Tour", render: (r) => tourLabel(r.tourId) },
         { key: "airportId", label: "Airport", render: (r) => airportLabel(r.airportId) },
-        { key: "addonPrice", label: "Add-on price (₹)" },
+        { key: "addonPrice", label: "Add-on price (₹)", render: (r) => (r.addonPrice ? `₹${r.addonPrice}` : "— (free)") },
         { key: "isActive", label: "Active", render: (r) => (r.isActive ? "Yes" : "No") },
       ]}
       fields={[
@@ -47,7 +47,7 @@ export function TourAirportPricesPage() {
           allowBlank: false,
           options: (airports ?? []).map((a) => ({ value: a._id, label: `${a.code} — ${a.name}` })),
         },
-        { name: "addonPrice", label: "Add-on price (₹, on top of tour base price)", type: "number", required: true },
+        { name: "addonPrice", label: "Add-on price (₹, on top of tour base price — leave blank for none)", type: "number" },
         { name: "isActive", label: "Active", type: "checkbox" },
       ]}
     />

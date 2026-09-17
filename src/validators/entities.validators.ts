@@ -19,20 +19,47 @@ export const promoCodeSchema = z.object({
   note: z.string().trim().optional(),
 });
 
-export const tourDateSchema = z.object({
+const tourDateBaseSchema = z.object({
   tourId: z.string().min(1),
   airportId: z.string().min(1).optional().nullable(),
   date: z.coerce.date(),
-  price: z.coerce.number().min(0),
+  // Optional: a date can be added with no price at all.
+  price: z.coerce.number().min(0).optional(),
+  // Flat fields (what an HTML form/FormData naturally submits) — reshaped
+  // into the nested `appliesTo` the model actually stores.
+  appliesToAdult: zStrictBoolean.optional(),
+  appliesToChild: zStrictBoolean.optional(),
+  appliesToInfant: zStrictBoolean.optional(),
   label: z.string().trim().optional(),
   isActive: zStrictBoolean.optional(),
   sortOrder: z.coerce.number().min(0).optional(),
 });
 
+function reshapeAppliesTo<T extends { appliesToAdult?: boolean; appliesToChild?: boolean; appliesToInfant?: boolean }>(
+  v: T,
+) {
+  const { appliesToAdult, appliesToChild, appliesToInfant, ...rest } = v;
+  // No price entered = applies to everyone by default, per spec. Once a
+  // price exists, only the explicitly-checked types are charged for it.
+  // Omit the key entirely when none were sent, rather than setting it to
+  // undefined, so it doesn't get passed to Mongoose at all on updates.
+  if (appliesToAdult === undefined && appliesToChild === undefined && appliesToInfant === undefined) {
+    return rest;
+  }
+  return {
+    ...rest,
+    appliesTo: { adult: appliesToAdult ?? false, child: appliesToChild ?? false, infant: appliesToInfant ?? false },
+  };
+}
+
+export const tourDateSchema = tourDateBaseSchema.transform(reshapeAppliesTo);
+export const tourDateUpdateSchema = tourDateBaseSchema.partial().transform(reshapeAppliesTo);
+
 export const tourAirportPriceSchema = z.object({
   tourId: z.string().min(1),
   airportId: z.string().min(1),
-  addonPrice: z.coerce.number().min(0),
+  // Optional: an airport can be added before its price is decided.
+  addonPrice: z.coerce.number().min(0).optional(),
   isActive: zStrictBoolean.optional(),
 });
 

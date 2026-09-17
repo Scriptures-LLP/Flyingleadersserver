@@ -8,6 +8,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect } from "react";
 
+import { FontSize } from "./tiptapFontSize";
+
 type Props = {
   value: string;
   onChange: (html: string) => void;
@@ -28,6 +30,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
       StarterKit,
       Underline,
       TextStyle,
+      FontSize,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -66,6 +69,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
         </button>
         {sep}
         <select
+          title="Block style — applies to the whole line/paragraph"
           className="rounded border border-slate-300 bg-white px-1.5 py-1 text-xs"
           value={editor.isActive("heading", { level: 1 }) ? "1" : editor.isActive("heading", { level: 2 }) ? "2" : editor.isActive("heading", { level: 3 }) ? "3" : "0"}
           onChange={(e) => {
@@ -75,9 +79,24 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
           }}
         >
           <option value="0">Paragraph</option>
-          <option value="1">Heading 1 (large)</option>
-          <option value="2">Heading 2 (medium)</option>
-          <option value="3">Heading 3 (small)</option>
+          <option value="1">Heading 1</option>
+          <option value="2">Heading 2</option>
+          <option value="3">Heading 3</option>
+        </select>
+        <select
+          title="Font size — applies only to the selected text"
+          className="rounded border border-slate-300 bg-white px-1.5 py-1 text-xs"
+          value={(editor.getAttributes("textStyle").fontSize as string | undefined) ?? ""}
+          onChange={(e) => {
+            const size = e.target.value;
+            if (!size) editor.chain().focus().unsetFontSize().run();
+            else editor.chain().focus().setFontSize(size).run();
+          }}
+        >
+          <option value="">Normal size</option>
+          <option value="0.85em">Small</option>
+          <option value="1.25em">Large</option>
+          <option value="1.5em">Extra large</option>
         </select>
         {sep}
         <button type="button" className={btn(editor.isActive({ textAlign: "left" }))} onClick={() => editor.chain().focus().setTextAlign("left").run()}>

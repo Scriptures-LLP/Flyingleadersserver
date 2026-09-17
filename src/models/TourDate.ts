@@ -13,7 +13,15 @@ const tourDateSchema = new Schema(
     tourId: { type: Schema.Types.ObjectId, ref: "Tour", required: true },
     airportId: { type: Schema.Types.ObjectId, ref: "Airport", default: null },
     date: { type: Date, required: true },
-    price: { type: Number, required: true, min: 0 },
+    // Optional — a date can exist purely to be selectable, with no add-on
+    // price at all. When it does have one, appliesTo controls which
+    // traveller types it's actually charged for (defaults to all three).
+    price: { type: Number, min: 0, default: 0 },
+    appliesTo: {
+      adult: { type: Boolean, default: true },
+      child: { type: Boolean, default: true },
+      infant: { type: Boolean, default: true },
+    },
     label: { type: String, trim: true },
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },

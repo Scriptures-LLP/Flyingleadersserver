@@ -4,8 +4,16 @@ import { PromoCode } from "../models/PromoCode.js";
 import { ApiError } from "../utils/ApiError.js";
 
 type TourLike = HydratedDocument<any>;
-type Traveller = { type: "adult" | "child" | "infant"; age?: number };
+type TravellerType = "adult" | "child" | "infant";
+type Traveller = { type: TravellerType; age?: number };
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
+type TourDateLike = {
+  price?: number;
+  appliesTo?: { adult: boolean; child: boolean; infant: boolean } | null;
+} | null;
+
+export type TravellerPriceEntry = { type: TravellerType; unitPrice: number; totalPerPerson: number };
+export type PriceBreakdownLine = { type: TravellerType; count: number; unitPrice: number; subtotal: number };
 
 // Age-banded tiers take priority when configured and the traveller's age
 // falls in one of them; otherwise falls back to the flat priceChild (or the
@@ -27,16 +35,45 @@ function perPersonBase(tour: TourLike, traveller: Traveller): number {
 
 /**
  * Mirrors flyingdotcom's booking_confirm.php: the tour's base per-traveller
- * price, plus a flat per-person add-on for the chosen airport and travel
- * date (both optional, and additive — a date can carry its own surcharge on
- * top of the airport's, matching the legacy site's pricing behavior).
+ * price, plus a flat per-person add-on for the chosen airport, plus the
+ * travel date's own add-on (only for the traveller types it's configured to
+ * apply to — defaults to all three when the date has no price at all).
+ * Returns both the total and a per-traveller breakdown so the app can show
+ * "Adults: 2 x Rs.X, Children: 1 x Rs.Y, ..." before payment.
  */
 export function computeBaseAmount(
   tour: TourLike,
   travellers: Traveller[],
-  addOnPerPerson: number,
-): number {
-  return travellers.reduce((sum, t) => sum + perPersonBase(tour, t) + addOnPerPerson, 0);
+  tourDate: TourDateLike,
+  airportAddOnPerPerson: number,
+): { baseAmount: number; entries: TravellerPriceEntry[] } {
+  const entries = travellers.map((t) => {
+    let addon = airportAddOnPerPerson;
+    if (tourDate?.price && (tourDate.appliesTo?.[t.type] ?? true)) {
+      addon += tourDate.price;
+    }
+    const unitPrice = perPersonBase(tour, t);
+    return { type: t.type, unitPrice, totalPerPerson: unitPrice + addon };
+  });
+  const baseAmount = entries.reduce((sum, e) => sum + e.totalPerPerson, 0);
+  return { baseAmount, entries };
+}
+
+/** Groups per-traveller prices into display lines like "2 adults @ Rs.X". */
+export function groupPriceBreakdown(entries: TravellerPriceEntry[]): PriceBreakdownLine[] {
+  const groups = new Map<string, PriceBreakdownLine>();
+  for (const e of entries) {
+    const key = `${e.type}:${e.totalPerPerson}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count += 1;
+      existing.subtotal += e.totalPerPerson;
+    } else {
+      groups.set(key, { type: e.type, count: 1, unitPrice: e.totalPerPerson, subtotal: e.totalPerPerson });
+    }
+  }
+  const order: Record<TravellerType, number> = { adult: 0, child: 1, infant: 2 };
+  return [...groups.values()].sort((a, b) => order[a.type] - order[b.type]);
 }
 
 export type PromoResult = {

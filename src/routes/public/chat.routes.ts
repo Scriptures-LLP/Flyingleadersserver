@@ -11,3 +11,4 @@ chatRoutes.use(requireAuth);
 
 chatRoutes.post("/messages", validate({ body: sendMessageSchema }), chatController.sendMessage);
 chatRoutes.get("/history", chatController.getHistory);
+chatRoutes.post("/new", chatController.startNew);

@@ -292,9 +292,6 @@ export function ToursPage() {
                 placeholder="A one-line teaser shown near the title"
               />
             </Field>
-            <Field label="Full description" className="mt-3">
-              <RichTextEditor value={form.fullDesc as string} onChange={(html) => set("fullDesc", html)} minHeight={160} />
-            </Field>
             <Field label="Itinerary" className="mt-3">
               <RichTextEditor value={form.itinerary as string} onChange={(html) => set("itinerary", html)} minHeight={200} />
             </Field>

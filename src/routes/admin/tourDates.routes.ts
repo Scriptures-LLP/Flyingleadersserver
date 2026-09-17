@@ -4,7 +4,7 @@ import { tourDateController } from "../../controllers/admin/tourDate.controller.
 import { requireAdminAuth } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
-import { idParamSchema, tourDateSchema } from "../../validators/entities.validators.js";
+import { idParamSchema, tourDateSchema, tourDateUpdateSchema } from "../../validators/entities.validators.js";
 
 export const adminTourDatesRoutes = Router();
 
@@ -15,7 +15,7 @@ adminTourDatesRoutes.get("/:id", validate({ params: idParamSchema }), tourDateCo
 adminTourDatesRoutes.post("/", validate({ body: tourDateSchema }), tourDateController.create);
 adminTourDatesRoutes.put(
   "/:id",
-  validate({ params: idParamSchema, body: tourDateSchema.partial() }),
+  validate({ params: idParamSchema, body: tourDateUpdateSchema }),
   tourDateController.update,
 );
 adminTourDatesRoutes.delete("/:id", validate({ params: idParamSchema }), tourDateController.remove);

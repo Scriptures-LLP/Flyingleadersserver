@@ -67,6 +67,78 @@ function ReferralRewardSetting() {
   );
 }
 
+function AgeCategorySettings() {
+  const infant = useSetting("age_category_infant_max_age");
+  const child = useSetting("age_category_child_max_age");
+  const [infantValue, setInfantValue] = useState("");
+  const [childValue, setChildValue] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (infant.data) setInfantValue(infant.data.value || "2");
+  }, [infant.data]);
+  useEffect(() => {
+    if (child.data) setChildValue(child.data.value || "11");
+  }, [child.data]);
+
+  const saving = infant.saveMutation.isPending || child.saveMutation.isPending;
+
+  const onSave = () => {
+    infant.saveMutation.mutate(infantValue);
+    child.saveMutation.mutate(childValue, {
+      onSuccess: () => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      },
+    });
+  };
+
+  return (
+    <div className="mt-6">
+      <h2 className="mb-1 text-base font-semibold text-slate-900">Age Categories</h2>
+      <p className="mb-3 text-sm text-slate-500">
+        Determines Adult/Child/Infant purely from age — used consistently for pricing, the payment summary, and
+        invoices, so a traveller can never be priced as one category while shown as another.
+      </p>
+      {infant.isLoading || child.isLoading ? (
+        <p className="text-slate-500">Loading…</p>
+      ) : (
+        <div className="flex flex-wrap items-end gap-4 rounded-lg border border-slate-200 bg-white p-4">
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-slate-700">Infant: age 0 to</span>
+            <input
+              type="number"
+              min="0"
+              className="input max-w-[100px]"
+              value={infantValue}
+              onChange={(e) => setInfantValue(e.target.value)}
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-slate-700">Child: age (infant max + 1) to</span>
+            <input
+              type="number"
+              min="0"
+              className="input max-w-[100px]"
+              value={childValue}
+              onChange={(e) => setChildValue(e.target.value)}
+            />
+          </label>
+          <p className="text-sm text-slate-500">Adult: anything older</p>
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save"}
+          </button>
+          {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { data, isLoading, saveMutation } = useSetting("terms_html");
 
@@ -115,6 +187,7 @@ export function SettingsPage() {
       )}
 
       <ReferralRewardSetting />
+      <AgeCategorySettings />
     </div>
   );
 }

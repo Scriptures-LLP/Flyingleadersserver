@@ -117,6 +117,16 @@ export async function sendMessage(customerId: string, content: string) {
   throw ApiError.badRequest("The assistant is having trouble responding right now — please try again.");
 }
 
+/**
+ * Called when the customer opens the assistant — closes whatever
+ * conversation is currently open so the next message starts clean, with no
+ * old context carried into the AI's prompt and nothing to display as
+ * "history." Idempotent: no-op if there's nothing open.
+ */
+export async function startNewConversation(customerId: string): Promise<void> {
+  await ChatConversation.updateMany({ customerId, status: { $ne: "closed" } }, { status: "closed" });
+}
+
 export async function getHistory(customerId: string) {
   const conversation = await ChatConversation.findOne({ customerId, status: { $ne: "closed" } }).sort({
     createdAt: -1,

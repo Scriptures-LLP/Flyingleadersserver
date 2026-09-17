@@ -9,6 +9,9 @@ type TourDate = {
   airportId?: string | null;
   date: string;
   price: number;
+  appliesToAdult: boolean;
+  appliesToChild: boolean;
+  appliesToInfant: boolean;
   label?: string;
   isActive: boolean;
 };
@@ -38,7 +41,14 @@ export function TourDatesPage() {
         { key: "tourId", label: "Tour", render: (d) => tourLabel(d.tourId) },
         { key: "airportId", label: "Airport", render: (d) => airportLabel(d.airportId) },
         { key: "date", label: "Date", render: (d) => new Date(d.date).toLocaleDateString("en-IN") },
-        { key: "price", label: "Add-on price (₹)" },
+        {
+          key: "price",
+          label: "Add-on price (₹)",
+          render: (d) =>
+            d.price
+              ? `₹${d.price} (${[d.appliesToAdult && "Adult", d.appliesToChild && "Child", d.appliesToInfant && "Infant"].filter(Boolean).join(", ")})`
+              : "— (free, all types)",
+        },
         { key: "isActive", label: "Active", render: (d) => (d.isActive ? "Yes" : "No") },
       ]}
       fields={[
@@ -57,7 +67,14 @@ export function TourDatesPage() {
           options: (airports ?? []).map((a) => ({ value: a._id, label: `${a.code} — ${a.name}` })),
         },
         { name: "date", label: "Date", type: "date", required: true },
-        { name: "price", label: "Add-on price (₹, on top of tour base price)", type: "number", required: true },
+        {
+          name: "price",
+          label: "Add-on price (₹, on top of tour base price — leave blank for none)",
+          type: "number",
+        },
+        { name: "appliesToAdult", label: "Price applies to Adult", type: "checkbox" },
+        { name: "appliesToChild", label: "Price applies to Child", type: "checkbox" },
+        { name: "appliesToInfant", label: "Price applies to Infant", type: "checkbox" },
         { name: "label", label: "Label (optional)", type: "text" },
         { name: "isActive", label: "Active", type: "checkbox" },
       ]}

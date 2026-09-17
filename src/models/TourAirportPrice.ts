@@ -11,7 +11,8 @@ const tourAirportPriceSchema = new Schema(
 
     tourId: { type: Schema.Types.ObjectId, ref: "Tour", required: true },
     airportId: { type: Schema.Types.ObjectId, ref: "Airport", required: true },
-    addonPrice: { type: Number, required: true, min: 0 },
+    // Optional — an airport can be added to a tour with no price add-on yet.
+    addonPrice: { type: Number, min: 0, default: 0 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

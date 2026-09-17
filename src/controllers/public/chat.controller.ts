@@ -13,3 +13,8 @@ export const getHistory = asyncHandler(async (req: Request, res: Response) => {
   const items = await chatbotService.getHistory(req.customer!.sub);
   res.json({ items });
 });
+
+export const startNew = asyncHandler(async (req: Request, res: Response) => {
+  await chatbotService.startNewConversation(req.customer!.sub);
+  res.status(204).send();
+});

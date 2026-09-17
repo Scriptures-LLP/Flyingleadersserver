@@ -23,6 +23,21 @@ const pricingSchema = new Schema(
     // Referral wallet credit spent on this booking (already subtracted from
     // finalAmount above) — kept here purely for display/receipt purposes.
     walletCreditApplied: { type: Number, min: 0, default: 0 },
+    // Per-traveller-type price breakdown at booking time (e.g. "2 adults @
+    // Rs.X") — shown on the payment summary and carried onto the invoice/PDF
+    // so it can't drift from what was actually charged.
+    breakdown: {
+      type: [
+        {
+          _id: false,
+          type: { type: String, enum: ["adult", "child", "infant"], required: true },
+          count: { type: Number, required: true, min: 1 },
+          unitPrice: { type: Number, required: true, min: 0 },
+          subtotal: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [],
+    },
   },
   { _id: false },
 );
