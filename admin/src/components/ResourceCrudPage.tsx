@@ -116,14 +116,16 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
   function openEdit(item: T) {
     setModalItem(item);
     const values: Record<string, unknown> = { ...item };
-    // Server sends full ISO timestamps; a datetime-local input needs exactly
-    // "YYYY-MM-DDTHH:mm" in IST wall-clock time to display correctly.
+    // Server sends full ISO timestamps; a "date" input needs "YYYY-MM-DD" and a
+    // "datetime-local" input needs "YYYY-MM-DDTHH:mm", both in IST wall-clock
+    // time. An unconverted ISO string is rejected by the input, leaving it
+    // blank — which then fails the `required` check on save (e.g. tour dates).
     for (const f of fields) {
-      if (f.type !== "datetime-local") continue;
+      if (f.type !== "datetime-local" && f.type !== "date") continue;
       const raw = values[f.name];
       if (typeof raw === "string" && raw) {
         const ist = new Date(new Date(raw).getTime() + 5.5 * 60 * 60 * 1000).toISOString();
-        values[f.name] = ist.slice(0, 16);
+        values[f.name] = ist.slice(0, f.type === "date" ? 10 : 16);
       }
     }
     setFormValues(values);
