@@ -1,13 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { ImageCropModal } from "../components/ImageCropModal";
 import { RichTextEditor } from "../components/RichTextEditor";
+import { StagedGalleryUploader } from "../components/StagedGalleryUploader";
+import { TourGalleryManager } from "../components/TourGalleryManager";
 import { api, apiErrorMessage } from "../lib/api";
+import { COVER_CROP } from "../lib/coverCrop";
 
 type Tour = {
   _id: string;
   title: string;
   slug: string;
+  coverImageUrl?: string | null;
   shortDesc?: string;
   fullDesc?: string;
   location?: string;
@@ -89,12 +94,46 @@ export function ToursPage() {
   const [editing, setEditing] = useState<Tour | null | undefined>(undefined);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm);
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  // Set when the user clears an already-saved cover — tells the server to drop it.
+  const [removeCover, setRemoveCover] = useState(false);
+  // Gallery images staged while creating a tour (uploaded once it has an id).
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  // A just-picked cover being adjusted in the crop dialog.
+  const [coverCropFile, setCoverCropFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Preview: the freshly-picked file if any, otherwise the tour's saved cover
+  // (unless it's been cleared).
+  const newCoverPreview = useMemo(
+    () => (coverImage ? URL.createObjectURL(coverImage) : null),
+    [coverImage],
+  );
+  useEffect(() => {
+    return () => {
+      if (newCoverPreview) URL.revokeObjectURL(newCoverPreview);
+    };
+  }, [newCoverPreview]);
+  const coverPreview = newCoverPreview ?? (removeCover ? null : editing?.coverImageUrl ?? null);
+
+  function pickCover(file: File | null) {
+    setCoverImage(file);
+    if (file) setRemoveCover(false);
+  }
+
+  function clearCover() {
+    if (coverImage) {
+      setCoverImage(null); // undo a fresh pick, fall back to the saved cover
+    } else {
+      setRemoveCover(true); // remove the already-saved cover on save
+    }
+  }
 
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
     setCoverImage(null);
+    setRemoveCover(false);
+    setGalleryFiles([]);
     setFormError(null);
   }
 
@@ -102,14 +141,22 @@ export function ToursPage() {
     setEditing(tour);
     setForm({ ...emptyForm, ...tour });
     setCoverImage(null);
+    setRemoveCover(false);
+    setGalleryFiles([]);
     setFormError(null);
   }
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const body = new FormData();
-      for (const [key, value] of Object.entries(form)) {
-        if (key === "_id" || key === "slug") continue;
+      // Only send the editable fields (the keys we actually render inputs for).
+      // Iterating the whole `form` object would also re-send server-managed
+      // fields the edit view was seeded with — notably the old `coverImage`
+      // storage key and `coverImageUrl` — and a stale `coverImage` text field
+      // collides with the uploaded cover file below (same multipart field name),
+      // so the new cover never takes effect.
+      for (const key of Object.keys(emptyForm)) {
+        const value = form[key];
         if (typeof value === "boolean") {
           body.append(key, String(value));
           continue;
@@ -125,9 +172,23 @@ export function ToursPage() {
         body.append(key, String(value));
       }
       if (coverImage) body.append("coverImage", coverImage);
+      else if (removeCover) body.append("coverImage", ""); // clear the saved cover
 
       if (editing) return api.put(`/admin/tours/${editing._id}`, body);
-      return api.post("/admin/tours", body);
+
+      // Create, then push any gallery images staged during the add form now that
+      // the new tour has an id to attach them to.
+      const res = await api.post("/admin/tours", body);
+      const newId = res.data?.item?._id as string | undefined;
+      if (newId && galleryFiles.length > 0) {
+        const gallery = new FormData();
+        gallery.append("tourId", newId);
+        galleryFiles.forEach((f) => gallery.append("files", f));
+        await api.post("/admin/tour-media", gallery, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/admin/tours"] });
@@ -280,9 +341,41 @@ export function ToursPage() {
                 </select>
               </Field>
               <Field label="Cover image">
-                <input type="file" accept="image/*" onChange={(e) => setCoverImage(e.target.files?.[0] ?? null)} className="text-sm" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const picked = e.target.files?.[0] ?? null;
+                    e.target.value = "";
+                    if (picked) setCoverCropFile(picked);
+                  }}
+                  className="w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
+                />
+                {coverPreview && (
+                  <div className="relative mt-2 h-28 w-full">
+                    <img
+                      src={coverPreview}
+                      alt="Cover preview"
+                      className="h-full w-full rounded-md border border-slate-200 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={clearCover}
+                      title="Remove cover image"
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-sm font-bold text-white shadow hover:bg-red-700"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
               </Field>
             </div>
+
+            {editing?._id ? (
+              <TourGalleryManager tourId={editing._id} />
+            ) : (
+              <StagedGalleryUploader files={galleryFiles} onChange={setGalleryFiles} />
+            )}
 
             <Field label="Short description" className="mt-3">
               <RichTextEditor
@@ -452,6 +545,20 @@ export function ToursPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {coverCropFile && (
+        <ImageCropModal
+          file={coverCropFile}
+          aspect={COVER_CROP.tour.aspect}
+          outputWidth={COVER_CROP.tour.outputWidth}
+          label="Tour cover"
+          onCancel={() => setCoverCropFile(null)}
+          onConfirm={(cropped) => {
+            pickCover(cropped);
+            setCoverCropFile(null);
+          }}
+        />
       )}
     </div>
   );

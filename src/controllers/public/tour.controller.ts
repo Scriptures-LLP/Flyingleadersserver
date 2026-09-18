@@ -2,7 +2,9 @@ import type { Request, Response } from "express";
 
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
+import { TourMedia } from "../../models/TourMedia.js";
 import { serializeTourDetail, serializeTourSummary } from "../../services/tourSerializer.service.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -34,7 +36,17 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
 export const getBySlug = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
   if (!tour) throw ApiError.notFound("Tour not found");
-  res.json({ item: serializeTourDetail(tour) });
+
+  // Package gallery — the "primary first, then manual sort order" arrangement
+  // the content team set in the admin panel.
+  const media = await TourMedia.find({ tourId: tour._id }).sort({
+    isPrimary: -1,
+    sortOrder: 1,
+    createdAt: 1,
+  });
+  const galleryUrls = media.map((m) => s3Adapter.urlFor(m.file as string));
+
+  res.json({ item: serializeTourDetail(tour, galleryUrls) });
 });
 
 export const listDates = asyncHandler(async (req: Request, res: Response) => {

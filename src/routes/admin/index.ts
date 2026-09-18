@@ -14,6 +14,7 @@ import { adminReviewsRoutes } from "./reviews.routes.js";
 import { adminSettingsRoutes } from "./settings.routes.js";
 import { adminTourAirportPricesRoutes } from "./tourAirportPrices.routes.js";
 import { adminTourDatesRoutes } from "./tourDates.routes.js";
+import { adminTourMediaRoutes } from "./tourMedia.routes.js";
 import { adminToursRoutes } from "./tours.routes.js";
 
 export const adminRoutes = Router();
@@ -27,6 +28,7 @@ adminRoutes.use("/bookings", adminBookingsRoutes);
 adminRoutes.use("/customers", adminCustomersRoutes);
 adminRoutes.use("/promo-codes", adminPromoCodesRoutes);
 adminRoutes.use("/tour-dates", adminTourDatesRoutes);
+adminRoutes.use("/tour-media", adminTourMediaRoutes);
 adminRoutes.use("/tour-airport-prices", adminTourAirportPricesRoutes);
 adminRoutes.use("/gallery-images", adminGalleryImagesRoutes);
 adminRoutes.use("/home-covers", adminHomeCoversRoutes);

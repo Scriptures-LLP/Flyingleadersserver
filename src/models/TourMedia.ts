@@ -7,7 +7,10 @@ const tourMediaSchema = new Schema(
     ...mysqlSyncFields,
 
     tourId: { type: Schema.Types.ObjectId, ref: "Tour", required: true },
-    categoryId: { type: Schema.Types.ObjectId, ref: "MediaCategory", required: true },
+    // Optional: plain package gallery images don't belong to a MediaCategory
+    // "folder" — the field is only set when the legacy media-library grouping
+    // (Attractions/Hotels/…) is used. See MediaCategory.
+    categoryId: { type: Schema.Types.ObjectId, ref: "MediaCategory" },
     file: { type: String, required: true }, // our storage key, e.g. "tourMedia/<file>"
     title: { type: String, trim: true },
     alt: { type: String, trim: true },

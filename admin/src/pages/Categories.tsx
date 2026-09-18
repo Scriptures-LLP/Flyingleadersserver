@@ -1,6 +1,15 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { thumbColumn } from "../components/thumbColumn";
 
-type Category = { _id: string; label: string; slug: string; image?: string; sortOrder: number; isActive: boolean };
+type Category = {
+  _id: string;
+  label: string;
+  slug: string;
+  image?: string;
+  imageUrl?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
 
 export function CategoriesPage() {
   return (
@@ -8,6 +17,7 @@ export function CategoriesPage() {
       title="Categories"
       resourcePath="/admin/categories"
       columns={[
+        thumbColumn<Category>("imageUrl", "Image"),
         { key: "label", label: "Label" },
         { key: "slug", label: "Slug" },
         { key: "sortOrder", label: "Sort order" },
@@ -16,7 +26,7 @@ export function CategoriesPage() {
       fields={[
         { name: "label", label: "Label", type: "text", required: true },
         { name: "sortOrder", label: "Sort order", type: "number" },
-        { name: "image", label: "Image", type: "file" },
+        { name: "image", label: "Image", type: "file", previewUrlKey: "imageUrl" },
         { name: "isActive", label: "Active", type: "checkbox" },
       ]}
     />

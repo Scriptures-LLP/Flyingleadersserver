@@ -14,7 +14,7 @@ const NAV_ITEMS: { to: string; label: string; roles: AdminRole[] }[] = [
   { to: "/promo-codes", label: "Promo Codes", roles: ["admin"] },
   { to: "/reviews", label: "Reviews", roles: ["admin"] },
   { to: "/referrals", label: "Referrals", roles: ["admin"] },
-  { to: "/gallery-images", label: "Gallery", roles: ["admin"] },
+  { to: "/gallery-images", label: "Past Trips", roles: ["admin"] },
   { to: "/home-covers", label: "Home Covers", roles: ["admin"] },
   { to: "/settings", label: "Settings", roles: ["admin"] },
 ];

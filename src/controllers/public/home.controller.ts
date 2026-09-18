@@ -32,6 +32,7 @@ export const getHome = asyncHandler(async (_req: Request, res: Response) => {
     homeCovers: homeCovers.map((c) => ({
       id: c.id,
       title: c.title ?? "",
+      altText: c.altText ?? "",
       image: s3Adapter.urlFor(c.image as string),
     })),
     galleryImages: galleryImages.map((g) => s3Adapter.urlFor(g.file as string)),

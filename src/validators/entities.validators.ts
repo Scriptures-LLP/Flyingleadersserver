@@ -72,8 +72,24 @@ export const galleryImageSchema = z.object({
   sortOrder: z.coerce.number().min(0).optional(),
 });
 
+export const tourMediaCreateSchema = z.object({
+  tourId: z.string().min(1),
+});
+
+export const tourMediaUpdateSchema = z.object({
+  title: z.string().trim().optional(),
+  alt: z.string().trim().optional(),
+  sortOrder: z.coerce.number().min(0).optional(),
+  isPrimary: zStrictBoolean.optional(),
+});
+
+export const tourMediaReorderSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+});
+
 export const homeCoverSchema = z.object({
   title: z.string().trim().optional(),
+  altText: z.string().trim().optional(),
   isActive: zStrictBoolean.optional(),
   sortOrder: z.coerce.number().min(0).optional(),
 });

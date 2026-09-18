@@ -9,9 +9,9 @@ type TourLike = HydratedDocument<any>;
  * Shapes a Tour document to match the mobile app's existing TourPackage type
  * exactly — including `description`/`gallery`/`extraCount`, which the app's
  * Details screen renders directly off whatever object it's handed (there's no
- * separate list-vs-detail fetch on the client side). `gallery`/`extraCount`
- * are placeholders until the real per-tour media library (module H-adjacent,
- * TourMedia) is built — for now every tour just shows its own cover image.
+ * separate list-vs-detail fetch on the client side). The list/summary shape
+ * only carries the cover image; the real per-tour gallery (TourMedia) is
+ * attached by serializeTourDetail, which the app prefers once it loads.
  */
 export function serializeTourSummary(tour: TourLike) {
   const image = tour.coverImage ? s3Adapter.urlFor(tour.coverImage) : placeholderImage(tour.slug, 900, 1200);
@@ -36,9 +36,16 @@ export function serializeTourSummary(tour: TourLike) {
   };
 }
 
-export function serializeTourDetail(tour: TourLike) {
+/**
+ * `galleryUrls` are the tour's TourMedia images (already ordered + resolved to
+ * public URLs by the caller). When present they replace the cover-only
+ * placeholder gallery — the app's Details screen shows them as thumbnails.
+ */
+export function serializeTourDetail(tour: TourLike, galleryUrls?: string[]) {
+  const summary = serializeTourSummary(tour);
   return {
-    ...serializeTourSummary(tour),
+    ...summary,
+    gallery: galleryUrls && galleryUrls.length > 0 ? galleryUrls : summary.gallery,
     fullDesc: tour.fullDesc ?? "",
     itinerary: tour.itinerary ?? "",
     inclusions: tour.inclusions ?? "",

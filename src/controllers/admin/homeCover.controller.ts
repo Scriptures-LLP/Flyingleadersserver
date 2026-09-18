@@ -3,21 +3,24 @@ import type { Request, Response } from "express";
 import { HomeCover } from "../../models/HomeCover.js";
 import { syncHomeCoverRemove, syncHomeCoverUpsert } from "../../mysql/sync/homeCoverSync.js";
 import { runMysqlSync } from "../../mysql/syncStatus.js";
+import { withImageUrl } from "../../services/adminSerialize.js";
 import { attachUploadedImage } from "../../services/imageUpload.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
+const serialize = (doc: any) => withImageUrl(doc, "image", "imageUrl");
+
 export const homeCoverController = {
   list: asyncHandler(async (_req: Request, res: Response) => {
     const items = await HomeCover.find().sort({ sortOrder: 1, createdAt: -1 });
-    res.json({ items });
+    res.json({ items: items.map(serialize) });
   }),
 
   get: asyncHandler(async (req: Request, res: Response) => {
     const item = await HomeCover.findById(req.params.id);
     if (!item) throw ApiError.notFound("Home cover not found");
-    res.json({ item });
+    res.json({ item: serialize(item) });
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
@@ -26,7 +29,7 @@ export const homeCoverController = {
     if (!updates.image) throw ApiError.badRequest("An image file is required");
     const item = await HomeCover.create(updates);
     await runMysqlSync(HomeCover, item, () => syncHomeCoverUpsert(item));
-    res.status(201).json({ item });
+    res.status(201).json({ item: serialize(item) });
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
@@ -39,7 +42,7 @@ export const homeCoverController = {
     Object.assign(existing, updates);
     await existing.save();
     await runMysqlSync(HomeCover, existing, () => syncHomeCoverUpsert(existing));
-    res.json({ item: existing });
+    res.json({ item: serialize(existing) });
   }),
 
   remove: asyncHandler(async (req: Request, res: Response) => {
@@ -57,6 +60,6 @@ export const homeCoverController = {
     if (!item) throw ApiError.notFound("Home cover not found");
     await runMysqlSync(HomeCover, item, () => syncHomeCoverUpsert(item));
     const refreshed = await HomeCover.findById(item._id);
-    res.json({ item: refreshed });
+    res.json({ item: refreshed ? serialize(refreshed) : null });
   }),
 };

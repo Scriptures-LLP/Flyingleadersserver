@@ -1,12 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { ImageCropModal } from "./ImageCropModal";
 
 export type FieldConfig =
   | { name: string; label: string; type: "text" | "number" | "date" | "datetime-local"; required?: boolean }
   | { name: string; label: string; type: "checkbox" }
-  | { name: string; label: string; type: "file"; accept?: string }
+  // `previewUrlKey` is the field on the item holding the existing image's URL,
+  // so the form can show a thumbnail of what's already uploaded. `crop` opens
+  // the adjust/crop dialog on selection to fit the app's required dimensions.
+  | {
+      name: string;
+      label: string;
+      type: "file";
+      accept?: string;
+      previewUrlKey?: string;
+      crop?: { aspect: number; outputWidth: number };
+    }
   | {
       name: string;
       label: string;
@@ -24,6 +35,7 @@ export type ColumnConfig<T> = {
 
 type Props<T extends { _id: string }> = {
   title: string;
+  subtitle?: string; // small helper line under the title (e.g. where it appears in the app)
   resourcePath: string; // e.g. "/admin/airports"
   columns: ColumnConfig<T>[];
   fields: FieldConfig[];
@@ -74,6 +86,7 @@ function buildPayload(fields: FieldConfig[], values: Record<string, unknown>, fi
 
 export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>({
   title,
+  subtitle,
   resourcePath,
   columns,
   fields,
@@ -90,6 +103,22 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   const [formFiles, setFormFiles] = useState<Record<string, File | null>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  // The image currently being adjusted in the crop dialog, if any.
+  const [cropTarget, setCropTarget] = useState<{ field: FieldConfig & { type: "file" }; file: File } | null>(null);
+  // The preview image being viewed full screen, if any.
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  // Object-URL previews for freshly-picked files (revoked on change/unmount).
+  const filePreviews = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const [name, file] of Object.entries(formFiles)) {
+      if (file) map[name] = URL.createObjectURL(file);
+    }
+    return map;
+  }, [formFiles]);
+  useEffect(() => {
+    return () => Object.values(filePreviews).forEach((url) => URL.revokeObjectURL(url));
+  }, [filePreviews]);
 
   function openCreate() {
     setModalItem(null);
@@ -161,7 +190,10 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+          {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+        </div>
         <button
           onClick={openCreate}
           className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
@@ -239,7 +271,56 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
             {formError && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>}
 
             <div className="flex flex-col gap-3">
-              {fields.map((f) => (
+              {fields.map((f) =>
+                f.type === "file" ? (
+                  // A file field must NOT be wrapped in a <label>: a label forwards
+                  // clicks on any descendant (including the preview image) to its
+                  // control, which would re-open the file picker when the user just
+                  // wants to look at the picked image.
+                  <div key={f.name} className="block text-sm">
+                    <span className="mb-1 block font-medium text-slate-700">{f.label}</span>
+                    <input
+                      type="file"
+                      accept={f.accept ?? "image/*"}
+                      onChange={(e) => {
+                        const picked = e.target.files?.[0] ?? null;
+                        e.target.value = ""; // allow re-selecting the same file
+                        if (picked && f.crop) setCropTarget({ field: f, file: picked });
+                        else setFormFiles((v) => ({ ...v, [f.name]: picked }));
+                      }}
+                      className="w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
+                    />
+                    {(() => {
+                      const picked = !!formFiles[f.name];
+                      const preview =
+                        filePreviews[f.name] ??
+                        (f.previewUrlKey && modalItem
+                          ? ((modalItem as Record<string, unknown>)[f.previewUrlKey] as string | undefined)
+                          : undefined);
+                      return preview ? (
+                        <div className="relative mt-2 w-full">
+                          <img
+                            src={preview}
+                            alt={`${f.label} preview`}
+                            onClick={() => setLightbox(preview)}
+                            className="max-h-48 w-full cursor-zoom-in rounded-md border border-slate-200 bg-slate-50 object-contain"
+                          />
+                          {picked && (
+                            <button
+                              type="button"
+                              aria-label="Remove selected image"
+                              title="Remove selected image"
+                              onClick={() => setFormFiles((v) => ({ ...v, [f.name]: null }))}
+                              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm font-bold leading-none text-white hover:bg-black/80"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                ) : (
                 <label key={f.name} className="block text-sm">
                   <span className="mb-1 block font-medium text-slate-700">{f.label}</span>
                   {f.type === "checkbox" ? (
@@ -247,13 +328,6 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                       type="checkbox"
                       checked={!!formValues[f.name]}
                       onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.checked }))}
-                    />
-                  ) : f.type === "file" ? (
-                    <input
-                      type="file"
-                      accept={f.accept ?? "image/*"}
-                      onChange={(e) => setFormFiles((v) => ({ ...v, [f.name]: e.target.files?.[0] ?? null }))}
-                      className="w-full text-sm"
                     />
                   ) : f.type === "select" ? (
                     <select
@@ -280,7 +354,8 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                     />
                   )}
                 </label>
-              ))}
+                ),
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
@@ -301,6 +376,42 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
             </div>
           </form>
         </div>
+      )}
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setLightbox(null)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-2xl font-bold leading-none text-white hover:bg-black/80"
+          >
+            ×
+          </button>
+          <img
+            src={lightbox}
+            alt="Full screen preview"
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full rounded-md object-contain"
+          />
+        </div>
+      )}
+
+      {cropTarget && cropTarget.field.crop && (
+        <ImageCropModal
+          file={cropTarget.file}
+          aspect={cropTarget.field.crop.aspect}
+          outputWidth={cropTarget.field.crop.outputWidth}
+          label={cropTarget.field.label}
+          onCancel={() => setCropTarget(null)}
+          onConfirm={(cropped) => {
+            setFormFiles((v) => ({ ...v, [cropTarget.field.name]: cropped }));
+            setCropTarget(null);
+          }}
+        />
       )}
     </div>
   );
