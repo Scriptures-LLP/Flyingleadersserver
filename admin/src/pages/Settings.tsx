@@ -56,11 +56,11 @@ function ReferralRewardSetting() {
               })
             }
             disabled={saveMutation.isPending}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
             {saveMutation.isPending ? "Saving…" : "Save"}
           </button>
-          {saved && <span className="text-sm text-emerald-600">Saved</span>}
+          {saved && <span className="text-sm text-slate-600">Saved</span>}
         </div>
       )}
     </div>
@@ -128,11 +128,11 @@ function AgeCategorySettings() {
           <button
             onClick={onSave}
             disabled={saving}
-            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}
           </button>
-          {saved && <span className="text-sm text-emerald-600">Saved</span>}
+          {saved && <span className="text-sm text-slate-600">Saved</span>}
         </div>
       )}
     </div>
@@ -177,11 +177,11 @@ export function SettingsPage() {
                 })
               }
               disabled={saveMutation.isPending}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             >
               {saveMutation.isPending ? "Saving…" : "Save"}
             </button>
-            {saved && <span className="text-sm text-emerald-600">Saved</span>}
+            {saved && <span className="text-sm text-slate-600">Saved</span>}
           </div>
         </div>
       )}

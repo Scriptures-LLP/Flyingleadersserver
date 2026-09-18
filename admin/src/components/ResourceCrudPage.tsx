@@ -196,7 +196,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
         </div>
         <button
           onClick={openCreate}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
         >
           Add {title.replace(/s$/, "")}
         </button>
@@ -334,7 +334,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                       required={f.required}
                       value={(formValues[f.name] as string | undefined) ?? ""}
                       onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-red-500"
                     >
                       {(f.allowBlank ?? true) && <option value="">—</option>}
                       {f.options.map((o) => (
@@ -350,7 +350,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                       min={f.type === "number" ? 0 : undefined}
                       value={(formValues[f.name] as string | number | undefined) ?? ""}
                       onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-red-500"
                     />
                   )}
                 </label>
@@ -369,7 +369,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
               <button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {saveMutation.isPending ? "Saving…" : "Save"}
               </button>

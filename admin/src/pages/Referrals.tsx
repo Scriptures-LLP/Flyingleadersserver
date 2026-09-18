@@ -19,8 +19,8 @@ type Wallet = { _id: string; customerId?: Person; balance: number };
 
 const STATUS_STYLE: Record<Referral["status"], string> = {
   pending: "bg-slate-100 text-slate-600",
-  qualified: "bg-amber-50 text-amber-700",
-  rewarded: "bg-emerald-50 text-emerald-700",
+  qualified: "bg-red-50 text-red-700",
+  rewarded: "bg-slate-100 text-slate-700",
 };
 
 function name(v?: Person): string {
@@ -165,7 +165,7 @@ export function ReferralsPage() {
               <button
                 onClick={() => adjustMutation.mutate()}
                 disabled={adjustMutation.isPending || !adjustAmount}
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {adjustMutation.isPending ? "Saving…" : "Save"}
               </button>

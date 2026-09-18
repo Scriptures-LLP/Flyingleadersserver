@@ -212,7 +212,7 @@ export function ToursPage() {
         <h1 className="text-lg font-semibold text-slate-900">Tours</h1>
         <button
           onClick={openCreate}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
         >
           Add Tour
         </button>
@@ -538,7 +538,7 @@ export function ToursPage() {
               <button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
               >
                 {saveMutation.isPending ? "Saving…" : "Save"}
               </button>

@@ -35,7 +35,7 @@ export function CustomersPage() {
           placeholder="Search name, email, phone…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-slate-500"
+          className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
         />
       </div>
 
@@ -65,7 +65,7 @@ export function CustomersPage() {
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        c.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                        c.isActive ? "bg-slate-100 text-slate-700" : "bg-red-50 text-red-700"
                       }`}
                     >
                       {c.isActive ? "Active" : "Deactivated"}

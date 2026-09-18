@@ -126,7 +126,7 @@ export function TourGalleryManager({ tourId }: { tourId: string }) {
               <img src={item.url} alt={item.alt ?? ""} className="h-full w-full object-cover" />
 
               {item.isPrimary && (
-                <span className="absolute left-1 top-1 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="absolute left-1 top-1 rounded bg-red-600/90 px-1.5 py-0.5 text-[10px] font-medium text-white">
                   Primary
                 </span>
               )}

@@ -52,7 +52,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
   if (!editor) return null;
 
   const btn = (active: boolean) =>
-    `rounded px-2 py-1 text-xs font-medium ${active ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+    `rounded px-2 py-1 text-xs font-medium ${active ? "bg-red-600 text-white" : "text-slate-600 hover:bg-slate-100"}`;
   const sep = <div className="mx-1 w-px self-stretch bg-slate-200" />;
 
   return (

@@ -36,7 +36,7 @@ export function AppLayout() {
               to={item.to}
               className={({ isActive }) =>
                 `rounded-md px-3 py-2 text-sm font-medium ${
-                  isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+                  isActive ? "bg-red-600 text-white" : "text-slate-600 hover:bg-slate-100"
                 }`
               }
             >

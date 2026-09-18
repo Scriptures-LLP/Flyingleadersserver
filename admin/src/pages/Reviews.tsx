@@ -23,8 +23,8 @@ const TABS: { key: Review["status"] | "all"; label: string }[] = [
 ];
 
 const STATUS_STYLE: Record<Review["status"], string> = {
-  pending: "bg-amber-50 text-amber-700",
-  approved: "bg-emerald-50 text-emerald-700",
+  pending: "bg-red-50 text-red-700",
+  approved: "bg-slate-100 text-slate-700",
   rejected: "bg-red-50 text-red-700",
 };
 
@@ -62,7 +62,7 @@ export function ReviewsPage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t.key ? "bg-slate-900 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
+              tab === t.key ? "bg-red-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
             }`}
           >
             {t.label}
@@ -87,7 +87,7 @@ export function ReviewsPage() {
                 {r.status}
               </span>
             </div>
-            <p className="mb-1 text-amber-500">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</p>
+            <p className="mb-1 text-red-500">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</p>
             {r.title && <p className="font-medium text-slate-800">{r.title}</p>}
             <p className="text-sm text-slate-700">{r.comment}</p>
 
@@ -102,7 +102,7 @@ export function ReviewsPage() {
                 <button
                   onClick={() => moderateMutation.mutate({ id: r._id, status: "approved" })}
                   disabled={moderateMutation.isPending}
-                  className="shrink-0 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                  className="shrink-0 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
                 >
                   Approve
                 </button>

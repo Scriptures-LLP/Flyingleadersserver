@@ -33,17 +33,17 @@ type Transaction = {
 };
 
 const STATUS_STYLE: Record<Booking["status"], string> = {
-  pending_payment: "bg-amber-50 text-amber-700",
-  confirmed: "bg-emerald-50 text-emerald-700",
+  pending_payment: "bg-red-50 text-red-700",
+  confirmed: "bg-slate-100 text-slate-700",
   cancelled: "bg-red-50 text-red-700",
   completed: "bg-slate-100 text-slate-700",
 };
 
 const PAYMENT_STYLE: Record<Booking["paymentStatus"], string> = {
   unpaid: "bg-slate-100 text-slate-600",
-  partial: "bg-amber-50 text-amber-700",
-  paid: "bg-emerald-50 text-emerald-700",
-  refund_initiated: "bg-orange-50 text-orange-700",
+  partial: "bg-red-50 text-red-700",
+  paid: "bg-slate-100 text-slate-700",
+  refund_initiated: "bg-red-50 text-red-700",
   refunded: "bg-slate-100 text-slate-500",
 };
 
