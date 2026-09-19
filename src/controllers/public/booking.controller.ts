@@ -7,6 +7,7 @@ import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
 import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
+import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
 import { listTourAirports } from "../../services/tourOptions.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -83,9 +84,11 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   let discountAmount = 0;
   let promoCodeId: string | undefined;
   let promoCode: string | undefined;
+  let promoDoc: Awaited<ReturnType<typeof validatePromoCode>>["promo"] = null;
   if (body.promoCode) {
     const result = await validatePromoCode(body.promoCode, String(tour._id), baseAmount, req.customer!.sub);
     discountAmount = result.discountAmount;
+    promoDoc = result.promo;
     promoCodeId = String(result.promo!._id);
     promoCode = result.promo!.code;
   }
@@ -124,6 +127,8 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       breakdown,
       addons,
     },
+    // Reserves one use of the promo code while this booking is unpaid.
+    promoHoldUntil: promoDoc ? promoHoldExpiry() : undefined,
     itinerarySnapshot: {
       title: tour.title,
       slug: tour.slug,
@@ -134,6 +139,18 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       itinerary: tour.itinerary,
     },
   });
+
+  // Two requests can both clear the check above at the same instant; this
+  // settles it in creation order. Runs before any wallet credit is spent, so
+  // a refused booking leaves nothing to undo.
+  if (promoDoc) {
+    try {
+      await claimPromoUse(promoDoc, booking);
+    } catch (err) {
+      await Booking.deleteOne({ _id: booking._id });
+      throw err;
+    }
+  }
 
   if (walletCreditApplied > 0) {
     const { redeemWalletCredit } = await import("../../services/referral.service.js");

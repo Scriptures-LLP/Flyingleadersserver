@@ -3,6 +3,8 @@ import type { HydratedDocument } from "mongoose";
 import { PromoCode } from "../models/PromoCode.js";
 import { ApiError } from "../utils/ApiError.js";
 
+import { assertWithinLimits } from "./promoUsage.service.js";
+
 type TourLike = HydratedDocument<any>;
 type TravellerType = "adult" | "child" | "infant";
 type Traveller = { type: TravellerType; age?: number };
@@ -135,26 +137,10 @@ export async function validatePromoCode(
     throw ApiError.badRequest(`Minimum booking amount of ₹${promo.minCart} required for this promo code`);
   }
 
-  if (promo.usageLimit) {
-    const { Booking } = await import("../models/Booking.js");
-    const used = await Booking.countDocuments({
-      "pricing.promoCodeId": promo._id,
-      paymentStatus: { $in: ["partial", "paid"] },
-    });
-    if (used >= promo.usageLimit) throw ApiError.badRequest("This promo code has reached its usage limit");
-  }
-
-  if (promo.perUserLimit) {
-    const { Booking } = await import("../models/Booking.js");
-    const usedByCustomer = await Booking.countDocuments({
-      customerId,
-      "pricing.promoCodeId": promo._id,
-      paymentStatus: { $in: ["partial", "paid"] },
-    });
-    if (usedByCustomer >= promo.perUserLimit) {
-      throw ApiError.badRequest("You've already used this promo code the maximum number of times");
-    }
-  }
+  // Total + per-customer limits — counts held (unpaid, recently created) and
+  // redeemed (paid) uses, not just paid ones. A customer's own older unpaid
+  // bookings don't count against them: the new booking replaces those.
+  await assertWithinLimits(promo, customerId, { supersedeCustomerId: customerId });
 
   let discount = promo.type === "percent" ? (cartTotal * promo.value) / 100 : promo.value;
   if (promo.type === "percent" && promo.maxDiscount) discount = Math.min(discount, promo.maxDiscount);
