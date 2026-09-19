@@ -38,6 +38,22 @@ const pricingSchema = new Schema(
       ],
       default: [],
     },
+    // Airport / travel-date charges, kept as their own lines (never blended
+    // into the per-type prices above) so the summary and invoice show each
+    // configured price separately. Older bookings simply have none.
+    addons: {
+      type: [
+        {
+          _id: false,
+          kind: { type: String, enum: ["airport", "date"], required: true },
+          label: { type: String, required: true },
+          count: { type: Number, required: true, min: 1 },
+          unitPrice: { type: Number, required: true, min: 0 },
+          subtotal: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [],
+    },
   },
   { _id: false },
 );

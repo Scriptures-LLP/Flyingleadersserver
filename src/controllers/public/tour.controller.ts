@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
 import { TourMedia } from "../../models/TourMedia.js";
+import { listTourAirports } from "../../services/tourOptions.service.js";
 import { serializeTourDetail, serializeTourSummary } from "../../services/tourSerializer.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -49,21 +50,50 @@ export const getBySlug = asyncHandler(async (req: Request, res: Response) => {
   res.json({ item: serializeTourDetail(tour, galleryUrls) });
 });
 
+// Tour Dates — the dates and nothing else. No prices: a date's optional
+// add-on is charged (and itemised) at booking time, never blended into what
+// this list shows. `airport` is set only when the admin tied the date to one
+// airport; null means the date works from any of the tour's airports.
 export const listDates = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
   if (!tour) throw ApiError.notFound("Tour not found");
 
-  const dates = await TourDate.find({ tourId: tour._id, isActive: true, date: { $gte: new Date() } })
-    .populate("airportId", "code name")
-    .sort({ date: 1 });
+  const [dates, airports] = await Promise.all([
+    TourDate.find({ tourId: tour._id, isActive: true, date: { $gte: new Date() } })
+      .sort({ date: 1, sortOrder: 1 })
+      .lean(),
+    listTourAirports(tour._id),
+  ]);
+  const airportById = new Map(airports.map((a) => [a.id, a]));
 
-  res.json({
-    items: dates.map((d) => ({
-      id: d.id,
-      date: d.date,
-      price: d.price,
-      label: d.label ?? null,
-      airport: d.airportId && typeof d.airportId === "object" ? d.airportId : null,
-    })),
-  });
+  type DateItem = {
+    id: string;
+    date: Date;
+    label: string | null;
+    airport: { _id: string; code: string; name: string } | null;
+  };
+  const items: DateItem[] = [];
+  for (const d of dates) {
+    const base = { id: String(d._id), date: d.date, label: d.label ?? null };
+    if (!d.airportId) {
+      items.push({ ...base, airport: null });
+      continue;
+    }
+    // A date tied to an airport the tour no longer offers (deactivated,
+    // switched off, deleted) can't be booked, so it isn't listed — rather
+    // than silently turning into an "any airport" date.
+    const a = airportById.get(String(d.airportId));
+    if (a) items.push({ ...base, airport: { _id: a.id, code: a.code, name: a.name } });
+  }
+
+  res.json({ items });
+});
+
+// Tour Airport Prices — the departure airports and each one's own add-on
+// price, independent of the dates list above.
+export const listAirports = asyncHandler(async (req: Request, res: Response) => {
+  const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
+  if (!tour) throw ApiError.notFound("Tour not found");
+
+  res.json({ items: await listTourAirports(tour._id) });
 });

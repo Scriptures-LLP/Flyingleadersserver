@@ -2,13 +2,12 @@ import crypto from "node:crypto";
 
 import type { Request, Response } from "express";
 
-import { Airport } from "../../models/Airport.js";
 import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
-import { TourAirportPrice } from "../../models/TourAirportPrice.js";
 import { TourDate } from "../../models/TourDate.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
-import { computeBaseAmount, groupPriceBreakdown, validatePromoCode } from "../../services/pricing.service.js";
+import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
+import { listTourAirports } from "../../services/tourOptions.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -46,33 +45,40 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     t.age !== undefined ? { ...t, type: categorizeAge(t.age, ageConfig) } : t,
   );
 
-  let airportAddOnPerPerson = 0;
   let tourDateId: string | null = null;
   let tourDateDoc: InstanceType<typeof TourDate> | null = null;
-
-  if (body.airportId) {
-    const airport = await Airport.findOne({ _id: body.airportId, isActive: true });
-    if (!airport) throw ApiError.badRequest("Selected airport is not available");
-    const airportPrice = await TourAirportPrice.findOne({
-      tourId: tour._id,
-      airportId: airport._id,
-      isActive: true,
-    });
-    airportAddOnPerPerson += airportPrice?.addonPrice ?? 0;
-  }
 
   if (body.tourDateId) {
     const tourDate = await TourDate.findOne({ _id: body.tourDateId, tourId: tour._id, isActive: true });
     if (!tourDate) throw ApiError.badRequest("Selected travel date is not available");
-    if (tourDate.airportId && String(tourDate.airportId) !== (body.airportId ?? "")) {
-      throw ApiError.badRequest("Selected travel date doesn't match the selected airport");
-    }
     tourDateDoc = tourDate;
     tourDateId = String(tourDate._id);
   }
 
-  const { baseAmount, entries } = computeBaseAmount(tour, travellers, tourDateDoc, airportAddOnPerPerson);
-  const breakdown = groupPriceBreakdown(entries);
+  // The airport is its own choice, validated against the tour's own airport
+  // list (Tour Airport Prices) — it's never inferred by folding it into the
+  // date. A date that's tied to an airport implies it when the client didn't
+  // send one, and must agree with it when it did.
+  const tourAirports = await listTourAirports(tour._id);
+  const dateAirportId = tourDateDoc?.airportId ? String(tourDateDoc.airportId) : null;
+  let airportId: string | null = body.airportId ?? dateAirportId;
+  if (dateAirportId && body.airportId && dateAirportId !== body.airportId) {
+    throw ApiError.badRequest("Selected travel date doesn't match the selected airport");
+  }
+  const onlyAirport = tourAirports.length === 1 ? tourAirports[0] : undefined;
+  if (!airportId && onlyAirport) airportId = onlyAirport.id;
+  if (!airportId && tourAirports.length > 1) throw ApiError.badRequest("Select a departure airport");
+  const chosenAirport = airportId ? (tourAirports.find((a) => a.id === airportId) ?? null) : null;
+  if (airportId && !chosenAirport) {
+    throw ApiError.badRequest("Selected airport is not available for this tour");
+  }
+
+  const { baseAmount, breakdown, addons } = computeBaseAmount(
+    tour,
+    travellers,
+    tourDateDoc,
+    chosenAirport && { code: chosenAirport.code, addonPrice: chosenAirport.addonPrice },
+  );
 
   let discountAmount = 0;
   let promoCodeId: string | undefined;
@@ -101,7 +107,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     customerId: req.customer!.sub,
     tourId: tour._id,
     tourDateId,
-    airportId: body.airportId ?? null,
+    airportId,
     travelDate: body.travelDate,
     contactName: body.contactName,
     contactEmail: body.contactEmail,
@@ -116,6 +122,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       tokenAmount,
       walletCreditApplied,
       breakdown,
+      addons,
     },
     itinerarySnapshot: {
       title: tour.title,
