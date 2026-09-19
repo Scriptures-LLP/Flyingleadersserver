@@ -5,7 +5,17 @@ import { api, apiErrorMessage } from "../lib/api";
 import { ImageCropModal } from "./ImageCropModal";
 
 export type FieldConfig =
-  | { name: string; label: string; type: "text" | "number" | "date" | "datetime-local"; required?: boolean }
+  | {
+      name: string;
+      label: string;
+      type: "text" | "number" | "date" | "datetime-local";
+      required?: boolean;
+      // What to send when the field is left blank. By default blank optional
+      // fields are omitted, which on an EDIT means "keep the old value" — so a
+      // limit that was once set could never be cleared. Set this (e.g. 0 for
+      // "no limit") for fields where blank must mean something.
+      blankAs?: string | number;
+    }
   | { name: string; label: string; type: "checkbox" }
   // `previewUrlKey` is the field on the item holding the existing image's URL,
   // so the form can show a thumbnail of what's already uploaded. `crop` opens
@@ -66,7 +76,10 @@ function buildPayload(fields: FieldConfig[], values: Record<string, unknown>, fi
       // Omit blank optional fields entirely — an empty string fails Mongoose's
       // ObjectId cast on a "select" ref field, and is meaningless for others too.
       const v = values[f.name];
-      if (v === "" || v === null || v === undefined) continue;
+      if (v === "" || v === null || v === undefined) {
+        if ("blankAs" in f && f.blankAs !== undefined) body[f.name] = f.blankAs;
+        continue;
+      }
       body[f.name] = f.type === "datetime-local" ? withIstOffset(v) : v;
     }
     return body;

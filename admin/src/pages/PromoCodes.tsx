@@ -13,6 +13,10 @@ type PromoCode = {
   minCart?: number;
   usageLimit?: number;
   perUserLimit?: number;
+  // Computed by the server: paid/partly-paid uses, and unpaid bookings that
+  // are currently holding a use.
+  usedCount?: number;
+  heldCount?: number;
   startsAt?: string;
   expiresAt?: string;
   isActive: boolean;
@@ -44,6 +48,19 @@ export function PromoCodesPage() {
               ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN") : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN") : "no end"}`
               : "Always",
         },
+        {
+          key: "usedCount",
+          label: "Used",
+          render: (p) => {
+            const held = p.heldCount ? ` (+${p.heldCount} reserved)` : "";
+            return `${p.usedCount ?? 0}${p.usageLimit ? ` / ${p.usageLimit}` : ""}${held}`;
+          },
+        },
+        {
+          key: "perUserLimit",
+          label: "Per customer",
+          render: (p) => (p.perUserLimit ? `${p.perUserLimit} time${p.perUserLimit > 1 ? "s" : ""}` : "Unlimited"),
+        },
         { key: "isActive", label: "Active", render: (p) => (p.isActive ? "Yes" : "No") },
       ]}
       fields={[
@@ -62,8 +79,18 @@ export function PromoCodesPage() {
         { name: "value", label: "Value", type: "number", required: true },
         { name: "maxDiscount", label: "Max discount (₹, for percent type)", type: "number" },
         { name: "minCart", label: "Minimum booking amount (₹)", type: "number" },
-        { name: "usageLimit", label: "Total usage limit", type: "number" },
-        { name: "perUserLimit", label: "Per-customer usage limit", type: "number" },
+        {
+          name: "usageLimit",
+          label: "Total usage limit — how many bookings in total can use this code (0 or blank = unlimited)",
+          type: "number",
+          blankAs: 0,
+        },
+        {
+          name: "perUserLimit",
+          label: "Customer usage limit — how many times one customer can use it (0 or blank = unlimited)",
+          type: "number",
+          blankAs: 0,
+        },
         { name: "startsAt", label: "Start date & time (leave blank for no start restriction)", type: "datetime-local" },
         { name: "expiresAt", label: "End date & time (leave blank for no expiry)", type: "datetime-local" },
         {
