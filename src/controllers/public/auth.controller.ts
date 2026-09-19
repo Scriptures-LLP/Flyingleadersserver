@@ -24,6 +24,12 @@ export const phoneVerify = asyncHandler(async (req: Request, res: Response) => {
   res.json(session);
 });
 
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken, newPassword } = req.body as { idToken: string; newPassword: string };
+  const session = await authService.resetPasswordWithPhoneToken(idToken, newPassword);
+  res.json(session);
+});
+
 export const me = asyncHandler(async (req: Request, res: Response) => {
   const customer = await Customer.findById(req.customer!.sub);
   if (!customer) throw ApiError.notFound("Account not found");

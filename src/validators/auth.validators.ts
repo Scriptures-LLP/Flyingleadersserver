@@ -25,6 +25,11 @@ export const phoneVerifySchema = z.object({
   name: z.string().trim().optional(),
 });
 
+export const resetPasswordSchema = z.object({
+  idToken: z.string().min(1),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export const adminLoginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1, "Password is required"),
