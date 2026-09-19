@@ -6,6 +6,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { signAdminToken, signCustomerToken } from "../utils/jwt.js";
 import { phoneVariants } from "../utils/phone.js";
 
+import { consumePasswordResetCode } from "./passwordReset.service.js";
+
 // How recently the phone must have been verified for a password reset. The
 // Firebase ID token itself lives an hour; a reset must follow the OTP closely
 // so a token that leaks (or is replayed later) can't be used to take an
@@ -130,6 +132,17 @@ export async function resetPasswordWithPhoneToken(idToken: string, newPassword: 
   if (!customer.phoneVerifiedAt) customer.phoneVerifiedAt = new Date();
   await customer.save();
 
+  return toSession(customer);
+}
+
+/** Forgot-password for email accounts: the 6-digit code emailed by requestPasswordResetCode. */
+export async function resetPasswordWithEmailCode(email: string, code: string, newPassword: string) {
+  const customerId = await consumePasswordResetCode(email, code);
+  const customer = await Customer.findById(customerId);
+  if (!customer || !customer.isActive) throw ApiError.unauthorized("This account isn't available");
+
+  customer.passwordHash = await Customer.hashPassword(newPassword);
+  await customer.save();
   return toSession(customer);
 }
 

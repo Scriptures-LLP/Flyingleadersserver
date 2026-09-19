@@ -47,6 +47,18 @@ services:
         sync: false
       - key: FIREBASE_SERVICE_ACCOUNT_B64
         sync: false
+      # Password-reset emails. Values are set in the Render dashboard (never
+      # committed): SMTP_PASS is a Google app password.
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
       # S3 now backs every uploaded image (tours/countries/categories/gallery/
       # home covers/avatars) — Render's own disk is wiped on every restart, so
       # local storage silently lost every uploaded file.

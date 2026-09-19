@@ -5,8 +5,10 @@ import { requireAuth } from "../../middlewares/auth.middleware.js";
 import { upload } from "../../middlewares/upload.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
+  forgotPasswordSchema,
   loginSchema,
   phoneVerifySchema,
+  resetPasswordEmailSchema,
   resetPasswordSchema,
   signupSchema,
 } from "../../validators/auth.validators.js";
@@ -18,6 +20,12 @@ authRoutes.post("/signup", validate({ body: signupSchema }), authController.sign
 authRoutes.post("/login", validate({ body: loginSchema }), authController.login);
 authRoutes.post("/phone-verify", validate({ body: phoneVerifySchema }), authController.phoneVerify);
 authRoutes.post("/reset-password", validate({ body: resetPasswordSchema }), authController.resetPassword);
+authRoutes.post("/forgot-password", validate({ body: forgotPasswordSchema }), authController.forgotPassword);
+authRoutes.post(
+  "/reset-password/email",
+  validate({ body: resetPasswordEmailSchema }),
+  authController.resetPasswordEmail,
+);
 authRoutes.get("/me", requireAuth, authController.me);
 authRoutes.patch("/me", requireAuth, validate({ body: updateProfileSchema }), authController.updateMe);
 authRoutes.post("/me/photo", requireAuth, upload.single("avatar"), authController.updatePhoto);

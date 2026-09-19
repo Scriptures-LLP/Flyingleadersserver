@@ -54,6 +54,16 @@ const envSchema = z.object({
   // copied into its actual storage/admin-uploads directories.
   FLYINGDOTCOM_STORAGE_ROOT: z.string().default(""),
 
+  // SMTP — sends password-reset emails (see services/mailer.service.ts). All
+  // optional: with these unset the email endpoints answer "not set up yet"
+  // instead of crashing. For Gmail / Google Workspace, SMTP_PASS must be an
+  // app password.
+  SMTP_HOST: z.string().optional().default(""),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional().default(""),
+  SMTP_PASS: z.string().optional().default(""),
+  SMTP_FROM: z.string().optional().default(""),
+
   // Module D — Firebase Phone Auth (base64-encoded service-account JSON).
   FIREBASE_SERVICE_ACCOUNT_B64: z.string().optional().default(""),
 

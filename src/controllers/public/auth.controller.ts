@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { Customer } from "../../models/Customer.js";
 import { serializeCustomer } from "../../serializers/customer.serializer.js";
 import * as authService from "../../services/auth.service.js";
+import { requestPasswordResetCode } from "../../services/passwordReset.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -28,6 +29,17 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
   const { idToken, newPassword } = req.body as { idToken: string; newPassword: string };
   const session = await authService.resetPasswordWithPhoneToken(idToken, newPassword);
   res.json(session);
+});
+
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  await requestPasswordResetCode((req.body as { email: string }).email);
+  // Same answer whether or not the address has an account.
+  res.json({ ok: true });
+});
+
+export const resetPasswordEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { email, code, newPassword } = req.body as { email: string; code: string; newPassword: string };
+  res.json(await authService.resetPasswordWithEmailCode(email, code, newPassword));
 });
 
 export const me = asyncHandler(async (req: Request, res: Response) => {

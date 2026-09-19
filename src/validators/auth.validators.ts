@@ -30,6 +30,16 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address"),
+});
+
+export const resetPasswordEmailSchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from the email"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export const adminLoginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1, "Password is required"),
