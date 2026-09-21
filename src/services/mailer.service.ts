@@ -15,10 +15,12 @@ function getTransporter(): Transporter {
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
-      // 465 is TLS from the first byte; 587 starts plain and must upgrade
-      // (STARTTLS) — insist on the upgrade so credentials never travel in the clear.
+      // 465 is TLS from the first byte; every other port (587, 2525, ...) starts
+      // plain and must upgrade (STARTTLS) — insist on the upgrade so credentials
+      // never travel in the clear. (2525 matters: Render's free plan blocks 25,
+      // 465 and 587 outbound, and 2525 is the usual alternative.)
       secure: env.SMTP_PORT === 465,
-      requireTLS: env.SMTP_PORT === 587,
+      requireTLS: env.SMTP_PORT !== 465,
       auth: {
         user: env.SMTP_USER,
         // Google shows app passwords in four space-separated groups; the
