@@ -47,3 +47,44 @@ export async function listTourAirports(tourId: Types.ObjectId | string): Promise
     addonPrice: addonByAirport.get(a.id as string) ?? 0,
   }));
 }
+
+export type TourDateItem = {
+  id: string;
+  date: Date;
+  label: string | null;
+  airport: { _id: string; code: string; name: string } | null;
+};
+
+/**
+ * The departure dates a tour can actually be booked on: active, in the future,
+ * and — when a date is tied to one airport — only if that airport is still
+ * offered (a date tied to a deactivated / switched-off / deleted airport is
+ * dropped rather than silently turning into an "any airport" date).
+ *
+ * The one definition of "bookable date": the public dates list and booking
+ * validation both use it, so they can never disagree.
+ */
+export async function listTourDates(
+  tourId: Types.ObjectId | string,
+  airports?: TourAirportOption[],
+): Promise<TourDateItem[]> {
+  const [dates, offered] = await Promise.all([
+    TourDate.find({ tourId, isActive: true, date: { $gte: new Date() } })
+      .sort({ date: 1, sortOrder: 1 })
+      .lean(),
+    airports ? Promise.resolve(airports) : listTourAirports(tourId),
+  ]);
+  const airportById = new Map(offered.map((a) => [a.id, a]));
+
+  const items: TourDateItem[] = [];
+  for (const d of dates) {
+    const base = { id: String(d._id), date: d.date, label: d.label ?? null };
+    if (!d.airportId) {
+      items.push({ ...base, airport: null });
+      continue;
+    }
+    const a = airportById.get(String(d.airportId));
+    if (a) items.push({ ...base, airport: { _id: a.id, code: a.code, name: a.name } });
+  }
+  return items;
+}

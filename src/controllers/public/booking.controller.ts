@@ -8,7 +8,7 @@ import { TourDate } from "../../models/TourDate.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
 import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
 import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
-import { listTourAirports } from "../../services/tourOptions.service.js";
+import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -49,7 +49,17 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   let tourDateId: string | null = null;
   let tourDateDoc: InstanceType<typeof TourDate> | null = null;
 
+  const tourAirports = await listTourAirports(tour._id);
+
+  // A tour that has bookable departure dates can only be booked on one of
+  // them: no date, or a stale / unavailable one, is refused here as well as in
+  // the app, so a missing selection can never slip through to payment.
+  const bookableDates = await listTourDates(tour._id, tourAirports);
+  if (bookableDates.length > 0 && !body.tourDateId) throw ApiError.badRequest("Select a travel date");
   if (body.tourDateId) {
+    if (!bookableDates.some((d) => d.id === body.tourDateId)) {
+      throw ApiError.badRequest("Selected travel date is not available");
+    }
     const tourDate = await TourDate.findOne({ _id: body.tourDateId, tourId: tour._id, isActive: true });
     if (!tourDate) throw ApiError.badRequest("Selected travel date is not available");
     tourDateDoc = tourDate;
@@ -60,7 +70,6 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   // list (Tour Airport Prices) — it's never inferred by folding it into the
   // date. A date that's tied to an airport implies it when the client didn't
   // send one, and must agree with it when it did.
-  const tourAirports = await listTourAirports(tour._id);
   const dateAirportId = tourDateDoc?.airportId ? String(tourDateDoc.airportId) : null;
   let airportId: string | null = body.airportId ?? dateAirportId;
   if (dateAirportId && body.airportId && dateAirportId !== body.airportId) {
@@ -111,7 +120,9 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     tourId: tour._id,
     tourDateId,
     airportId,
-    travelDate: body.travelDate,
+    // The chosen departure decides the date — never a client-supplied value that
+    // could disagree with it.
+    travelDate: tourDateDoc ? tourDateDoc.date : body.travelDate,
     contactName: body.contactName,
     contactEmail: body.contactEmail,
     contactPhone: body.contactPhone,
