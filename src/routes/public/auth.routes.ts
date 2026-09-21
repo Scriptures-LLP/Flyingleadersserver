@@ -2,12 +2,17 @@ import { Router } from "express";
 
 import * as authController from "../../controllers/public/auth.controller.js";
 import { requireAuth } from "../../middlewares/auth.middleware.js";
+import { otpSendIpLimit } from "../../middlewares/otpRateLimit.middleware.js";
 import { upload } from "../../middlewares/upload.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
   forgotPasswordSchema,
   loginSchema,
+  otpSendSchema,
+  otpVerifyResetSchema,
+  otpVerifySchema,
   phoneVerifySchema,
+  resetWithTokenSchema,
   resetPasswordEmailSchema,
   resetPasswordSchema,
   signupSchema,
@@ -25,6 +30,15 @@ authRoutes.post(
   "/reset-password/email",
   validate({ body: resetPasswordEmailSchema }),
   authController.resetPasswordEmail,
+);
+// SMS OTP (MSG91): send a code, then sign in with it — or use it to reset a password.
+authRoutes.post("/otp/send", otpSendIpLimit, validate({ body: otpSendSchema }), authController.otpSend);
+authRoutes.post("/otp/verify", validate({ body: otpVerifySchema }), authController.otpVerify);
+authRoutes.post("/otp/verify-reset", validate({ body: otpVerifyResetSchema }), authController.otpVerifyReset);
+authRoutes.post(
+  "/reset-password/token",
+  validate({ body: resetWithTokenSchema }),
+  authController.resetPasswordWithToken,
 );
 authRoutes.get("/me", requireAuth, authController.me);
 authRoutes.patch("/me", requireAuth, validate({ body: updateProfileSchema }), authController.updateMe);

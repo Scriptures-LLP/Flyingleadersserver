@@ -59,6 +59,13 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      # SMS OTP (MSG91 Flow API). Values live in the Render dashboard.
+      - key: MSG91_AUTH_KEY
+        sync: false
+      - key: MSG91_TEMPLATE_ID
+        sync: false
+      - key: MSG91_OTP_VAR
+        sync: false
       # S3 now backs every uploaded image (tours/countries/categories/gallery/
       # home covers/avatars) — Render's own disk is wiped on every restart, so
       # local storage silently lost every uploaded file.

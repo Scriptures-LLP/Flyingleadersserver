@@ -4,6 +4,7 @@ import { Customer } from "../../models/Customer.js";
 import { serializeCustomer } from "../../serializers/customer.serializer.js";
 import * as authService from "../../services/auth.service.js";
 import { requestPasswordResetCode } from "../../services/passwordReset.service.js";
+import { requestPhoneOtp, type OtpPurpose } from "../../services/phoneOtp.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { phoneVariants } from "../../utils/phone.js";
@@ -41,6 +42,28 @@ export const forgotPassword = asyncHandler(async (req: Request, res: Response) =
 export const resetPasswordEmail = asyncHandler(async (req: Request, res: Response) => {
   const { email, code, newPassword } = req.body as { email: string; code: string; newPassword: string };
   res.json(await authService.resetPasswordWithEmailCode(email, code, newPassword));
+});
+
+export const otpSend = asyncHandler(async (req: Request, res: Response) => {
+  const { phone, purpose } = req.body as { phone: string; purpose: OtpPurpose };
+  const { resendAfterSeconds } = await requestPhoneOtp(phone, purpose);
+  // Same answer whether or not a code actually went out (see requestPhoneOtp).
+  res.json({ ok: true, resendAfterSeconds });
+});
+
+export const otpVerify = asyncHandler(async (req: Request, res: Response) => {
+  const { phone, code, name } = req.body as { phone: string; code: string; name?: string };
+  res.json(await authService.loginWithPhoneOtp(phone, code, name));
+});
+
+export const otpVerifyReset = asyncHandler(async (req: Request, res: Response) => {
+  const { phone, code } = req.body as { phone: string; code: string };
+  res.json(await authService.verifyResetOtp(phone, code));
+});
+
+export const resetPasswordWithToken = asyncHandler(async (req: Request, res: Response) => {
+  const { resetToken, newPassword } = req.body as { resetToken: string; newPassword: string };
+  res.json(await authService.resetPasswordWithResetToken(resetToken, newPassword));
 });
 
 export const me = asyncHandler(async (req: Request, res: Response) => {

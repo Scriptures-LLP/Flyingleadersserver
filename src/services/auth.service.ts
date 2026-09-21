@@ -3,10 +3,11 @@ import { AdminUser, type AdminUserDoc } from "../models/AdminUser.js";
 import { Customer, type CustomerDoc } from "../models/Customer.js";
 import { serializeCustomer } from "../serializers/customer.serializer.js";
 import { ApiError } from "../utils/ApiError.js";
-import { signAdminToken, signCustomerToken } from "../utils/jwt.js";
+import { signAdminToken, signCustomerToken, signPasswordResetToken, verifyPasswordResetToken } from "../utils/jwt.js";
 import { phoneVariants } from "../utils/phone.js";
 
 import { consumePasswordResetCode } from "./passwordReset.service.js";
+import { consumePhoneOtp } from "./phoneOtp.service.js";
 
 // How recently the phone must have been verified for a password reset. The
 // Firebase ID token itself lives an hour; a reset must follow the OTP closely
@@ -83,6 +84,11 @@ export async function verifyFirebasePhoneToken(idToken: string, name?: string) {
   const phone = decoded.phone_number;
   if (!phone) throw ApiError.badRequest("This sign-in method didn't provide a phone number");
 
+  return findOrCreatePhoneSession(phone, name);
+}
+
+/** Signs in the customer with this (already verified) mobile number, creating the account the first time. */
+async function findOrCreatePhoneSession(phone: string, name?: string) {
   let customer = await Customer.findOne({ phone: { $in: phoneVariants(phone) } });
   if (!customer) {
     customer = await Customer.create({
@@ -97,6 +103,41 @@ export async function verifyFirebasePhoneToken(idToken: string, name?: string) {
   }
 
   if (!customer.isActive) throw ApiError.unauthorized("This account has been deactivated");
+  return toSession(customer);
+}
+
+/** Login / sign-up by mobile number with the code we texted. */
+export async function loginWithPhoneOtp(phoneInput: string, code: string, name?: string) {
+  const phone = await consumePhoneOtp(phoneInput, code, "login");
+  return findOrCreatePhoneSession(phone, name);
+}
+
+/**
+ * Forgot-password by mobile number, step 1: check the texted code and hand back
+ * a short-lived token that can set a new password (and nothing else).
+ */
+export async function verifyResetOtp(phoneInput: string, code: string) {
+  const phone = await consumePhoneOtp(phoneInput, code, "reset");
+  const customer = await Customer.findOne({ phone: { $in: phoneVariants(phone) } });
+  if (!customer) throw ApiError.notFound("No account is registered with this mobile number");
+  if (!customer.isActive) throw ApiError.unauthorized("This account has been deactivated");
+  return { resetToken: signPasswordResetToken(customer.id) };
+}
+
+/** Forgot-password by mobile number, step 2: set the new password with that token, and sign in. */
+export async function resetPasswordWithResetToken(resetToken: string, newPassword: string) {
+  let customerId: string;
+  try {
+    customerId = verifyPasswordResetToken(resetToken).sub;
+  } catch {
+    throw ApiError.unauthorized("Your verification has expired. Please verify your mobile number again.");
+  }
+  const customer = await Customer.findById(customerId);
+  if (!customer || !customer.isActive) throw ApiError.unauthorized("This account isn't available");
+
+  customer.passwordHash = await Customer.hashPassword(newPassword);
+  if (!customer.phoneVerifiedAt) customer.phoneVerifiedAt = new Date();
+  await customer.save();
   return toSession(customer);
 }
 
