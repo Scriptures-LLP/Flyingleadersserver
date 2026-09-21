@@ -117,6 +117,55 @@ async function confirmBookingPayment(
   return updated;
 }
 
+type OrderPayment = { id: string; order_id?: string; status: string; amount: number };
+
+/**
+ * Safety net for a payment that succeeded at Razorpay but whose result never
+ * reached us — the app was killed while the payment page was open, the browser
+ * tab was closed, or the redirect back was lost — leaving the booking unpaid
+ * (and the customer's history empty) although they were charged.
+ *
+ * Asks Razorpay what happened to this booking's still-open orders and applies
+ * any payment that really was captured for the right amount, through the same
+ * atomic path as /verify, so it can never be counted twice.
+ */
+export async function reconcileBookingPayments(
+  booking: InstanceType<typeof Booking>,
+  fetchOrderPayments: (orderId: string) => Promise<{ items: OrderPayment[] }> = razorpay.fetchOrderPayments as never,
+): Promise<{ booking: InstanceType<typeof Booking>; applied: number }> {
+  const open = await Transaction.find({
+    bookingId: booking._id,
+    status: { $in: ["created", "failed"] },
+    type: { $ne: "refund" },
+  });
+
+  let current = booking;
+  let applied = 0;
+  for (const txn of open) {
+    const { items } = await fetchOrderPayments(txn.razorpayOrderId).catch(() => ({ items: [] as OrderPayment[] }));
+    const paid = items.find(
+      (p) =>
+        (p.status === "captured" || p.status === "authorized") &&
+        p.order_id === txn.razorpayOrderId &&
+        p.amount === Math.round(txn.amount * 100),
+    );
+    if (!paid) continue;
+    txn.razorpayPaymentId = paid.id;
+    current = await confirmBookingPayment(current, txn);
+    applied += 1;
+  }
+  return { booking: current, applied };
+}
+
+export const reconcile = asyncHandler(async (req: Request, res: Response) => {
+  const { bookingId } = req.body as { bookingId: string };
+  const booking = await Booking.findOne({ _id: bookingId, customerId: req.customer!.sub });
+  if (!booking) throw ApiError.notFound("Booking not found");
+
+  const result = await reconcileBookingPayments(booking);
+  res.json({ item: result.booking, reconciled: result.applied });
+});
+
 export const verify = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as
     | { status: "success"; bookingId: string; razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }
