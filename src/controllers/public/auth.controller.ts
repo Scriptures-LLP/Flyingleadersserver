@@ -6,6 +6,7 @@ import * as authService from "../../services/auth.service.js";
 import { requestPasswordResetCode } from "../../services/passwordReset.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { phoneVariants } from "../../utils/phone.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
@@ -67,8 +68,18 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
     customer.email = email.toLowerCase();
   }
   if (name) customer.name = name;
-  if (phone !== undefined) customer.phone = phone;
-  if (address !== undefined) customer.address = address;
+  // A blank field means "no value", not the empty string: phone has a unique
+  // index, and storing "" for one customer would make every later customer
+  // who saves their profile without a number collide with it.
+  if (phone !== undefined) {
+    const nextPhone = phone.trim() || undefined;
+    if (nextPhone && nextPhone !== customer.phone) {
+      const taken = await Customer.findOne({ phone: { $in: phoneVariants(nextPhone) }, _id: { $ne: customer._id } });
+      if (taken) throw ApiError.conflict("An account with this mobile number already exists");
+    }
+    customer.phone = nextPhone;
+  }
+  if (address !== undefined) customer.address = address.trim() || undefined;
   if (notificationPreferences) {
     Object.assign(customer.notificationPreferences, notificationPreferences);
     customer.markModified("notificationPreferences");
