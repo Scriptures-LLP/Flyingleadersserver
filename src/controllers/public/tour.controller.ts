@@ -18,9 +18,19 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   };
 
   const filter: Record<string, unknown> = { isActive: true };
-  if (category) filter.category = category;
   if (countryId) filter.countryId = countryId;
-  if (search) filter.title = { $regex: search, $options: "i" };
+  // Category and search each need an $or, so collect them under a single $and to
+  // avoid one clobbering the other.
+  const and: Record<string, unknown>[] = [];
+  // A tour can be tagged under two categories, so a category filter matches
+  // either slot (its primary `category` or secondary `category2`).
+  if (category) and.push({ $or: [{ category }, { category2: category }] });
+  // Search matches the tour title OR its destination (location).
+  if (search) {
+    const rx = { $regex: search, $options: "i" };
+    and.push({ $or: [{ title: rx }, { location: rx }] });
+  }
+  if (and.length > 0) filter.$and = and;
 
   const [items, total] = await Promise.all([
     Tour.find(filter)

@@ -10,6 +10,7 @@ function serializeForAdmin(customer: CustomerDoc) {
     name: customer.name,
     email: customer.email ?? null,
     phone: customer.phone ?? null,
+    address: customer.address ?? null,
     authProvider: customer.authProvider,
     isActive: customer.isActive,
     createdAt: (customer as unknown as { createdAt: Date }).createdAt,

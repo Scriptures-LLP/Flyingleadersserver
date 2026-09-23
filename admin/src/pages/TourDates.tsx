@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 import { api } from "../lib/api";
 
 type TourDate = {
@@ -37,6 +38,12 @@ export function TourDatesPage() {
     <ResourceCrudPage<TourDate>
       title="Tour Dates"
       resourcePath="/admin/tour-dates"
+      // Group every tour's dates together (ordered by date within a tour), with
+      // a dropdown to view just one tour on its own.
+      sortItems={(a, b) =>
+        tourLabel(a.tourId).localeCompare(tourLabel(b.tourId)) || +new Date(a.date) - +new Date(b.date)
+      }
+      groupBy={{ label: "Tour", value: (d) => d.tourId, display: (d) => tourLabel(d.tourId) }}
       columns={[
         { key: "tourId", label: "Tour", render: (d) => tourLabel(d.tourId) },
         { key: "airportId", label: "Airport", render: (d) => airportLabel(d.airportId) },
@@ -49,7 +56,7 @@ export function TourDatesPage() {
               ? `₹${d.price} (${[d.appliesToAdult && "Adult", d.appliesToChild && "Child", d.appliesToInfant && "Infant"].filter(Boolean).join(", ")})`
               : "— (free, all types)",
         },
-        { key: "isActive", label: "Active", render: (d) => (d.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (d) => <StatusBadge active={d.isActive} /> },
       ]}
       fields={[
         {

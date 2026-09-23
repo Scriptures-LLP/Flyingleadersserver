@@ -75,11 +75,11 @@ export function TourGalleryManager({ tourId }: { tourId: string }) {
     reorderMutation.isPending;
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 p-3">
+    <div className="mt-4 rounded-lg border border-neutral-200 p-3">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-700">Package images (gallery)</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-medium text-neutral-700">Package images (gallery)</p>
+          <p className="text-xs text-neutral-500">
             Shown as thumbnails on the package details screen. Drag order is set with the arrows.
           </p>
         </div>
@@ -113,15 +113,15 @@ export function TourGalleryManager({ tourId }: { tourId: string }) {
       )}
 
       {isLoading ? (
-        <p className="text-xs text-slate-400">Loading images…</p>
+        <p className="text-xs text-neutral-400">Loading images…</p>
       ) : !items || items.length === 0 ? (
-        <p className="text-xs text-slate-400">No images yet. Add a few to build the gallery.</p>
+        <p className="text-xs text-neutral-400">No images yet. Add a few to build the gallery.</p>
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {items.map((item, i) => (
             <div
               key={item._id}
-              className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+              className="group relative aspect-square overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100"
             >
               <img src={item.url} alt={item.alt ?? ""} className="h-full w-full object-cover" />
 

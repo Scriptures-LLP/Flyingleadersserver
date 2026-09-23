@@ -1,4 +1,5 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 import { thumbColumn } from "../components/thumbColumn";
 
 type Category = {
@@ -21,7 +22,7 @@ export function CategoriesPage() {
         { key: "label", label: "Label" },
         { key: "slug", label: "Slug" },
         { key: "sortOrder", label: "Sort order" },
-        { key: "isActive", label: "Active", render: (c) => (c.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (c) => <StatusBadge active={c.isActive} /> },
       ]}
       fields={[
         { name: "label", label: "Label", type: "text", required: true },

@@ -15,9 +15,9 @@ export function thumbColumn<T extends { _id: string }>(
     render: (item) => {
       const url = (item as Record<string, unknown>)[urlKey] as string | undefined;
       return url ? (
-        <img src={url} alt="" className="h-10 w-16 rounded border border-slate-200 object-cover" />
+        <img src={url} alt="" className="h-10 w-16 rounded border border-neutral-200 object-cover" />
       ) : (
-        <span className="text-slate-400">—</span>
+        <span className="text-neutral-400">—</span>
       );
     },
   };

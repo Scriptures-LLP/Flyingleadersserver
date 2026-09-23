@@ -34,17 +34,17 @@ type Transaction = {
 
 const STATUS_STYLE: Record<Booking["status"], string> = {
   pending_payment: "bg-red-50 text-red-700",
-  confirmed: "bg-slate-100 text-slate-700",
+  confirmed: "bg-green-50 text-green-700",
   cancelled: "bg-red-50 text-red-700",
-  completed: "bg-slate-100 text-slate-700",
+  completed: "bg-green-50 text-green-700",
 };
 
 const PAYMENT_STYLE: Record<Booking["paymentStatus"], string> = {
-  unpaid: "bg-slate-100 text-slate-600",
+  unpaid: "bg-neutral-100 text-neutral-600",
   partial: "bg-red-50 text-red-700",
-  paid: "bg-slate-100 text-slate-700",
+  paid: "bg-green-50 text-green-700",
   refund_initiated: "bg-red-50 text-red-700",
-  refunded: "bg-slate-100 text-slate-500",
+  refunded: "bg-neutral-100 text-neutral-500",
 };
 
 const inr = (n: number) => `₹${(n ?? 0).toLocaleString("en-IN")}`;
@@ -103,15 +103,18 @@ export function BookingsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold text-slate-900">Bookings</h1>
+      <div className="mb-5 flex items-center gap-2.5">
+        <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Bookings</h1>
+      </div>
 
-      {isLoading && <p className="text-slate-500">Loading…</p>}
+      {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {bookings && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
                 <th className="px-4 py-2 font-medium">Ref</th>
                 <th className="px-4 py-2 font-medium">Tour</th>
@@ -126,13 +129,13 @@ export function BookingsPage() {
             </thead>
             <tbody>
               {bookings.map((b) => (
-                <tr key={b._id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-2 font-mono text-xs text-slate-700">{b.bookingRef}</td>
-                  <td className="px-4 py-2 text-slate-700">{name(b.tourId)}</td>
-                  <td className="px-4 py-2 text-slate-700">{name(b.customerId)}</td>
-                  <td className="px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
-                  <td className="px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
-                  <td className="px-4 py-2 text-slate-700">
+                <tr key={b._id} className="border-b border-neutral-100 last:border-0">
+                  <td className="px-4 py-2 font-mono text-xs text-neutral-700">{b.bookingRef}</td>
+                  <td className="px-4 py-2 text-neutral-700">{name(b.tourId)}</td>
+                  <td className="px-4 py-2 text-neutral-700">{name(b.customerId)}</td>
+                  <td className="px-4 py-2 text-neutral-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2 text-neutral-700">{travellerSummary(b.travellers)}</td>
+                  <td className="px-4 py-2 text-neutral-700">
                     {inr(b.amountPaid)} / {inr(b.pricing?.finalAmount)}
                   </td>
                   <td className="px-4 py-2">
@@ -146,7 +149,7 @@ export function BookingsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
-                    <button onClick={() => setDetailId(b._id)} className="text-slate-600 hover:underline">
+                    <button onClick={() => setDetailId(b._id)} className="text-neutral-600 hover:underline">
                       View
                     </button>
                   </td>
@@ -154,7 +157,7 @@ export function BookingsPage() {
               ))}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-6 text-center text-neutral-400">
                     No bookings yet.
                   </td>
                 </tr>
@@ -168,44 +171,44 @@ export function BookingsPage() {
         <div className="fixed inset-0 flex items-start justify-center overflow-y-auto bg-black/30 p-4">
           <div className="my-8 w-full max-w-xl rounded-xl bg-white p-6 shadow-lg">
             {!detail ? (
-              <p className="text-slate-500">Loading…</p>
+              <p className="text-neutral-500">Loading…</p>
             ) : (
               <>
                 <div className="mb-4 flex items-start justify-between">
                   <div>
-                    <h2 className="text-base font-semibold text-slate-900">{detail.item.bookingRef}</h2>
-                    <p className="text-sm text-slate-500">{name(detail.item.tourId)}</p>
+                    <h2 className="text-base font-semibold text-neutral-900">{detail.item.bookingRef}</h2>
+                    <p className="text-sm text-neutral-500">{name(detail.item.tourId)}</p>
                   </div>
-                  <button onClick={() => setDetailId(null)} className="text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setDetailId(null)} className="text-neutral-400 hover:text-neutral-600">
                     ✕
                   </button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="font-medium text-slate-700">Contact</p>
-                    <p className="text-slate-600">{detail.item.contactName}</p>
-                    <p className="text-slate-600">{detail.item.contactEmail}</p>
-                    <p className="text-slate-600">{detail.item.contactPhone}</p>
+                    <p className="font-medium text-neutral-700">Contact</p>
+                    <p className="text-neutral-600">{detail.item.contactName}</p>
+                    <p className="text-neutral-600">{detail.item.contactEmail}</p>
+                    <p className="text-neutral-600">{detail.item.contactPhone}</p>
                   </div>
                   <div>
-                    <p className="font-medium text-slate-700">Pricing</p>
-                    <p className="text-slate-600">Base: {inr(detail.item.pricing.baseAmount)}</p>
+                    <p className="font-medium text-neutral-700">Pricing</p>
+                    <p className="text-neutral-600">Base: {inr(detail.item.pricing.baseAmount)}</p>
                     {detail.item.pricing.discountAmount > 0 && (
-                      <p className="text-slate-600">
+                      <p className="text-neutral-600">
                         Discount ({detail.item.pricing.promoCode}): -{inr(detail.item.pricing.discountAmount)}
                       </p>
                     )}
-                    <p className="text-slate-600">Total: {inr(detail.item.pricing.finalAmount)}</p>
-                    <p className="text-slate-600">Paid: {inr(detail.item.amountPaid)}</p>
+                    <p className="text-neutral-600">Total: {inr(detail.item.pricing.finalAmount)}</p>
+                    <p className="text-neutral-600">Paid: {inr(detail.item.amountPaid)}</p>
                   </div>
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-1 text-sm font-medium text-slate-700">
+                  <p className="mb-1 text-sm font-medium text-neutral-700">
                     Travellers ({detail.item.travellers.length})
                   </p>
-                  <ul className="text-sm text-slate-600">
+                  <ul className="text-sm text-neutral-600">
                     {detail.item.travellers.map((t, i) => (
                       <li key={i}>
                         {t.name} — {t.type}
@@ -216,11 +219,11 @@ export function BookingsPage() {
                 </div>
 
                 <div className="mt-4">
-                  <p className="mb-1 text-sm font-medium text-slate-700">Transactions</p>
+                  <p className="mb-1 text-sm font-medium text-neutral-700">Transactions</p>
                   {detail.transactions.length === 0 ? (
-                    <p className="text-sm text-slate-400">None yet.</p>
+                    <p className="text-sm text-neutral-400">None yet.</p>
                   ) : (
-                    <ul className="text-sm text-slate-600">
+                    <ul className="text-sm text-neutral-600">
                       {detail.transactions.map((t) => (
                         <li key={t._id}>
                           {t.type} · {inr(t.amount)} · {t.status} · {new Date(t.createdAt).toLocaleString("en-IN")}
@@ -231,8 +234,8 @@ export function BookingsPage() {
                 </div>
 
                 {(detail.item.paymentStatus === "paid" || detail.item.paymentStatus === "partial") && (
-                  <div className="mt-5 rounded-lg border border-slate-200 p-3">
-                    <p className="mb-2 text-sm font-medium text-slate-700">Issue refund</p>
+                  <div className="mt-5 rounded-lg border border-neutral-200 p-3">
+                    <p className="mb-2 text-sm font-medium text-neutral-700">Issue refund</p>
                     {refundError && <p className="mb-2 text-sm text-red-600">{refundError}</p>}
                     <div className="flex gap-2">
                       <input

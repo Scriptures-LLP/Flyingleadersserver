@@ -52,12 +52,12 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
   if (!editor) return null;
 
   const btn = (active: boolean) =>
-    `rounded px-2 py-1 text-xs font-medium ${active ? "bg-red-600 text-white" : "text-slate-600 hover:bg-slate-100"}`;
-  const sep = <div className="mx-1 w-px self-stretch bg-slate-200" />;
+    `rounded px-2 py-1 text-xs font-medium ${active ? "bg-red-600 text-white" : "text-neutral-600 hover:bg-neutral-100"}`;
+  const sep = <div className="mx-1 w-px self-stretch bg-neutral-200" />;
 
   return (
-    <div className="rounded-md border border-slate-300">
-      <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 p-1.5">
+    <div className="rounded-md border border-neutral-300">
+      <div className="flex flex-wrap items-center gap-1 border-b border-neutral-200 bg-neutral-50 p-1.5">
         <button type="button" className={btn(editor.isActive("bold"))} onClick={() => editor.chain().focus().toggleBold().run()}>
           <b>B</b>
         </button>
@@ -70,7 +70,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
         {sep}
         <select
           title="Block style — applies to the whole line/paragraph"
-          className="rounded border border-slate-300 bg-white px-1.5 py-1 text-xs"
+          className="rounded border border-neutral-300 bg-white px-1.5 py-1 text-xs"
           value={editor.isActive("heading", { level: 1 }) ? "1" : editor.isActive("heading", { level: 2 }) ? "2" : editor.isActive("heading", { level: 3 }) ? "3" : "0"}
           onChange={(e) => {
             const level = Number(e.target.value);
@@ -85,7 +85,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
         </select>
         <select
           title="Font size — applies only to the selected text"
-          className="rounded border border-slate-300 bg-white px-1.5 py-1 text-xs"
+          className="rounded border border-neutral-300 bg-white px-1.5 py-1 text-xs"
           value={(editor.getAttributes("textStyle").fontSize as string | undefined) ?? ""}
           onChange={(e) => {
             const size = e.target.value;
@@ -116,39 +116,39 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
           1. List
         </button>
         {sep}
-        <span className="text-xs text-slate-500">Color</span>
+        <span className="text-xs text-neutral-500">Color</span>
         {TEXT_COLORS.map((c) => (
           <button
             key={c}
             type="button"
             title="Text color"
-            className="h-5 w-5 rounded-full border border-slate-300"
+            className="h-5 w-5 rounded-full border border-neutral-300"
             style={{ backgroundColor: c }}
             onClick={() => editor.chain().focus().setColor(c).run()}
           />
         ))}
         <button
           type="button"
-          className="rounded px-1.5 py-1 text-xs text-slate-600 hover:bg-slate-100"
+          className="rounded px-1.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
           onClick={() => editor.chain().focus().unsetColor().run()}
         >
           Reset
         </button>
         {sep}
-        <span className="text-xs text-slate-500">Highlight</span>
+        <span className="text-xs text-neutral-500">Highlight</span>
         {HIGHLIGHT_COLORS.map((c) => (
           <button
             key={c}
             type="button"
             title="Highlight"
-            className="h-5 w-5 rounded-full border border-slate-300"
+            className="h-5 w-5 rounded-full border border-neutral-300"
             style={{ backgroundColor: c }}
             onClick={() => editor.chain().focus().toggleHighlight({ color: c }).run()}
           />
         ))}
         <button
           type="button"
-          className="rounded px-1.5 py-1 text-xs text-slate-600 hover:bg-slate-100"
+          className="rounded px-1.5 py-1 text-xs text-neutral-600 hover:bg-neutral-100"
           onClick={() => editor.chain().focus().unsetHighlight().run()}
         >
           None

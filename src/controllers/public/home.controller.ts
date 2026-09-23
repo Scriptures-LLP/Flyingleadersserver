@@ -35,6 +35,11 @@ export const getHome = asyncHandler(async (_req: Request, res: Response) => {
       altText: c.altText ?? "",
       image: s3Adapter.urlFor(c.image as string),
     })),
-    galleryImages: galleryImages.map((g) => s3Adapter.urlFor(g.file as string)),
+    galleryImages: galleryImages.map((g) => ({
+      id: g.id,
+      url: s3Adapter.urlFor(g.file as string),
+      title: g.title ?? "",
+      altText: g.altText ?? "",
+    })),
   });
 });

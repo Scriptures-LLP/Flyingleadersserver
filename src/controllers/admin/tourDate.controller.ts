@@ -22,7 +22,8 @@ function serializeForAdmin(item: InstanceType<typeof TourDate>) {
 export const tourDateController = {
   list: asyncHandler(async (req: Request, res: Response) => {
     const filter = req.query.tourId ? { tourId: req.query.tourId } : {};
-    const items = await TourDate.find(filter).sort({ date: 1 });
+    // Newest-added first (the admin table regroups these by tour client-side).
+    const items = await TourDate.find(filter).sort({ createdAt: -1 });
     res.json({ items: items.map(serializeForAdmin) });
   }),
 

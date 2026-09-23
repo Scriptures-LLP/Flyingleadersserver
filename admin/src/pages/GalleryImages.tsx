@@ -1,4 +1,5 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 import { thumbColumn } from "../components/thumbColumn";
 import { COVER_CROP } from "../lib/coverCrop";
 
@@ -22,8 +23,12 @@ export function GalleryImagesPage() {
         thumbColumn<GalleryImage>("url", "Past Trip"),
         { key: "title", label: "Title" },
         { key: "kind", label: "Kind" },
-        { key: "isFeatured", label: "Featured", render: (g) => (g.isFeatured ? "Yes" : "No") },
-        { key: "isActive", label: "Active", render: (g) => (g.isActive ? "Yes" : "No") },
+        {
+          key: "isFeatured",
+          label: "Featured",
+          render: (g) => <StatusBadge active={g.isFeatured} activeLabel="Featured" inactiveLabel="No" />,
+        },
+        { key: "isActive", label: "Active", render: (g) => <StatusBadge active={g.isActive} /> },
       ]}
       fields={[
         { name: "title", label: "Title", type: "text" },

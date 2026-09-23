@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 import { api } from "../lib/api";
 
 type TourAirportPrice = { _id: string; tourId: string; airportId: string; addonPrice: number; isActive: boolean };
@@ -24,11 +25,18 @@ export function TourAirportPricesPage() {
     <ResourceCrudPage<TourAirportPrice>
       title="Tour Airport Prices"
       resourcePath="/admin/tour-airport-prices"
+      // Group every tour's rows together (then by airport) so each tour reads
+      // as one block, with a dropdown to view just one tour on its own.
+      sortItems={(a, b) =>
+        tourLabel(a.tourId).localeCompare(tourLabel(b.tourId)) ||
+        airportLabel(a.airportId).localeCompare(airportLabel(b.airportId))
+      }
+      groupBy={{ label: "Tour", value: (r) => r.tourId, display: (r) => tourLabel(r.tourId) }}
       columns={[
         { key: "tourId", label: "Tour", render: (r) => tourLabel(r.tourId) },
         { key: "airportId", label: "Airport", render: (r) => airportLabel(r.airportId) },
         { key: "addonPrice", label: "Add-on price (₹)", render: (r) => (r.addonPrice ? `₹${r.addonPrice}` : "— (free)") },
-        { key: "isActive", label: "Active", render: (r) => (r.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (r) => <StatusBadge active={r.isActive} /> },
       ]}
       fields={[
         {

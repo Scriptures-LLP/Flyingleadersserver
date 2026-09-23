@@ -23,6 +23,7 @@ export function serializeTourSummary(tour: TourLike) {
     shortDesc: tour.shortDesc ?? "",
     description: tour.fullDesc ?? tour.shortDesc ?? "",
     category: tour.category ?? "",
+    category2: tour.category2 ?? "",
     rating: tour.rating ?? 4.5,
     pricePerPerson: tour.price,
     duration: tour.duration ?? "",

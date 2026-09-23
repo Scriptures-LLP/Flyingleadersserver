@@ -1,4 +1,5 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 
 type Country = { _id: string; name: string; slug: string; coverImage?: string; sortOrder: number; isActive: boolean };
 
@@ -11,7 +12,7 @@ export function CountriesPage() {
         { key: "name", label: "Name" },
         { key: "slug", label: "Slug" },
         { key: "sortOrder", label: "Sort order" },
-        { key: "isActive", label: "Active", render: (c) => (c.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (c) => <StatusBadge active={c.isActive} /> },
       ]}
       fields={[
         { name: "name", label: "Name", type: "text", required: true },

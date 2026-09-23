@@ -24,8 +24,8 @@ const TABS: { key: Review["status"] | "all"; label: string }[] = [
 
 const STATUS_STYLE: Record<Review["status"], string> = {
   pending: "bg-red-50 text-red-700",
-  approved: "bg-slate-100 text-slate-700",
-  rejected: "bg-red-50 text-red-700",
+  approved: "bg-green-50 text-green-700",
+  rejected: "bg-neutral-100 text-neutral-500",
 };
 
 function name(v: Review["tourId"] | Review["customerId"]): string {
@@ -54,7 +54,10 @@ export function ReviewsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold text-slate-900">Reviews & Ratings</h1>
+      <div className="mb-5 flex items-center gap-2.5">
+        <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Reviews &amp; Ratings</h1>
+      </div>
 
       <div className="mb-4 flex gap-2">
         {TABS.map((t) => (
@@ -62,7 +65,7 @@ export function ReviewsPage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-              tab === t.key ? "bg-red-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
+              tab === t.key ? "bg-red-600 text-white" : "bg-white text-neutral-600 hover:bg-neutral-100"
             }`}
           >
             {t.label}
@@ -70,16 +73,16 @@ export function ReviewsPage() {
         ))}
       </div>
 
-      {isLoading && <p className="text-slate-500">Loading…</p>}
+      {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       <div className="flex flex-col gap-3">
         {reviews?.map((r) => (
-          <div key={r._id} className="rounded-lg border border-slate-200 bg-white p-4">
+          <div key={r._id} className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
             <div className="mb-1 flex items-start justify-between">
               <div>
-                <p className="font-medium text-slate-900">{name(r.tourId)}</p>
-                <p className="text-xs text-slate-500">
+                <p className="font-medium text-neutral-900">{name(r.tourId)}</p>
+                <p className="text-xs text-neutral-500">
                   {name(r.customerId)} · {new Date(r.createdAt).toLocaleDateString("en-IN")}
                 </p>
               </div>
@@ -88,8 +91,8 @@ export function ReviewsPage() {
               </span>
             </div>
             <p className="mb-1 text-red-500">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</p>
-            {r.title && <p className="font-medium text-slate-800">{r.title}</p>}
-            <p className="text-sm text-slate-700">{r.comment}</p>
+            {r.title && <p className="font-medium text-neutral-800">{r.title}</p>}
+            <p className="text-sm text-neutral-700">{r.comment}</p>
 
             {r.status === "pending" && (
               <div className="mt-3 flex items-center gap-2">
@@ -115,10 +118,10 @@ export function ReviewsPage() {
                 </button>
               </div>
             )}
-            {r.moderationNote && <p className="mt-2 text-xs text-slate-500">Note: {r.moderationNote}</p>}
+            {r.moderationNote && <p className="mt-2 text-xs text-neutral-500">Note: {r.moderationNote}</p>}
           </div>
         ))}
-        {reviews?.length === 0 && <p className="py-6 text-center text-slate-400">Nothing here yet.</p>}
+        {reviews?.length === 0 && <p className="py-6 text-center text-neutral-400">Nothing here yet.</p>}
       </div>
     </div>
   );

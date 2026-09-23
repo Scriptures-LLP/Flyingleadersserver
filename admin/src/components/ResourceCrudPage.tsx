@@ -1,8 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { Icon } from "./icons";
 import { ImageCropModal } from "./ImageCropModal";
+
+// Singular form of a resource title for buttons/labels ("Add Country", not
+// "Add Countrie"): "Countries" → "Country", "Categories" → "Category",
+// "Airports" → "Airport", while leaving already-singular titles untouched.
+function singularize(title: string) {
+  if (/ies$/i.test(title)) return title.replace(/ies$/i, "y");
+  if (/(ss|us)$/i.test(title)) return title; // e.g. "Address", "Status"
+  return title.replace(/s$/, "");
+}
 
 export type FieldConfig =
   | { name: string; label: string; type: "text" | "number" | "date" | "datetime-local"; required?: boolean }
@@ -39,6 +49,17 @@ type Props<T extends { _id: string }> = {
   resourcePath: string; // e.g. "/admin/airports"
   columns: ColumnConfig<T>[];
   fields: FieldConfig[];
+  // Optional row ordering for the list table — e.g. group all of one tour's
+  // rows together. Applied as a stable sort over the fetched items.
+  sortItems?: (a: T, b: T) => number;
+  // Optional grouping — renders a filter dropdown (so one group can be viewed
+  // on its own) plus a section header before each group's rows. `value` is the
+  // group's stable id, `display` its human label (e.g. a tour title).
+  groupBy?: {
+    label: string;
+    value: (item: T) => string;
+    display: (item: T) => string;
+  };
 };
 
 // A bare "datetime-local" input value ("2026-09-20T09:00") has no timezone,
@@ -90,6 +111,8 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
   resourcePath,
   columns,
   fields,
+  sortItems,
+  groupBy,
 }: Props<T>) {
   const queryClient = useQueryClient();
   const queryKey = [resourcePath];
@@ -98,6 +121,32 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
     queryKey,
     queryFn: async () => (await api.get(resourcePath)).data.items as T[],
   });
+
+  // Order rows for display without mutating the cached query data.
+  const rows = useMemo(() => (data && sortItems ? [...data].sort(sortItems) : data), [data, sortItems]);
+
+  // Which group is being viewed on its own ("" = show every group).
+  const [groupFilter, setGroupFilter] = useState<string>("");
+
+  // Cluster the (already sorted) rows into groups, preserving first-seen order.
+  const groups = useMemo(() => {
+    if (!rows || !groupBy) return null;
+    const order: string[] = [];
+    const map = new Map<string, { id: string; label: string; items: T[] }>();
+    for (const item of rows) {
+      const id = groupBy.value(item);
+      let g = map.get(id);
+      if (!g) {
+        g = { id, label: groupBy.display(item), items: [] };
+        map.set(id, g);
+        order.push(id);
+      }
+      g.items.push(item);
+    }
+    return order.map((id) => map.get(id)!);
+  }, [rows, groupBy]);
+
+  const visibleGroups = groups && (groupFilter ? groups.filter((g) => g.id === groupFilter) : groups);
 
   const [modalItem, setModalItem] = useState<T | null | undefined>(undefined); // undefined = closed, null = create
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
@@ -187,65 +236,121 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
+  const renderItemRow = (item: T) => (
+    <tr key={item._id} className="border-b border-neutral-100 transition-colors last:border-0 hover:bg-neutral-50/70">
+      {columns.map((c) => (
+        <td key={c.key} className="px-4 py-2 text-neutral-700">
+          {c.render ? c.render(item) : String((item as Record<string, unknown>)[c.key] ?? "")}
+        </td>
+      ))}
+      <td className="px-4 py-2 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            onClick={() => openEdit(item)}
+            title="Edit"
+            aria-label="Edit"
+            className="rounded-md p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+          >
+            <Icon name="edit" className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(`Delete this ${singularize(title).toLowerCase()}?`)) {
+                deleteMutation.mutate(item._id);
+              }
+            }}
+            title="Delete"
+            aria-label="Delete"
+            className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+          >
+            <Icon name="trash" className="h-4 w-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-5 flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
-          {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
+          <div className="flex items-center gap-2.5">
+            <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+            <h1 className="text-xl font-bold tracking-tight text-neutral-900">{title}</h1>
+            {rows && (
+              <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">
+                {rows.length}
+              </span>
+            )}
+          </div>
+          {subtitle && <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>}
         </div>
         <button
           onClick={openCreate}
-          className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-b from-red-500 to-red-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm shadow-red-600/30 transition-all hover:from-red-600 hover:to-red-700 hover:shadow-md hover:shadow-red-600/30 active:scale-[.98]"
         >
-          Add {title.replace(/s$/, "")}
+          <span className="text-base leading-none">+</span>
+          Add {singularize(title)}
         </button>
       </div>
 
-      {isLoading && <p className="text-slate-500">Loading…</p>}
+      {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
-      {data && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      {groups && groups.length > 0 && groupBy && (
+        <div className="mb-3 flex items-center gap-2 text-sm">
+          <label className="font-medium text-neutral-600">{groupBy.label}:</label>
+          <select
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="rounded-md border border-neutral-300 px-2 py-1 outline-none focus:border-red-500"
+          >
+            <option value="">All ({groups.length})</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label} ({g.items.length})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {rows && (
+        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
               <tr>
                 {columns.map((c) => (
-                  <th key={c.key} className="px-4 py-2 font-medium">
+                  <th key={c.key} className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide">
                     {c.label}
                   </th>
                 ))}
-                <th className="px-4 py-2" />
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
-              {data.map((item) => (
-                <tr key={item._id} className="border-b border-slate-100 last:border-0">
-                  {columns.map((c) => (
-                    <td key={c.key} className="px-4 py-2 text-slate-700">
-                      {c.render ? c.render(item) : String((item as Record<string, unknown>)[c.key] ?? "")}
-                    </td>
-                  ))}
-                  <td className="px-4 py-2 text-right">
-                    <button onClick={() => openEdit(item)} className="mr-3 text-slate-600 hover:underline">
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete this ${title.toLowerCase().replace(/s$/, "")}?`)) {
-                          deleteMutation.mutate(item._id);
-                        }
-                      }}
-                      className="text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {data.length === 0 && (
+              {visibleGroups
+                ? visibleGroups.map((g) => (
+                    <Fragment key={g.id}>
+                      {/* Show the group header only when several groups are on
+                          screen — with a single group it just repeats the filter. */}
+                      {(visibleGroups.length > 1 || !groupFilter) && (
+                        <tr className="border-b border-neutral-200 bg-neutral-100">
+                          <td
+                            colSpan={columns.length + 1}
+                            className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-600"
+                          >
+                            {g.label} · {g.items.length}
+                          </td>
+                        </tr>
+                      )}
+                      {g.items.map(renderItemRow)}
+                    </Fragment>
+                  ))
+                : rows.map(renderItemRow)}
+              {rows.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + 1} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={columns.length + 1} className="px-4 py-6 text-center text-neutral-400">
                     Nothing here yet.
                   </td>
                 </tr>
@@ -256,16 +361,16 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
       )}
 
       {modalItem !== undefined && (
-        <div className="fixed inset-0 flex items-start justify-center overflow-y-auto bg-black/30 p-4">
+        <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-neutral-900/40 p-4 backdrop-blur-sm">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               saveMutation.mutate();
             }}
-            className="my-8 w-full max-w-md rounded-xl bg-white p-6 shadow-lg"
+            className="my-8 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
           >
-            <h2 className="mb-4 text-base font-semibold text-slate-900">
-              {modalItem ? `Edit ${title.replace(/s$/, "")}` : `New ${title.replace(/s$/, "")}`}
+            <h2 className="mb-4 text-base font-semibold text-neutral-900">
+              {modalItem ? `Edit ${singularize(title)}` : `New ${singularize(title)}`}
             </h2>
 
             {formError && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>}
@@ -278,7 +383,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                   // control, which would re-open the file picker when the user just
                   // wants to look at the picked image.
                   <div key={f.name} className="block text-sm">
-                    <span className="mb-1 block font-medium text-slate-700">{f.label}</span>
+                    <span className="mb-1 block font-medium text-neutral-700">{f.label}</span>
                     <input
                       type="file"
                       accept={f.accept ?? "image/*"}
@@ -288,7 +393,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                         if (picked && f.crop) setCropTarget({ field: f, file: picked });
                         else setFormFiles((v) => ({ ...v, [f.name]: picked }));
                       }}
-                      className="w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
+                      className="w-full text-sm text-neutral-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
                     />
                     {(() => {
                       const picked = !!formFiles[f.name];
@@ -303,7 +408,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                             src={preview}
                             alt={`${f.label} preview`}
                             onClick={() => setLightbox(preview)}
-                            className="max-h-48 w-full cursor-zoom-in rounded-md border border-slate-200 bg-slate-50 object-contain"
+                            className="max-h-48 w-full cursor-zoom-in rounded-md border border-neutral-200 bg-neutral-50 object-contain"
                           />
                           {picked && (
                             <button
@@ -322,7 +427,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                   </div>
                 ) : (
                 <label key={f.name} className="block text-sm">
-                  <span className="mb-1 block font-medium text-slate-700">{f.label}</span>
+                  <span className="mb-1 block font-medium text-neutral-700">{f.label}</span>
                   {f.type === "checkbox" ? (
                     <input
                       type="checkbox"
@@ -334,7 +439,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                       required={f.required}
                       value={(formValues[f.name] as string | undefined) ?? ""}
                       onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-red-500"
+                      className="w-full rounded-lg border border-neutral-300 px-3 py-2 outline-none transition-colors focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                     >
                       {(f.allowBlank ?? true) && <option value="">—</option>}
                       {f.options.map((o) => (
@@ -350,7 +455,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
                       min={f.type === "number" ? 0 : undefined}
                       value={(formValues[f.name] as string | number | undefined) ?? ""}
                       onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-red-500"
+                      className="w-full rounded-lg border border-neutral-300 px-3 py-2 outline-none transition-colors focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                     />
                   )}
                 </label>
@@ -362,7 +467,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
               >
                 Cancel
               </button>

@@ -33,6 +33,7 @@ export const tourSchema = z.object({
   duration: z.string().trim().optional(),
   countryId: z.string().optional(),
   category: z.string().trim().optional(),
+  category2: z.string().trim().optional(),
 
   price: z.coerce.number().min(0),
   priceChild: z.coerce.number().min(0).optional(),

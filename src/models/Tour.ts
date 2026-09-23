@@ -17,6 +17,10 @@ const tourSchema = new Schema(
     // References Category.slug rather than its ObjectId, matching the app's
     // existing TourPackage.category field (a plain string like "beach").
     category: { type: String, trim: true },
+    // Optional second category the tour also belongs to, so one tour can appear
+    // under two category sections in the app (e.g. "Category 1" + "Category 2").
+    // Also a Category.slug; the public tour list matches either category field.
+    category2: { type: String, trim: true },
 
     price: { type: Number, required: true, min: 0 },
     priceChild: { type: Number, min: 0 },
@@ -69,6 +73,7 @@ const tourSchema = new Schema(
 );
 
 tourSchema.index({ isActive: 1, category: 1 });
+tourSchema.index({ isActive: 1, category2: 1 });
 tourSchema.index({ isActive: 1, countryId: 1 });
 
 tourSchema.pre("validate", async function () {

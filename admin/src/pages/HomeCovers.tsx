@@ -1,4 +1,5 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 import { thumbColumn } from "../components/thumbColumn";
 import { COVER_CROP } from "../lib/coverCrop";
 
@@ -21,7 +22,7 @@ export function HomeCoversPage() {
         { key: "title", label: "Title" },
         { key: "altText", label: "Alt text" },
         { key: "sortOrder", label: "Sort order" },
-        { key: "isActive", label: "Active", render: (c) => (c.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (c) => <StatusBadge active={c.isActive} /> },
       ]}
       fields={[
         { name: "title", label: "Title", type: "text" },

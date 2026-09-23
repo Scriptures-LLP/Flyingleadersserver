@@ -1,4 +1,5 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 
 type Airport = { _id: string; code: string; name: string; isActive: boolean };
 
@@ -10,7 +11,7 @@ export function AirportsPage() {
       columns={[
         { key: "code", label: "Code" },
         { key: "name", label: "Name" },
-        { key: "isActive", label: "Active", render: (a) => (a.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (a) => <StatusBadge active={a.isActive} /> },
       ]}
       fields={[
         { name: "code", label: "IATA code", type: "text", required: true },

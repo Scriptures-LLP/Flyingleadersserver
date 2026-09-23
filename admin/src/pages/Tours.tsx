@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
+import { Icon } from "../components/icons";
 import { ImageCropModal } from "../components/ImageCropModal";
 import { RichTextEditor } from "../components/RichTextEditor";
 import { StagedGalleryUploader } from "../components/StagedGalleryUploader";
+import { StatusBadge } from "../components/StatusBadge";
 import { TourGalleryManager } from "../components/TourGalleryManager";
 import { api, apiErrorMessage } from "../lib/api";
 import { COVER_CROP } from "../lib/coverCrop";
@@ -19,6 +21,7 @@ type Tour = {
   duration?: string;
   countryId?: string;
   category?: string;
+  category2?: string;
   price: number;
   priceChild?: number;
   priceInfant?: number;
@@ -54,6 +57,7 @@ const emptyForm: Record<string, unknown> = {
   duration: "",
   countryId: "",
   category: "",
+  category2: "",
   price: "",
   priceChild: "",
   priceInfant: "",
@@ -90,6 +94,8 @@ export function ToursPage() {
     queryKey: ["/admin/countries"],
     queryFn: async () => (await api.get("/admin/countries")).data.items as Country[],
   });
+
+  const catLabel = (slug?: string) => categories?.find((c) => c.slug === slug)?.label ?? slug ?? "";
 
   const [editing, setEditing] = useState<Tour | null | undefined>(undefined);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm);
@@ -209,7 +215,10 @@ export function ToursPage() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-900">Tours</h1>
+        <div className="flex items-center gap-2.5">
+          <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+          <h1 className="text-xl font-bold tracking-tight text-neutral-900">Tours</h1>
+        </div>
         <button
           onClick={openCreate}
           className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
@@ -218,13 +227,13 @@ export function ToursPage() {
         </button>
       </div>
 
-      {isLoading && <p className="text-slate-500">Loading…</p>}
+      {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {tours && (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
                 <th className="px-4 py-2 font-medium">Title</th>
                 <th className="px-4 py-2 font-medium">Category</th>
@@ -235,29 +244,42 @@ export function ToursPage() {
             </thead>
             <tbody>
               {tours.map((tour) => (
-                <tr key={tour._id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-2 text-slate-700">{tour.title}</td>
-                  <td className="px-4 py-2 text-slate-700">{tour.category}</td>
-                  <td className="px-4 py-2 text-slate-700">₹{tour.price?.toLocaleString("en-IN")}</td>
-                  <td className="px-4 py-2 text-slate-700">{tour.isActive ? "Yes" : "No"}</td>
+                <tr key={tour._id} className="border-b border-neutral-100 last:border-0">
+                  <td className="px-4 py-2 text-neutral-700">{tour.title}</td>
+                  <td className="px-4 py-2 text-neutral-700">
+                    {[tour.category, tour.category2].filter(Boolean).map(catLabel).join(", ") || "—"}
+                  </td>
+                  <td className="px-4 py-2 text-neutral-700">₹{tour.price?.toLocaleString("en-IN")}</td>
+                  <td className="px-4 py-2 text-neutral-700">
+                    <StatusBadge active={tour.isActive} />
+                  </td>
                   <td className="px-4 py-2 text-right">
-                    <button onClick={() => openEdit(tour)} className="mr-3 text-slate-600 hover:underline">
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete "${tour.title}"?`)) deleteMutation.mutate(tour._id);
-                      }}
-                      className="text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(tour)}
+                        title="Edit"
+                        aria-label="Edit"
+                        className="rounded-md p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+                      >
+                        <Icon name="edit" className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete "${tour.title}"?`)) deleteMutation.mutate(tour._id);
+                        }}
+                        title="Delete"
+                        aria-label="Delete"
+                        className="rounded-md p-1.5 text-neutral-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Icon name="trash" className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {tours.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={5} className="px-4 py-6 text-center text-neutral-400">
                     No tours yet.
                   </td>
                 </tr>
@@ -268,7 +290,7 @@ export function ToursPage() {
       )}
 
       {editing !== undefined && (
-        <div className="fixed inset-0 flex items-start justify-center overflow-y-auto bg-black/30 p-4">
+        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-neutral-900/40 p-4 backdrop-blur-sm">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -276,7 +298,7 @@ export function ToursPage() {
             }}
             className="my-8 w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg"
           >
-            <h2 className="mb-4 text-base font-semibold text-slate-900">{editing ? "Edit Tour" : "New Tour"}</h2>
+            <h2 className="mb-4 text-base font-semibold text-neutral-900">{editing ? "Edit Tour" : "New Tour"}</h2>
 
             {formError && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>}
 
@@ -290,7 +312,7 @@ export function ToursPage() {
               <Field label="Duration (e.g. 5 Days)">
                 <input className="input" value={form.duration as string} onChange={(e) => set("duration", e.target.value)} />
               </Field>
-              <Field label="Category">
+              <Field label="Category 1">
                 <select className="input" value={form.category as string} onChange={(e) => set("category", e.target.value)}>
                   <option value="">—</option>
                   {categories?.map((c) => (
@@ -298,6 +320,18 @@ export function ToursPage() {
                       {c.label}
                     </option>
                   ))}
+                </select>
+              </Field>
+              <Field label="Category 2 (optional)">
+                <select className="input" value={form.category2 as string} onChange={(e) => set("category2", e.target.value)}>
+                  <option value="">—</option>
+                  {categories
+                    ?.filter((c) => c.slug !== form.category)
+                    .map((c) => (
+                      <option key={c._id} value={c.slug}>
+                        {c.label}
+                      </option>
+                    ))}
                 </select>
               </Field>
               <Field label="Country">
@@ -349,14 +383,14 @@ export function ToursPage() {
                     e.target.value = "";
                     if (picked) setCoverCropFile(picked);
                   }}
-                  className="w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
+                  className="w-full text-sm text-neutral-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
                 />
                 {coverPreview && (
                   <div className="relative mt-2 h-28 w-full">
                     <img
                       src={coverPreview}
                       alt="Cover preview"
-                      className="h-full w-full rounded-md border border-slate-200 object-cover"
+                      className="h-full w-full rounded-md border border-neutral-200 object-cover"
                     />
                     <button
                       type="button"
@@ -398,9 +432,9 @@ export function ToursPage() {
               </Field>
             </div>
 
-            <div className="mt-4 rounded-lg border border-slate-200 p-3">
+            <div className="mt-4 rounded-lg border border-neutral-200 p-3">
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Child pricing by age (optional)</p>
+                <p className="text-sm font-medium text-neutral-700">Child pricing by age (optional)</p>
                 <button
                   type="button"
                   onClick={() =>
@@ -409,12 +443,12 @@ export function ToursPage() {
                       { minAge: 0, maxAge: 0, price: 0 },
                     ])
                   }
-                  className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
                 >
                   + Add age band
                 </button>
               </div>
-              <p className="mb-2 text-xs text-slate-500">
+              <p className="mb-2 text-xs text-neutral-500">
                 If set, a child's exact age picks the matching band below; otherwise the flat "Price (child)" above is used.
               </p>
               {((form.childPricingTiers as ChildPricingTier[]) ?? []).map((tier, i) => (
@@ -431,7 +465,7 @@ export function ToursPage() {
                       set("childPricingTiers", tiers);
                     }}
                   />
-                  <span className="text-slate-400">to</span>
+                  <span className="text-neutral-400">to</span>
                   <input
                     type="number"
                     min="0"
@@ -444,7 +478,7 @@ export function ToursPage() {
                       set("childPricingTiers", tiers);
                     }}
                   />
-                  <span className="text-slate-400">yrs @ ₹</span>
+                  <span className="text-neutral-400">yrs @ ₹</span>
                   <input
                     type="number"
                     min="0"
@@ -531,7 +565,7 @@ export function ToursPage() {
               <button
                 type="button"
                 onClick={() => setEditing(undefined)}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
               >
                 Cancel
               </button>
@@ -577,7 +611,7 @@ function Field({
 }) {
   return (
     <label className={`block text-sm ${className ?? ""}`}>
-      <span className="mb-1 block font-medium text-slate-700">
+      <span className="mb-1 block font-medium text-neutral-700">
         {label}
         {required && <span className="text-red-500"> *</span>}
       </span>

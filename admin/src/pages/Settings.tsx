@@ -30,15 +30,15 @@ function ReferralRewardSetting() {
 
   return (
     <div className="mt-6">
-      <h2 className="mb-1 text-base font-semibold text-slate-900">Referral Reward</h2>
-      <p className="mb-3 text-sm text-slate-500">
+      <h2 className="mb-1 text-base font-semibold text-neutral-900">Referral Reward</h2>
+      <p className="mb-3 text-sm text-neutral-500">
         Wallet credit given to a customer when someone they referred completes their first payment.
       </p>
       {isLoading ? (
-        <p className="text-slate-500">Loading…</p>
+        <p className="text-neutral-500">Loading…</p>
       ) : (
-        <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4">
-          <span className="text-sm text-slate-600">₹</span>
+        <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
+          <span className="text-sm text-neutral-600">₹</span>
           <input
             type="number"
             min="0"
@@ -60,7 +60,7 @@ function ReferralRewardSetting() {
           >
             {saveMutation.isPending ? "Saving…" : "Save"}
           </button>
-          {saved && <span className="text-sm text-slate-600">Saved</span>}
+          {saved && <span className="text-sm text-neutral-600">Saved</span>}
         </div>
       )}
     </div>
@@ -95,17 +95,17 @@ function AgeCategorySettings() {
 
   return (
     <div className="mt-6">
-      <h2 className="mb-1 text-base font-semibold text-slate-900">Age Categories</h2>
-      <p className="mb-3 text-sm text-slate-500">
+      <h2 className="mb-1 text-base font-semibold text-neutral-900">Age Categories</h2>
+      <p className="mb-3 text-sm text-neutral-500">
         Determines Adult/Child/Infant purely from age — used consistently for pricing, the payment summary, and
         invoices, so a traveller can never be priced as one category while shown as another.
       </p>
       {infant.isLoading || child.isLoading ? (
-        <p className="text-slate-500">Loading…</p>
+        <p className="text-neutral-500">Loading…</p>
       ) : (
-        <div className="flex flex-wrap items-end gap-4 rounded-lg border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-end gap-4 rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
           <label className="text-sm">
-            <span className="mb-1 block font-medium text-slate-700">Infant: age 0 to</span>
+            <span className="mb-1 block font-medium text-neutral-700">Infant: age 0 to</span>
             <input
               type="number"
               min="0"
@@ -115,7 +115,7 @@ function AgeCategorySettings() {
             />
           </label>
           <label className="text-sm">
-            <span className="mb-1 block font-medium text-slate-700">Child: age (infant max + 1) to</span>
+            <span className="mb-1 block font-medium text-neutral-700">Child: age (infant max + 1) to</span>
             <input
               type="number"
               min="0"
@@ -124,7 +124,7 @@ function AgeCategorySettings() {
               onChange={(e) => setChildValue(e.target.value)}
             />
           </label>
-          <p className="text-sm text-slate-500">Adult: anything older</p>
+          <p className="text-sm text-neutral-500">Adult: anything older</p>
           <button
             onClick={onSave}
             disabled={saving}
@@ -132,7 +132,7 @@ function AgeCategorySettings() {
           >
             {saving ? "Saving…" : "Save"}
           </button>
-          {saved && <span className="text-sm text-slate-600">Saved</span>}
+          {saved && <span className="text-sm text-neutral-600">Saved</span>}
         </div>
       )}
     </div>
@@ -151,15 +151,18 @@ export function SettingsPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-lg font-semibold text-slate-900">Terms & Conditions</h1>
-      <p className="mb-3 text-sm text-slate-500">
+      <div className="mb-5 flex items-center gap-2.5">
+        <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Terms &amp; Conditions</h1>
+      </div>
+      <p className="mb-3 text-sm text-neutral-500">
         Shown on the public terms page. Formatted here — no HTML tags to write or read.
       </p>
 
       {isLoading ? (
-        <p className="text-slate-500">Loading…</p>
+        <p className="text-neutral-500">Loading…</p>
       ) : (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
           {saveMutation.isError && (
             <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
               {apiErrorMessage(saveMutation.error)}
@@ -181,7 +184,7 @@ export function SettingsPage() {
             >
               {saveMutation.isPending ? "Saving…" : "Save"}
             </button>
-            {saved && <span className="text-sm text-slate-600">Saved</span>}
+            {saved && <span className="text-sm text-neutral-600">Saved</span>}
           </div>
         </div>
       )}

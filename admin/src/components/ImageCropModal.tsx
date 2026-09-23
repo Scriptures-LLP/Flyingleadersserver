@@ -144,14 +144,14 @@ export function ImageCropModal({ file, aspect, outputWidth, label, onCancel, onC
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-lg">
-        <h3 className="mb-1 text-base font-semibold text-slate-900">Adjust image</h3>
-        <p className="mb-3 text-xs text-slate-500">
+        <h3 className="mb-1 text-base font-semibold text-neutral-900">Adjust image</h3>
+        <p className="mb-3 text-xs text-neutral-500">
           Drag to reposition, use the slider to zoom. {label ? `${label} · ` : ""}
           {outputWidth}×{Math.round(outputWidth / aspect)} px.
         </p>
 
         <div
-          className="mx-auto overflow-hidden rounded-lg border border-slate-300 bg-slate-100"
+          className="mx-auto overflow-hidden rounded-lg border border-neutral-300 bg-neutral-100"
           style={{ width: FRAME_W, height: frameH }}
         >
           <canvas
@@ -167,7 +167,7 @@ export function ImageCropModal({ file, aspect, outputWidth, label, onCancel, onC
         </div>
 
         <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs text-slate-500">Zoom</span>
+          <span className="text-xs text-neutral-500">Zoom</span>
           <input
             type="range"
             min={minScale}
@@ -183,7 +183,7 @@ export function ImageCropModal({ file, aspect, outputWidth, label, onCancel, onC
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Cancel
           </button>

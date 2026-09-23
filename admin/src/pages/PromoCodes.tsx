@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
+import { StatusBadge } from "../components/StatusBadge";
 import { api } from "../lib/api";
 
 type PromoCode = {
@@ -44,7 +45,7 @@ export function PromoCodesPage() {
               ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN") : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN") : "no end"}`
               : "Always",
         },
-        { key: "isActive", label: "Active", render: (p) => (p.isActive ? "Yes" : "No") },
+        { key: "isActive", label: "Active", render: (p) => <StatusBadge active={p.isActive} /> },
       ]}
       fields={[
         { name: "code", label: "Code", type: "text", required: true },

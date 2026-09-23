@@ -25,11 +25,11 @@ export function StagedGalleryUploader({
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 p-3">
+    <div className="mt-4 rounded-lg border border-neutral-200 p-3">
       <div className="mb-2 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-700">Package images (gallery)</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-medium text-neutral-700">Package images (gallery)</p>
+          <p className="text-xs text-neutral-500">
             Add multiple images now — they're uploaded when you save the tour.
           </p>
         </div>
@@ -54,13 +54,13 @@ export function StagedGalleryUploader({
       </div>
 
       {files.length === 0 ? (
-        <p className="text-xs text-slate-400">No images added yet.</p>
+        <p className="text-xs text-neutral-400">No images added yet.</p>
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {previews.map((url, i) => (
             <div
               key={i}
-              className="relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+              className="relative aspect-square overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100"
             >
               <img src={url} alt="" className="h-full w-full object-cover" />
               <button
@@ -77,7 +77,7 @@ export function StagedGalleryUploader({
       )}
 
       {files.length > 0 && (
-        <p className="mt-2 text-xs text-slate-400">
+        <p className="mt-2 text-xs text-neutral-400">
           {files.length} image{files.length !== 1 ? "s" : ""} ready · reorder after saving.
         </p>
       )}
