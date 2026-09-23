@@ -3,8 +3,11 @@ import type { Request, Response } from "express";
 import { Customer } from "../../models/Customer.js";
 import { serializeCustomer } from "../../serializers/customer.serializer.js";
 import * as authService from "../../services/auth.service.js";
+import { requestPasswordResetCode } from "../../services/passwordReset.service.js";
+import { requestPhoneOtp, type OtpPurpose } from "../../services/phoneOtp.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
+import { phoneVariants } from "../../utils/phone.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const signup = asyncHandler(async (req: Request, res: Response) => {
@@ -22,6 +25,45 @@ export const phoneVerify = asyncHandler(async (req: Request, res: Response) => {
   const { idToken, name } = req.body as { idToken: string; name?: string };
   const session = await authService.verifyFirebasePhoneToken(idToken, name);
   res.json(session);
+});
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken, newPassword } = req.body as { idToken: string; newPassword: string };
+  const session = await authService.resetPasswordWithPhoneToken(idToken, newPassword);
+  res.json(session);
+});
+
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  await requestPasswordResetCode((req.body as { email: string }).email);
+  // Same answer whether or not the address has an account.
+  res.json({ ok: true });
+});
+
+export const resetPasswordEmail = asyncHandler(async (req: Request, res: Response) => {
+  const { email, code, newPassword } = req.body as { email: string; code: string; newPassword: string };
+  res.json(await authService.resetPasswordWithEmailCode(email, code, newPassword));
+});
+
+export const otpSend = asyncHandler(async (req: Request, res: Response) => {
+  const { phone, purpose } = req.body as { phone: string; purpose: OtpPurpose };
+  const { resendAfterSeconds } = await requestPhoneOtp(phone, purpose);
+  // Same answer whether or not a code actually went out (see requestPhoneOtp).
+  res.json({ ok: true, resendAfterSeconds });
+});
+
+export const otpVerify = asyncHandler(async (req: Request, res: Response) => {
+  const { phone, code, name } = req.body as { phone: string; code: string; name?: string };
+  res.json(await authService.loginWithPhoneOtp(phone, code, name));
+});
+
+export const otpVerifyReset = asyncHandler(async (req: Request, res: Response) => {
+  const { phone, code } = req.body as { phone: string; code: string };
+  res.json(await authService.verifyResetOtp(phone, code));
+});
+
+export const resetPasswordWithToken = asyncHandler(async (req: Request, res: Response) => {
+  const { resetToken, newPassword } = req.body as { resetToken: string; newPassword: string };
+  res.json(await authService.resetPasswordWithResetToken(resetToken, newPassword));
 });
 
 export const me = asyncHandler(async (req: Request, res: Response) => {
@@ -49,8 +91,18 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
     customer.email = email.toLowerCase();
   }
   if (name) customer.name = name;
-  if (phone !== undefined) customer.phone = phone;
-  if (address !== undefined) customer.address = address;
+  // A blank field means "no value", not the empty string: phone has a unique
+  // index, and storing "" for one customer would make every later customer
+  // who saves their profile without a number collide with it.
+  if (phone !== undefined) {
+    const nextPhone = phone.trim() || undefined;
+    if (nextPhone && nextPhone !== customer.phone) {
+      const taken = await Customer.findOne({ phone: { $in: phoneVariants(nextPhone) }, _id: { $ne: customer._id } });
+      if (taken) throw ApiError.conflict("An account with this mobile number already exists");
+    }
+    customer.phone = nextPhone;
+  }
+  if (address !== undefined) customer.address = address.trim() || undefined;
   if (notificationPreferences) {
     Object.assign(customer.notificationPreferences, notificationPreferences);
     customer.markModified("notificationPreferences");

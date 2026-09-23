@@ -27,6 +27,8 @@ export const createPaymentOrderSchema = z.object({
   mode: z.enum(["full", "token", "balance"]),
 });
 
+export const reconcilePaymentSchema = z.object({ bookingId: z.string().min(1) });
+
 export const verifyPaymentSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("success"),

@@ -25,6 +25,32 @@ export const phoneVerifySchema = z.object({
   name: z.string().trim().optional(),
 });
 
+export const resetPasswordSchema = z.object({
+  idToken: z.string().min(1),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Enter a valid email address"),
+});
+
+export const resetPasswordEmailSchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from the email"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const otpPhone = z.string().trim().min(10, "Enter a valid mobile number").max(20);
+const otpCode = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code");
+
+export const otpSendSchema = z.object({ phone: otpPhone, purpose: z.enum(["login", "reset"]).default("login") });
+export const otpVerifySchema = z.object({ phone: otpPhone, code: otpCode, name: z.string().trim().max(80).optional() });
+export const otpVerifyResetSchema = z.object({ phone: otpPhone, code: otpCode });
+export const resetWithTokenSchema = z.object({
+  resetToken: z.string().min(10),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 export const adminLoginSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1, "Password is required"),

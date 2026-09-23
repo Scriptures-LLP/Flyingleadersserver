@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { ResourceCrudPage } from "../components/ResourceCrudPage";
-import { StatusBadge } from "../components/StatusBadge";
+import { GroupedResourceCrudPage } from "../components/GroupedResourceCrudPage";
 import { api } from "../lib/api";
 
 type TourDate = {
@@ -17,47 +16,83 @@ type TourDate = {
   isActive: boolean;
 };
 
-type Tour = { _id: string; title: string };
 type Airport = { _id: string; code: string; name: string };
+
+const badge = (ok: boolean) => (
+  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ok ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+    {ok ? "Active" : "Inactive"}
+  </span>
+);
 
 export function TourDatesPage() {
   const { data: tours } = useQuery({
     queryKey: ["/admin/tours"],
-    queryFn: async () => (await api.get("/admin/tours")).data.items as Tour[],
+    queryFn: async () => (await api.get("/admin/tours")).data.items as { _id: string; title: string }[],
   });
   const { data: airports } = useQuery({
     queryKey: ["/admin/airports"],
     queryFn: async () => (await api.get("/admin/airports")).data.items as Airport[],
   });
 
-  const tourLabel = (id: string) => tours?.find((t) => t._id === id)?.title ?? "…";
-  const airportLabel = (id?: string | null) =>
-    id ? (airports?.find((a) => a._id === id)?.code ?? "…") : "Any airport";
+  const airport = (id?: string | null) => (id ? airports?.find((a) => a._id === id) : null);
+  const isPast = (iso: string) => new Date(iso).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
 
   return (
-    <ResourceCrudPage<TourDate>
+    <GroupedResourceCrudPage<TourDate>
       title="Tour Dates"
       resourcePath="/admin/tour-dates"
-      // Group every tour's dates together (ordered by date within a tour), with
-      // a dropdown to view just one tour on its own.
-      sortItems={(a, b) =>
-        tourLabel(a.tourId).localeCompare(tourLabel(b.tourId)) || +new Date(a.date) - +new Date(b.date)
-      }
-      groupBy={{ label: "Tour", value: (d) => d.tourId, display: (d) => tourLabel(d.tourId) }}
-      columns={[
-        { key: "tourId", label: "Tour", render: (d) => tourLabel(d.tourId) },
-        { key: "airportId", label: "Airport", render: (d) => airportLabel(d.airportId) },
-        { key: "date", label: "Date", render: (d) => new Date(d.date).toLocaleDateString("en-IN") },
-        {
-          key: "price",
-          label: "Add-on price (₹)",
-          render: (d) =>
-            d.price
-              ? `₹${d.price} (${[d.appliesToAdult && "Adult", d.appliesToChild && "Child", d.appliesToInfant && "Infant"].filter(Boolean).join(", ")})`
-              : "— (free, all types)",
-        },
-        { key: "isActive", label: "Active", render: (d) => <StatusBadge active={d.isActive} /> },
-      ]}
+      tourField="tourId"
+      rowColumns={["Date", "Departure Airport", "Add-on Price", "Status"]}
+      emptyRowLabel="No dates for this tour yet — click “Add here” to create one."
+      sortRows={(a, b) => {
+        const byDate = a.date.localeCompare(b.date);
+        if (byDate !== 0) return byDate;
+        return (airport(a.airportId)?.code ?? "").localeCompare(airport(b.airportId)?.code ?? "");
+      }}
+      renderRow={(d, { onEdit, onDelete }) => {
+        const a = airport(d.airportId);
+        const past = isPast(d.date);
+        return (
+          <>
+            <td className={`px-4 py-2 ${past ? "text-slate-400" : "text-slate-800"}`}>
+              <span className="font-medium">{new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+              {past && <span className="ml-2 text-xs text-slate-400">(past)</span>}
+              {d.label && <div className="text-xs text-slate-500">{d.label}</div>}
+            </td>
+            <td className="px-4 py-2">
+              {a ? (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  <span className="font-semibold">{a.code}</span>
+                  <span className="text-slate-500">{a.name}</span>
+                </span>
+              ) : (
+                <span className="text-xs italic text-slate-400">Any airport</span>
+              )}
+            </td>
+            <td className="px-4 py-2">
+              {d.price ? (
+                <div>
+                  <span className="font-semibold text-slate-800">₹{d.price}</span>
+                  <div className="text-xs text-slate-500">
+                    {[d.appliesToAdult && "Adult", d.appliesToChild && "Child", d.appliesToInfant && "Infant"].filter(Boolean).join(", ")}
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400">— free, all types</span>
+              )}
+            </td>
+            <td className="px-4 py-2">{badge(d.isActive)}</td>
+            <td className="px-4 py-2 text-right">
+              <button onClick={onEdit} className="mr-3 text-slate-600 hover:underline">
+                Edit
+              </button>
+              <button onClick={onDelete} className="text-red-600 hover:underline">
+                Delete
+              </button>
+            </td>
+          </>
+        );
+      }}
       fields={[
         {
           name: "tourId",

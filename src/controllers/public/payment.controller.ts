@@ -4,6 +4,7 @@ import { env } from "../../config/env.js";
 import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
 import { Transaction } from "../../models/Transaction.js";
+import { assertCanPayWithPromo } from "../../services/promoUsage.service.js";
 import * as razorpay from "../../services/razorpay.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -32,6 +33,11 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
 
   if (mode === "token" && amount <= 0) throw ApiError.badRequest("Token payment isn't available for this booking");
   if (mode === "balance" && amount <= 0) throw ApiError.badRequest("Nothing outstanding on this booking");
+
+  // Last moment before money can move: if this booking carries a promo code
+  // and hasn't paid anything yet, make sure the code's usage limit hasn't been
+  // used up in the meantime (an unpaid booking's reservation can expire).
+  await assertCanPayWithPromo(booking);
 
   const order = await razorpay.createOrder(amount, booking.bookingRef, {
     bookingId: String(booking._id),
@@ -65,27 +71,100 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-async function confirmBookingPayment(booking: InstanceType<typeof Booking>, txn: InstanceType<typeof Transaction>) {
-  txn.status = "paid";
-  await txn.save();
+/**
+ * Applies a captured payment to its booking — exactly once per transaction.
+ *
+ * The app's /verify call and Razorpay's webhook can both report the same
+ * payment, in either order. Claiming the transaction atomically (only the
+ * caller that flips it to "paid" proceeds) stops the second report from adding
+ * the amount again, which used to be able to double `amountPaid`.
+ */
+async function confirmBookingPayment(
+  booking: InstanceType<typeof Booking>,
+  txn: InstanceType<typeof Transaction>,
+): Promise<InstanceType<typeof Booking>> {
+  const set: Record<string, unknown> = { status: "paid" };
+  if (txn.razorpayPaymentId) set.razorpayPaymentId = txn.razorpayPaymentId;
+  if (txn.razorpaySignature) set.razorpaySignature = txn.razorpaySignature;
+  if (txn.rawWebhookPayload) set.rawWebhookPayload = txn.rawWebhookPayload;
 
-  booking.amountPaid += txn.amount;
-  booking.paymentStatus = booking.amountPaid >= booking.pricing.finalAmount ? "paid" : "partial";
+  const claimed = await Transaction.findOneAndUpdate({ _id: txn._id, status: { $ne: "paid" } }, { $set: set });
+  if (!claimed) return (await Booking.findById(booking._id)) ?? booking; // already applied
+
+  const updated = await Booking.findByIdAndUpdate(booking._id, { $inc: { amountPaid: txn.amount } }, { new: true });
+  if (!updated) return booking;
+
+  updated.amountPaid = Math.round(updated.amountPaid * 100) / 100;
+  updated.paymentStatus = updated.amountPaid >= updated.pricing.finalAmount ? "paid" : "partial";
+  // Money is in, so the promo use is now counted by paymentStatus; the
+  // temporary reservation has done its job.
+  updated.promoHoldUntil = undefined;
+  updated.promoHoldFirm = undefined;
 
   // Only decrement seats — and only once — the first time a booking is confirmed.
-  if (booking.status === "pending_payment") {
-    booking.status = "confirmed";
-    if (booking.tourId) {
+  if (updated.status === "pending_payment") {
+    updated.status = "confirmed";
+    if (updated.tourId) {
       await Tour.updateOne(
-        { _id: booking.tourId, seatsAvailable: { $gte: booking.travellers.length } },
-        { $inc: { seatsAvailable: -booking.travellers.length } },
+        { _id: updated.tourId, seatsAvailable: { $gte: updated.travellers.length } },
+        { $inc: { seatsAvailable: -updated.travellers.length } },
       );
     }
     const { rewardReferralIfQualifying } = await import("../../services/referral.service.js");
-    await rewardReferralIfQualifying(String(booking.customerId), String(booking._id));
+    await rewardReferralIfQualifying(String(updated.customerId), String(updated._id));
   }
-  await booking.save();
+  await updated.save();
+  return updated;
 }
+
+type OrderPayment = { id: string; order_id?: string; status: string; amount: number };
+
+/**
+ * Safety net for a payment that succeeded at Razorpay but whose result never
+ * reached us — the app was killed while the payment page was open, the browser
+ * tab was closed, or the redirect back was lost — leaving the booking unpaid
+ * (and the customer's history empty) although they were charged.
+ *
+ * Asks Razorpay what happened to this booking's still-open orders and applies
+ * any payment that really was captured for the right amount, through the same
+ * atomic path as /verify, so it can never be counted twice.
+ */
+export async function reconcileBookingPayments(
+  booking: InstanceType<typeof Booking>,
+  fetchOrderPayments: (orderId: string) => Promise<{ items: OrderPayment[] }> = razorpay.fetchOrderPayments as never,
+): Promise<{ booking: InstanceType<typeof Booking>; applied: number }> {
+  const open = await Transaction.find({
+    bookingId: booking._id,
+    status: { $in: ["created", "failed"] },
+    type: { $ne: "refund" },
+  });
+
+  let current = booking;
+  let applied = 0;
+  for (const txn of open) {
+    const { items } = await fetchOrderPayments(txn.razorpayOrderId).catch(() => ({ items: [] as OrderPayment[] }));
+    const paid = items.find(
+      (p) =>
+        (p.status === "captured" || p.status === "authorized") &&
+        p.order_id === txn.razorpayOrderId &&
+        p.amount === Math.round(txn.amount * 100),
+    );
+    if (!paid) continue;
+    txn.razorpayPaymentId = paid.id;
+    current = await confirmBookingPayment(current, txn);
+    applied += 1;
+  }
+  return { booking: current, applied };
+}
+
+export const reconcile = asyncHandler(async (req: Request, res: Response) => {
+  const { bookingId } = req.body as { bookingId: string };
+  const booking = await Booking.findOne({ _id: bookingId, customerId: req.customer!.sub });
+  if (!booking) throw ApiError.notFound("Booking not found");
+
+  const result = await reconcileBookingPayments(booking);
+  res.json({ item: result.booking, reconciled: result.applied });
+});
 
 export const verify = asyncHandler(async (req: Request, res: Response) => {
   const body = req.body as
@@ -97,13 +176,16 @@ export const verify = asyncHandler(async (req: Request, res: Response) => {
 
   if (body.status === "failed") {
     if (body.razorpay_order_id) {
-      await Transaction.updateOne({ razorpayOrderId: body.razorpay_order_id }, { status: "failed" });
+      // Only an order still waiting on payment can be marked failed — a late
+      // "cancelled" callback must never overwrite one that already succeeded.
+      await Transaction.updateOne({ razorpayOrderId: body.razorpay_order_id, status: "created" }, { status: "failed" });
     }
     return res.json({ item: booking, paymentStatus: "failed" });
   }
 
   const txn = await Transaction.findOne({ razorpayOrderId: body.razorpay_order_id, bookingId: booking._id });
   if (!txn) throw ApiError.notFound("Payment order not found");
+  if (txn.status === "paid") return res.json({ item: booking, paymentStatus: "success" });
 
   const signatureValid = razorpay.verifyPaymentSignature(
     body.razorpay_order_id,
@@ -129,15 +211,22 @@ export const verify = asyncHandler(async (req: Request, res: Response) => {
 
   txn.razorpayPaymentId = body.razorpay_payment_id;
   txn.razorpaySignature = body.razorpay_signature;
-  await confirmBookingPayment(booking, txn);
+  const updated = await confirmBookingPayment(booking, txn);
 
-  res.json({ item: booking, paymentStatus: "success" });
+  res.json({ item: updated, paymentStatus: "success" });
 });
 
 export const listMine = asyncHandler(async (req: Request, res: Response) => {
   const bookingIds = await Booking.find({ customerId: req.customer!.sub }).distinct("_id");
-  const transactions = await Transaction.find({ bookingId: { $in: bookingIds } })
-    .populate("bookingId", "bookingRef itinerarySnapshot paymentStatus")
+  // Only payments that actually went through (and refunds). Checkouts that
+  // were opened and abandoned are "created"/"failed" orders for the full or
+  // balance amount — listing them showed large phantom "pending" amounts
+  // instead of what the customer really paid.
+  const transactions = await Transaction.find({
+    bookingId: { $in: bookingIds },
+    status: { $in: ["paid", "refunded"] },
+  })
+    .populate("bookingId", "bookingRef itinerarySnapshot paymentStatus status amountPaid pricing.finalAmount")
     .sort({ createdAt: -1 });
   res.json({ items: transactions });
 });

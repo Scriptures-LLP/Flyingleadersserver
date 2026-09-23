@@ -1,43 +1,72 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { ResourceCrudPage } from "../components/ResourceCrudPage";
-import { StatusBadge } from "../components/StatusBadge";
+import { GroupedResourceCrudPage } from "../components/GroupedResourceCrudPage";
 import { api } from "../lib/api";
 
 type TourAirportPrice = { _id: string; tourId: string; airportId: string; addonPrice: number; isActive: boolean };
-type Tour = { _id: string; title: string };
 type Airport = { _id: string; code: string; name: string };
+
+const badge = (ok: boolean) => (
+  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ok ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+    {ok ? "Active" : "Inactive"}
+  </span>
+);
 
 export function TourAirportPricesPage() {
   const { data: tours } = useQuery({
     queryKey: ["/admin/tours"],
-    queryFn: async () => (await api.get("/admin/tours")).data.items as Tour[],
+    queryFn: async () => (await api.get("/admin/tours")).data.items as { _id: string; title: string }[],
   });
   const { data: airports } = useQuery({
     queryKey: ["/admin/airports"],
     queryFn: async () => (await api.get("/admin/airports")).data.items as Airport[],
   });
 
-  const tourLabel = (id: string) => tours?.find((t) => t._id === id)?.title ?? "…";
-  const airportLabel = (id: string) => airports?.find((a) => a._id === id)?.code ?? "…";
+  const airport = (id: string) => airports?.find((a) => a._id === id);
 
   return (
-    <ResourceCrudPage<TourAirportPrice>
+    <GroupedResourceCrudPage<TourAirportPrice>
       title="Tour Airport Prices"
       resourcePath="/admin/tour-airport-prices"
-      // Group every tour's rows together (then by airport) so each tour reads
-      // as one block, with a dropdown to view just one tour on its own.
-      sortItems={(a, b) =>
-        tourLabel(a.tourId).localeCompare(tourLabel(b.tourId)) ||
-        airportLabel(a.airportId).localeCompare(airportLabel(b.airportId))
-      }
-      groupBy={{ label: "Tour", value: (r) => r.tourId, display: (r) => tourLabel(r.tourId) }}
-      columns={[
-        { key: "tourId", label: "Tour", render: (r) => tourLabel(r.tourId) },
-        { key: "airportId", label: "Airport", render: (r) => airportLabel(r.airportId) },
-        { key: "addonPrice", label: "Add-on price (₹)", render: (r) => (r.addonPrice ? `₹${r.addonPrice}` : "— (free)") },
-        { key: "isActive", label: "Active", render: (r) => <StatusBadge active={r.isActive} /> },
-      ]}
+      tourField="tourId"
+      rowColumns={["Departure Airport", "Add-on Price", "Status"]}
+      emptyRowLabel="No airport prices for this tour yet — click “Add here” to create one."
+      // Alphabetical by airport, so the rates for every departure airport on a
+      // tour are easy to scan and compare at a glance.
+      sortRows={(a, b) => (airport(a.airportId)?.code ?? "").localeCompare(airport(b.airportId)?.code ?? "")}
+      renderRow={(r, { onEdit, onDelete }) => {
+        const a = airport(r.airportId);
+        return (
+          <>
+            <td className="px-4 py-2">
+              {a ? (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  <span className="font-semibold">{a.code}</span>
+                  <span className="text-slate-500">{a.name}</span>
+                </span>
+              ) : (
+                <span className="text-xs italic text-slate-400">…</span>
+              )}
+            </td>
+            <td className="px-4 py-2">
+              {r.addonPrice ? (
+                <span className="font-semibold text-slate-800">₹{r.addonPrice}</span>
+              ) : (
+                <span className="text-xs text-slate-400">— free</span>
+              )}
+            </td>
+            <td className="px-4 py-2">{badge(r.isActive)}</td>
+            <td className="px-4 py-2 text-right">
+              <button onClick={onEdit} className="mr-3 text-slate-600 hover:underline">
+                Edit
+              </button>
+              <button onClick={onDelete} className="text-red-600 hover:underline">
+                Delete
+              </button>
+            </td>
+          </>
+        );
+      }}
       fields={[
         {
           name: "tourId",

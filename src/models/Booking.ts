@@ -38,6 +38,22 @@ const pricingSchema = new Schema(
       ],
       default: [],
     },
+    // Airport / travel-date charges, kept as their own lines (never blended
+    // into the per-type prices above) so the summary and invoice show each
+    // configured price separately. Older bookings simply have none.
+    addons: {
+      type: [
+        {
+          _id: false,
+          kind: { type: String, enum: ["airport", "date"], required: true },
+          label: { type: String, required: true },
+          count: { type: Number, required: true, min: 1 },
+          unitPrice: { type: Number, required: true, min: 0 },
+          subtotal: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [],
+    },
   },
   { _id: false },
 );
@@ -74,6 +90,16 @@ const bookingSchema = new Schema(
       default: "unpaid",
     },
 
+    // While a booking that used a promo code is still unpaid, it *reserves*
+    // one use of that code until this time (see promoUsage.service.ts) — so a
+    // limited code can't be handed out to many unpaid bookings at once, yet an
+    // abandoned booking frees the code again. Unused once money has been paid.
+    promoHoldUntil: { type: Date },
+    // true once a payment order has been opened for it: a payment is in
+    // progress, so — unlike the soft hold made at creation — this reservation
+    // can't be replaced by the same customer's other bookings.
+    promoHoldFirm: { type: Boolean },
+
     // Denormalized tour details at booking time, so a later tour edit can't
     // retroactively change what the customer actually booked/paid for.
     itinerarySnapshot: { type: Schema.Types.Mixed, required: true },
@@ -82,5 +108,6 @@ const bookingSchema = new Schema(
 );
 
 bookingSchema.index({ customerId: 1, createdAt: -1 });
+bookingSchema.index({ "pricing.promoCodeId": 1 });
 
 export const Booking = model("Booking", bookingSchema);

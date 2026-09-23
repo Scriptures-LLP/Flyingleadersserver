@@ -1,5 +1,8 @@
+import BulletList from "@tiptap/extension-bullet-list";
 import Color from "@tiptap/extension-color";
+import Heading from "@tiptap/extension-heading";
 import Highlight from "@tiptap/extension-highlight";
+import OrderedList from "@tiptap/extension-ordered-list";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import TextStyle from "@tiptap/extension-text-style";
@@ -20,6 +23,15 @@ type Props = {
 const HIGHLIGHT_COLORS = ["#FEF08A", "#BBF7D0", "#BFDBFE", "#FBCFE8"];
 const TEXT_COLORS = ["#111827", "#DC2626", "#2563EB", "#16A34A", "#9333EA"];
 
+// Typing "- ", "* ", "1. " or "# " at the start of a line silently turns it into
+// a bullet list / numbered list / heading (markdown shortcuts). For terms and
+// itinerary text that's a trap — people type those characters as plain text
+// and end up with a whole document inside a list they never asked for. Lists
+// and headings come only from the toolbar; the shortcuts are switched off.
+const NoShortcutBulletList = BulletList.extend({ addInputRules: () => [] });
+const NoShortcutOrderedList = OrderedList.extend({ addInputRules: () => [] });
+const NoShortcutHeading = Heading.extend({ addInputRules: () => [] });
+
 // Edits the same HTML string the app/PDF render elsewhere — this is the one
 // place admins write it, so it needs to cover real formatting (headings,
 // alignment, color, lists) rather than a plain textarea they'd have to
@@ -27,7 +39,21 @@ const TEXT_COLORS = ["#111827", "#DC2626", "#2563EB", "#16A34A", "#9333EA"];
 export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }: Props) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        bulletList: false,
+        orderedList: false,
+        heading: false,
+        // Not offered in the toolbar, so their typing shortcuts (">", "```",
+        // "---", backticks, "~~") would only ever fire by accident.
+        blockquote: false,
+        codeBlock: false,
+        horizontalRule: false,
+        code: false,
+        strike: false,
+      }),
+      NoShortcutBulletList,
+      NoShortcutOrderedList,
+      NoShortcutHeading.configure({ levels: [1, 2, 3] }),
       Underline,
       TextStyle,
       FontSize,
@@ -163,7 +189,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
       </div>
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-3 py-2 [&_.ProseMirror]:outline-none"
+        className="rte max-w-none px-3 py-2"
         style={{ minHeight }}
       />
     </div>

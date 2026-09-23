@@ -3,7 +3,17 @@ import { AdminUser, type AdminUserDoc } from "../models/AdminUser.js";
 import { Customer, type CustomerDoc } from "../models/Customer.js";
 import { serializeCustomer } from "../serializers/customer.serializer.js";
 import { ApiError } from "../utils/ApiError.js";
-import { signAdminToken, signCustomerToken } from "../utils/jwt.js";
+import { signAdminToken, signCustomerToken, signPasswordResetToken, verifyPasswordResetToken } from "../utils/jwt.js";
+import { phoneVariants } from "../utils/phone.js";
+
+import { consumePasswordResetCode } from "./passwordReset.service.js";
+import { consumePhoneOtp } from "./phoneOtp.service.js";
+
+// How recently the phone must have been verified for a password reset. The
+// Firebase ID token itself lives an hour; a reset must follow the OTP closely
+// so a token that leaks (or is replayed later) can't be used to take an
+// account over.
+const RESET_MAX_AGE_SECONDS = 10 * 60;
 
 export async function signupCustomer(input: {
   name: string;
@@ -18,7 +28,7 @@ export async function signupCustomer(input: {
   if (!email && !phone) throw ApiError.badRequest("Provide an email address or mobile number");
 
   const existing = await Customer.findOne({
-    $or: [...(email ? [{ email }] : []), ...(phone ? [{ phone }] : [])],
+    $or: [...(email ? [{ email }] : []), ...(phone ? [{ phone: { $in: phoneVariants(phone) } }] : [])],
   });
   if (existing) {
     throw ApiError.conflict(
@@ -49,7 +59,7 @@ export async function loginCustomer(identifier: string, password: string) {
   const trimmed = identifier.trim();
   const isEmail = trimmed.includes("@");
   const customer = await Customer.findOne(
-    isEmail ? { email: trimmed.toLowerCase() } : { phone: trimmed },
+    isEmail ? { email: trimmed.toLowerCase() } : { phone: { $in: phoneVariants(trimmed) } },
   );
   if (!customer || !customer.isActive) throw ApiError.unauthorized("Invalid credentials");
 
@@ -74,7 +84,12 @@ export async function verifyFirebasePhoneToken(idToken: string, name?: string) {
   const phone = decoded.phone_number;
   if (!phone) throw ApiError.badRequest("This sign-in method didn't provide a phone number");
 
-  let customer = await Customer.findOne({ phone });
+  return findOrCreatePhoneSession(phone, name);
+}
+
+/** Signs in the customer with this (already verified) mobile number, creating the account the first time. */
+async function findOrCreatePhoneSession(phone: string, name?: string) {
+  let customer = await Customer.findOne({ phone: { $in: phoneVariants(phone) } });
   if (!customer) {
     customer = await Customer.create({
       name: name?.trim() || "Traveler",
@@ -88,6 +103,87 @@ export async function verifyFirebasePhoneToken(idToken: string, name?: string) {
   }
 
   if (!customer.isActive) throw ApiError.unauthorized("This account has been deactivated");
+  return toSession(customer);
+}
+
+/** Login / sign-up by mobile number with the code we texted. */
+export async function loginWithPhoneOtp(phoneInput: string, code: string, name?: string) {
+  const phone = await consumePhoneOtp(phoneInput, code, "login");
+  return findOrCreatePhoneSession(phone, name);
+}
+
+/**
+ * Forgot-password by mobile number, step 1: check the texted code and hand back
+ * a short-lived token that can set a new password (and nothing else).
+ */
+export async function verifyResetOtp(phoneInput: string, code: string) {
+  const phone = await consumePhoneOtp(phoneInput, code, "reset");
+  const customer = await Customer.findOne({ phone: { $in: phoneVariants(phone) } });
+  if (!customer) throw ApiError.notFound("No account is registered with this mobile number");
+  if (!customer.isActive) throw ApiError.unauthorized("This account has been deactivated");
+  return { resetToken: signPasswordResetToken(customer.id) };
+}
+
+/** Forgot-password by mobile number, step 2: set the new password with that token, and sign in. */
+export async function resetPasswordWithResetToken(resetToken: string, newPassword: string) {
+  let customerId: string;
+  try {
+    customerId = verifyPasswordResetToken(resetToken).sub;
+  } catch {
+    throw ApiError.unauthorized("Your verification has expired. Please verify your mobile number again.");
+  }
+  const customer = await Customer.findById(customerId);
+  if (!customer || !customer.isActive) throw ApiError.unauthorized("This account isn't available");
+
+  customer.passwordHash = await Customer.hashPassword(newPassword);
+  if (!customer.phoneVerifiedAt) customer.phoneVerifiedAt = new Date();
+  await customer.save();
+  return toSession(customer);
+}
+
+/**
+ * Forgot-password: proves ownership of the account's mobile number the same
+ * way OTP sign-in does (Firebase has already checked the SMS code by the time
+ * we see `idToken`), then sets a new password and signs the customer in.
+ *
+ * Deliberately requires a *recent* verification — a phone token older than
+ * RESET_MAX_AGE_SECONDS is refused so a stale or leaked token can't reset a
+ * password later.
+ */
+export async function resetPasswordWithPhoneToken(idToken: string, newPassword: string) {
+  const decoded = await getFirebaseAuth()
+    .verifyIdToken(idToken)
+    .catch(() => {
+      throw ApiError.unauthorized("Invalid or expired verification code");
+    });
+
+  const phone = decoded.phone_number;
+  if (!phone) throw ApiError.badRequest("This verification didn't include a phone number");
+
+  const verifiedSecondsAgo = Math.floor(Date.now() / 1000) - decoded.auth_time;
+  if (verifiedSecondsAgo > RESET_MAX_AGE_SECONDS) {
+    throw ApiError.unauthorized("Your verification has expired. Please verify your mobile number again.");
+  }
+
+  const customer = await Customer.findOne({ phone: { $in: phoneVariants(phone) } });
+  if (!customer) throw ApiError.notFound("No account is registered with this mobile number");
+  if (!customer.isActive) throw ApiError.unauthorized("This account has been deactivated");
+
+  customer.passwordHash = await Customer.hashPassword(newPassword);
+  if (!customer.phoneVerifiedAt) customer.phoneVerifiedAt = new Date();
+  await customer.save();
+
+  return toSession(customer);
+}
+
+/** Forgot-password for email accounts: the 6-digit code emailed by requestPasswordResetCode. */
+export async function resetPasswordWithEmailCode(email: string, code: string, newPassword: string) {
+  const customerId = await consumePasswordResetCode(email, code);
+  const customer = await Customer.findById(customerId);
+  if (!customer || !customer.isActive) throw ApiError.unauthorized("This account isn't available");
+
+  customer.passwordHash = await Customer.hashPassword(newPassword);
+  await customer.save();
   return toSession(customer);
 }
 

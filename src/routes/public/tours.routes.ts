@@ -11,3 +11,4 @@ toursRoutes.get("/", validate({ query: tourQuerySchema }), tourController.list);
 toursRoutes.get("/:slug", validate({ params: slugParamSchema }), tourController.getBySlug);
 toursRoutes.get("/:slug/reviews", validate({ params: slugParamSchema }), reviewController.listForTour);
 toursRoutes.get("/:slug/dates", validate({ params: slugParamSchema }), tourController.listDates);
+toursRoutes.get("/:slug/airports", validate({ params: slugParamSchema }), tourController.listAirports);

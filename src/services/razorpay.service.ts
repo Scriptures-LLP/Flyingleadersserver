@@ -56,6 +56,11 @@ export async function fetchPayment(paymentId: string) {
   return getClient().payments.fetch(paymentId);
 }
 
+/** The payment attempts made against an order (read-only) — used to reconcile a payment whose result never reached us. */
+export async function fetchOrderPayments(orderId: string) {
+  return getClient().orders.fetchPayments(orderId);
+}
+
 export async function createRefund(paymentId: string, amountRupees?: number) {
   return getClient().payments.refund(paymentId, amountRupees ? { amount: toPaise(amountRupees) } : {});
 }

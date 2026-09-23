@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 
 import { Tour } from "../../models/Tour.js";
-import { TourDate } from "../../models/TourDate.js";
 import { TourMedia } from "../../models/TourMedia.js";
+import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
 import { serializeTourDetail, serializeTourSummary } from "../../services/tourSerializer.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -59,21 +59,22 @@ export const getBySlug = asyncHandler(async (req: Request, res: Response) => {
   res.json({ item: serializeTourDetail(tour, galleryUrls) });
 });
 
+// Tour Dates — the dates and nothing else. No prices: a date's optional
+// add-on is charged (and itemised) at booking time, never blended into what
+// this list shows. `airport` is set only when the admin tied the date to one
+// airport; null means the date works from any of the tour's airports.
 export const listDates = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
   if (!tour) throw ApiError.notFound("Tour not found");
 
-  const dates = await TourDate.find({ tourId: tour._id, isActive: true, date: { $gte: new Date() } })
-    .populate("airportId", "code name")
-    .sort({ date: 1 });
+  res.json({ items: await listTourDates(tour._id) });
+});
 
-  res.json({
-    items: dates.map((d) => ({
-      id: d.id,
-      date: d.date,
-      price: d.price,
-      label: d.label ?? null,
-      airport: d.airportId && typeof d.airportId === "object" ? d.airportId : null,
-    })),
-  });
+// Tour Airport Prices — the departure airports and each one's own add-on
+// price, independent of the dates list above.
+export const listAirports = asyncHandler(async (req: Request, res: Response) => {
+  const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
+  if (!tour) throw ApiError.notFound("Tour not found");
+
+  res.json({ items: await listTourAirports(tour._id) });
 });

@@ -27,9 +27,25 @@ type Transaction = {
   razorpayOrderId: string;
   razorpayPaymentId?: string;
   amount: number;
-  type: "token" | "full" | "refund";
+  type: "token" | "full" | "balance" | "refund";
   status: "created" | "paid" | "failed" | "refunded";
   createdAt: string;
+};
+
+const TXN_TYPE_LABEL: Record<Transaction["type"], string> = {
+  token: "Partial (token) payment",
+  full: "Full payment",
+  balance: "Balance payment",
+  refund: "Refund",
+};
+
+// "created" = the customer opened the payment screen but never completed it
+// (no money moved) — say so, rather than showing its amount as if it were paid.
+const TXN_STATUS: Record<Transaction["status"], { label: string; className: string }> = {
+  paid: { label: "Paid", className: "bg-green-50 text-green-700" },
+  refunded: { label: "Refunded", className: "bg-slate-100 text-slate-600" },
+  created: { label: "Not paid — checkout not completed", className: "bg-slate-100 text-slate-500" },
+  failed: { label: "Failed / cancelled", className: "bg-red-50 text-red-700" },
 };
 
 const STATUS_STYLE: Record<Booking["status"], string> = {
@@ -48,6 +64,13 @@ const PAYMENT_STYLE: Record<Booking["paymentStatus"], string> = {
 };
 
 const inr = (n: number) => `₹${(n ?? 0).toLocaleString("en-IN")}`;
+
+// What's still to pay. A cancelled / refunded booking owes nothing, so it's 0
+// rather than the full price.
+function remainingOf(b: Booking): number {
+  if (b.status === "cancelled" || b.paymentStatus === "refunded") return 0;
+  return Math.max(0, Math.round(((b.pricing?.finalAmount ?? 0) - (b.amountPaid ?? 0)) * 100) / 100);
+}
 
 function name(v: Booking["tourId"] | Booking["customerId"]): string {
   if (!v) return "—";
@@ -121,7 +144,9 @@ export function BookingsPage() {
                 <th className="px-4 py-2 font-medium">Customer</th>
                 <th className="px-4 py-2 font-medium">Travel date</th>
                 <th className="px-4 py-2 font-medium">Travellers</th>
-                <th className="px-4 py-2 font-medium">Amount</th>
+                <th className="px-4 py-2 font-medium">Total</th>
+                <th className="px-4 py-2 font-medium">Paid</th>
+                <th className="px-4 py-2 font-medium">Remaining</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Payment</th>
                 <th className="px-4 py-2" />
@@ -129,14 +154,16 @@ export function BookingsPage() {
             </thead>
             <tbody>
               {bookings.map((b) => (
-                <tr key={b._id} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-2 font-mono text-xs text-neutral-700">{b.bookingRef}</td>
-                  <td className="px-4 py-2 text-neutral-700">{name(b.tourId)}</td>
-                  <td className="px-4 py-2 text-neutral-700">{name(b.customerId)}</td>
-                  <td className="px-4 py-2 text-neutral-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
-                  <td className="px-4 py-2 text-neutral-700">{travellerSummary(b.travellers)}</td>
-                  <td className="px-4 py-2 text-neutral-700">
-                    {inr(b.amountPaid)} / {inr(b.pricing?.finalAmount)}
+                <tr key={b._id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-2 font-mono text-xs text-slate-700">{b.bookingRef}</td>
+                  <td className="px-4 py-2 text-slate-700">{name(b.tourId)}</td>
+                  <td className="px-4 py-2 text-slate-700">{name(b.customerId)}</td>
+                  <td className="px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
+                  <td className="px-4 py-2 text-slate-700">{inr(b.pricing?.finalAmount)}</td>
+                  <td className="px-4 py-2 font-medium text-slate-900">{inr(b.amountPaid)}</td>
+                  <td className={`px-4 py-2 ${remainingOf(b) > 0 ? "font-medium text-red-700" : "text-slate-500"}`}>
+                    {inr(remainingOf(b))}
                   </td>
                   <td className="px-4 py-2">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[b.status]}`}>
@@ -157,7 +184,7 @@ export function BookingsPage() {
               ))}
               {bookings.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-neutral-400">
+                  <td colSpan={11} className="px-4 py-6 text-center text-slate-400">
                     No bookings yet.
                   </td>
                 </tr>
@@ -199,8 +226,9 @@ export function BookingsPage() {
                         Discount ({detail.item.pricing.promoCode}): -{inr(detail.item.pricing.discountAmount)}
                       </p>
                     )}
-                    <p className="text-neutral-600">Total: {inr(detail.item.pricing.finalAmount)}</p>
-                    <p className="text-neutral-600">Paid: {inr(detail.item.amountPaid)}</p>
+                    <p className="text-slate-600">Total Amount: {inr(detail.item.pricing.finalAmount)}</p>
+                    <p className="text-slate-600">Paid Amount: {inr(detail.item.amountPaid)}</p>
+                    <p className="font-medium text-slate-800">Remaining Amount: {inr(remainingOf(detail.item))}</p>
                   </div>
                 </div>
 
@@ -223,12 +251,32 @@ export function BookingsPage() {
                   {detail.transactions.length === 0 ? (
                     <p className="text-sm text-neutral-400">None yet.</p>
                   ) : (
-                    <ul className="text-sm text-neutral-600">
-                      {detail.transactions.map((t) => (
-                        <li key={t._id}>
-                          {t.type} · {inr(t.amount)} · {t.status} · {new Date(t.createdAt).toLocaleString("en-IN")}
-                        </li>
-                      ))}
+                    <ul className="divide-y divide-slate-100 text-sm text-slate-600">
+                      {detail.transactions.map((t) => {
+                        const st = TXN_STATUS[t.status];
+                        const moved = t.status === "paid" || t.status === "refunded";
+                        return (
+                          <li key={t._id} className="flex items-center justify-between gap-3 py-1.5">
+                            <div>
+                              <span className={moved ? "font-medium text-slate-800" : "text-slate-400"}>
+                                {TXN_TYPE_LABEL[t.type]}
+                              </span>
+                              <span className="ml-2 text-xs text-slate-400">
+                                {new Date(t.createdAt).toLocaleString("en-IN")}
+                              </span>
+                              <div>
+                                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.className}`}>
+                                  {st.label}
+                                </span>
+                              </div>
+                            </div>
+                            <span className={moved ? "font-semibold text-slate-900" : "text-slate-400 line-through"}>
+                              {t.type === "refund" ? "-" : ""}
+                              {inr(t.amount)}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

@@ -54,6 +54,28 @@ const envSchema = z.object({
   // copied into its actual storage/admin-uploads directories.
   FLYINGDOTCOM_STORAGE_ROOT: z.string().default(""),
 
+  // SMTP — sends password-reset emails (see services/mailer.service.ts). All
+  // optional: with these unset the email endpoints answer "not set up yet"
+  // instead of crashing. For Gmail / Google Workspace, SMTP_PASS must be an
+  // app password.
+  SMTP_HOST: z.string().optional().default(""),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional().default(""),
+  SMTP_PASS: z.string().optional().default(""),
+  SMTP_FROM: z.string().optional().default(""),
+
+  // SMS OTP via MSG91's Flow API (login / password reset by mobile number). All
+  // optional: unset, the OTP endpoints answer "SMS isn't set up" instead of crashing.
+  MSG91_AUTH_KEY: z.string().optional().default(""),
+  MSG91_TEMPLATE_ID: z.string().optional().default(""),
+  /** The placeholder name inside the approved template that receives the code (case-sensitive). */
+  MSG91_OTP_VAR: z.string().optional().default(""),
+  MSG91_FLOW_URL: z.string().default("https://control.msg91.com/api/v5/flow/"),
+  /** "number:code,number:code" — fictional numbers that accept a fixed code and never send an SMS. */
+  OTP_TEST_NUMBERS: z.string().optional().default(""),
+  /** Hard ceiling on OTP SMS per day across all customers (guards against SMS-pumping abuse). */
+  OTP_DAILY_LIMIT: z.coerce.number().default(300),
+
   // Module D — Firebase Phone Auth (base64-encoded service-account JSON).
   FIREBASE_SERVICE_ACCOUNT_B64: z.string().optional().default(""),
 
