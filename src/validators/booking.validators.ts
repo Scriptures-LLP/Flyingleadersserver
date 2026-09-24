@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { OFFICE_PAYMENT_METHODS } from "../models/Transaction.js";
 import { zStrictBoolean } from "../utils/zodHelpers.js";
 
 const travellerSchema = z.object({
@@ -50,3 +51,31 @@ export const refundBookingSchema = z.object({
 });
 
 export const idParamSchema = z.object({ id: z.string().min(1) });
+
+const objectId = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id");
+
+export const listMyPaymentsQuerySchema = z.object({ bookingId: objectId.optional() });
+
+// A payment the customer made at the office rather than in the app. Amounts are
+// whole rupees or rupees.paise; the date can't be in the future (a receipt
+// dated tomorrow is a typo, not a payment).
+export const recordOfficePaymentSchema = z.object({
+  amount: z.coerce
+    .number()
+    .positive("Enter an amount greater than 0")
+    .max(10_000_000)
+    .refine((n) => Math.abs(n * 100 - Math.round(n * 100)) < 1e-6, "Use at most 2 decimal places"),
+  method: z.enum(OFFICE_PAYMENT_METHODS),
+  reference: z.string().trim().max(100).optional(),
+  note: z.string().trim().max(300).optional(),
+  receivedAt: z.coerce
+    .date()
+    .refine((d) => d.getTime() <= Date.now() + 5 * 60_000, "The received date can't be in the future")
+    .optional(),
+});
+
+export const voidOfficePaymentSchema = z.object({
+  reason: z.string().trim().min(3, "Tell us why (at least 3 characters)").max(300),
+});
+
+export const bookingTransactionParamSchema = z.object({ id: objectId, txnId: objectId });

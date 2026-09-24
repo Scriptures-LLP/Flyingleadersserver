@@ -2,8 +2,8 @@ import type { Request, Response } from "express";
 
 import { env } from "../../config/env.js";
 import { Booking } from "../../models/Booking.js";
-import { Tour } from "../../models/Tour.js";
 import { Transaction } from "../../models/Transaction.js";
+import { finalizePaidBooking } from "../../services/bookingPayment.service.js";
 import { assertCanPayWithPromo } from "../../services/promoUsage.service.js";
 import * as razorpay from "../../services/razorpay.service.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -94,27 +94,7 @@ async function confirmBookingPayment(
   const updated = await Booking.findByIdAndUpdate(booking._id, { $inc: { amountPaid: txn.amount } }, { new: true });
   if (!updated) return booking;
 
-  updated.amountPaid = Math.round(updated.amountPaid * 100) / 100;
-  updated.paymentStatus = updated.amountPaid >= updated.pricing.finalAmount ? "paid" : "partial";
-  // Money is in, so the promo use is now counted by paymentStatus; the
-  // temporary reservation has done its job.
-  updated.promoHoldUntil = undefined;
-  updated.promoHoldFirm = undefined;
-
-  // Only decrement seats — and only once — the first time a booking is confirmed.
-  if (updated.status === "pending_payment") {
-    updated.status = "confirmed";
-    if (updated.tourId) {
-      await Tour.updateOne(
-        { _id: updated.tourId, seatsAvailable: { $gte: updated.travellers.length } },
-        { $inc: { seatsAvailable: -updated.travellers.length } },
-      );
-    }
-    const { rewardReferralIfQualifying } = await import("../../services/referral.service.js");
-    await rewardReferralIfQualifying(String(updated.customerId), String(updated._id));
-  }
-  await updated.save();
-  return updated;
+  return finalizePaidBooking(updated);
 }
 
 type OrderPayment = { id: string; order_id?: string; status: string; amount: number };
@@ -142,11 +122,13 @@ export async function reconcileBookingPayments(
   let current = booking;
   let applied = 0;
   for (const txn of open) {
-    const { items } = await fetchOrderPayments(txn.razorpayOrderId).catch(() => ({ items: [] as OrderPayment[] }));
+    const orderId = txn.razorpayOrderId;
+    if (!orderId) continue; // office payments have no Razorpay order (and are never left open anyway)
+    const { items } = await fetchOrderPayments(orderId).catch(() => ({ items: [] as OrderPayment[] }));
     const paid = items.find(
       (p) =>
         (p.status === "captured" || p.status === "authorized") &&
-        p.order_id === txn.razorpayOrderId &&
+        p.order_id === orderId &&
         p.amount === Math.round(txn.amount * 100),
     );
     if (!paid) continue;
@@ -217,15 +199,22 @@ export const verify = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const listMine = asyncHandler(async (req: Request, res: Response) => {
-  const bookingIds = await Booking.find({ customerId: req.customer!.sub }).distinct("_id");
+  const { bookingId } = req.query as { bookingId?: string };
+  const bookingIds = await Booking.find({
+    customerId: req.customer!.sub,
+    ...(bookingId ? { _id: bookingId } : {}),
+  }).distinct("_id");
   // Only payments that actually went through (and refunds). Checkouts that
   // were opened and abandoned are "created"/"failed" orders for the full or
   // balance amount — listing them showed large phantom "pending" amounts
-  // instead of what the customer really paid.
+  // instead of what the customer really paid. Payments the office recorded show
+  // up here too; the staff-only bits of those (who entered it, internal notes,
+  // void details) are never sent.
   const transactions = await Transaction.find({
     bookingId: { $in: bookingIds },
     status: { $in: ["paid", "refunded"] },
   })
+    .select("-office.note -office.recordedBy -office.voidedAt -office.voidedBy -office.voidReason")
     .populate("bookingId", "bookingRef itinerarySnapshot paymentStatus status amountPaid pricing.finalAmount")
     .sort({ createdAt: -1 });
   res.json({ items: transactions });
