@@ -2,7 +2,9 @@ import { Booking } from "../models/Booking.js";
 import { Tour } from "../models/Tour.js";
 import { Transaction, type OFFICE_PAYMENT_METHODS } from "../models/Transaction.js";
 import { ApiError } from "../utils/ApiError.js";
+import { notifyPaymentReceived } from "./notify.service.js";
 import { assertCanPayWithPromo } from "./promoUsage.service.js";
+import { assertWalletCreditAvailable } from "./referral.service.js";
 
 type BookingDoc = InstanceType<typeof Booking>;
 export type OfficePaymentMethod = (typeof OFFICE_PAYMENT_METHODS)[number];
@@ -26,17 +28,24 @@ export async function finalizePaidBooking(updated: BookingDoc): Promise<BookingD
   updated.promoHoldUntil = undefined;
   updated.promoHoldFirm = undefined;
 
-  // Only decrement seats — and only once — the first time a booking is confirmed.
+  // The first payment confirms the booking: take the seats, spend any wallet
+  // credit it used, and reward the referrer. Claimed atomically, so when two
+  // payments land at the same instant only one of them does all this.
   if (updated.status === "pending_payment") {
-    updated.status = "confirmed";
-    if (updated.tourId) {
-      await Tour.updateOne(
-        { _id: updated.tourId, seatsAvailable: { $gte: updated.travellers.length } },
-        { $inc: { seatsAvailable: -updated.travellers.length } },
-      );
+    const claim = await Booking.updateOne({ _id: updated._id, status: "pending_payment" }, { $set: { status: "confirmed" } });
+    if (claim.modifiedCount === 1) {
+      updated.status = "confirmed";
+      if (updated.tourId) {
+        await Tour.updateOne(
+          { _id: updated.tourId, seatsAvailable: { $gte: updated.travellers.length } },
+          { $inc: { seatsAvailable: -updated.travellers.length } },
+        );
+      }
+      const credit = updated.pricing.walletCreditApplied ?? 0;
+      const { redeemWalletCredit, rewardReferralIfQualifying } = await import("./referral.service.js");
+      if (credit > 0) await redeemWalletCredit(String(updated.customerId), credit, String(updated._id));
+      await rewardReferralIfQualifying(String(updated.customerId), String(updated._id));
     }
-    const { rewardReferralIfQualifying } = await import("./referral.service.js");
-    await rewardReferralIfQualifying(String(updated.customerId), String(updated._id));
   }
   await updated.save();
   return updated;
@@ -83,6 +92,8 @@ export async function recordOfficePayment(bookingId: string, input: OfficePaymen
   // First money on a booking that used a promo code: the same usage-limit gate
   // an online payment goes through, so the office can't be the loophole.
   await assertCanPayWithPromo(booking);
+  // …and the wallet credit applied to it must still be there.
+  await assertWalletCreditAvailable(booking);
 
   const type = booking.amountPaid > 0 ? "balance" : amount >= finalAmount ? "full" : "token";
 
@@ -123,7 +134,9 @@ export async function recordOfficePayment(bookingId: string, input: OfficePaymen
     throw err;
   }
 
-  return { booking: await finalizePaidBooking(updated), transaction };
+  const finalized = await finalizePaidBooking(updated);
+  void notifyPaymentReceived(String(finalized._id), amount, "office");
+  return { booking: finalized, transaction };
 }
 
 /**

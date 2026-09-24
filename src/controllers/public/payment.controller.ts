@@ -4,7 +4,9 @@ import { env } from "../../config/env.js";
 import { Booking } from "../../models/Booking.js";
 import { Transaction } from "../../models/Transaction.js";
 import { finalizePaidBooking } from "../../services/bookingPayment.service.js";
+import { notifyPaymentReceived } from "../../services/notify.service.js";
 import { assertCanPayWithPromo } from "../../services/promoUsage.service.js";
+import { assertWalletCreditAvailable } from "../../services/referral.service.js";
 import * as razorpay from "../../services/razorpay.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -38,6 +40,8 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   // and hasn't paid anything yet, make sure the code's usage limit hasn't been
   // used up in the meantime (an unpaid booking's reservation can expire).
   await assertCanPayWithPromo(booking);
+  // The wallet credit on this booking is only spent once it's paid — make sure it's still there.
+  await assertWalletCreditAvailable(booking);
 
   const order = await razorpay.createOrder(amount, booking.bookingRef, {
     bookingId: String(booking._id),
@@ -94,7 +98,11 @@ async function confirmBookingPayment(
   const updated = await Booking.findByIdAndUpdate(booking._id, { $inc: { amountPaid: txn.amount } }, { new: true });
   if (!updated) return booking;
 
-  return finalizePaidBooking(updated);
+  const finalized = await finalizePaidBooking(updated);
+  // Tell the customer (best effort; never fails the payment). Only reached once
+  // per transaction — an already-applied payment returned above.
+  void notifyPaymentReceived(String(finalized._id), txn.amount, "app");
+  return finalized;
 }
 
 type OrderPayment = { id: string; order_id?: string; status: string; amount: number };

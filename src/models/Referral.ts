@@ -39,7 +39,7 @@ export const CreditWallet = model("CreditWallet", creditWalletSchema);
 const walletTransactionSchema = new Schema(
   {
     customerId: { type: Schema.Types.ObjectId, ref: "Customer", required: true, index: true },
-    type: { type: String, enum: ["referral_reward", "redemption", "admin_adjustment"], required: true },
+    type: { type: String, enum: ["referral_reward", "redemption", "redemption_reversal", "admin_adjustment"], required: true },
     // Positive = credit added, negative = credit spent/removed.
     amount: { type: Number, required: true },
     relatedReferralId: { type: Schema.Types.ObjectId, ref: "Referral" },

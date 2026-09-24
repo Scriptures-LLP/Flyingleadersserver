@@ -88,7 +88,7 @@ export async function verifyFirebasePhoneToken(idToken: string, name?: string) {
 }
 
 /** Signs in the customer with this (already verified) mobile number, creating the account the first time. */
-async function findOrCreatePhoneSession(phone: string, name?: string) {
+async function findOrCreatePhoneSession(phone: string, name?: string, referralCode?: string) {
   let customer = await Customer.findOne({ phone: { $in: phoneVariants(phone) } });
   if (!customer) {
     customer = await Customer.create({
@@ -97,6 +97,12 @@ async function findOrCreatePhoneSession(phone: string, name?: string) {
       authProvider: "phone",
       phoneVerifiedAt: new Date(),
     });
+    // A referral code only counts for a brand-new account (same as email sign-up) —
+    // someone who already has an account signing in again can't claim one.
+    if (referralCode) {
+      const { captureReferralSignup } = await import("./referral.service.js");
+      await captureReferralSignup(referralCode, String(customer._id));
+    }
   } else if (!customer.phoneVerifiedAt) {
     customer.phoneVerifiedAt = new Date();
     await customer.save();
@@ -107,9 +113,9 @@ async function findOrCreatePhoneSession(phone: string, name?: string) {
 }
 
 /** Login / sign-up by mobile number with the code we texted. */
-export async function loginWithPhoneOtp(phoneInput: string, code: string, name?: string) {
+export async function loginWithPhoneOtp(phoneInput: string, code: string, name?: string, referralCode?: string) {
   const phone = await consumePhoneOtp(phoneInput, code, "login");
-  return findOrCreatePhoneSession(phone, name);
+  return findOrCreatePhoneSession(phone, name, referralCode);
 }
 
 /**

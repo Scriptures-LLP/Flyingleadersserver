@@ -52,8 +52,8 @@ export const otpSend = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const otpVerify = asyncHandler(async (req: Request, res: Response) => {
-  const { phone, code, name } = req.body as { phone: string; code: string; name?: string };
-  res.json(await authService.loginWithPhoneOtp(phone, code, name));
+  const { phone, code, name, referralCode } = req.body as { phone: string; code: string; name?: string; referralCode?: string };
+  res.json(await authService.loginWithPhoneOtp(phone, code, name, referralCode));
 });
 
 export const otpVerifyReset = asyncHandler(async (req: Request, res: Response) => {

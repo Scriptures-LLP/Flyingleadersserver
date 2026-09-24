@@ -13,6 +13,7 @@ export type IconName =
   | "promoCodes"
   | "reviews"
   | "referrals"
+  | "notifications"
   | "pastTrips"
   | "homeCovers"
   | "settings"
@@ -80,6 +81,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   reviews: (
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+  ),
+  notifications: (
+    <>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </>
   ),
   referrals: (
     <>

@@ -81,6 +81,11 @@ const envSchema = z.object({
 
   // Module K — AI chatbot (OpenAI).
   LLM_API_KEY: z.string().optional().default(""),
+  // Push notifications go out through Expo's push service. Set PUSH_DRY_RUN=true to
+  // build and record everything without contacting Expo (local testing).
+  PUSH_DRY_RUN: zStrictBoolean.default(false),
+  // Only needed if "enhanced push security" is switched on for the Expo project.
+  EXPO_ACCESS_TOKEN: z.string().optional().default(""),
   // The OpenAI model behind the chat assistant. Change it here (no code change)
   // to trade cost for smarter answers.
   LLM_MODEL: z.string().min(1).default("gpt-4o-mini"),

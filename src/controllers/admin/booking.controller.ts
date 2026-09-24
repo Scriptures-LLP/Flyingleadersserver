@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { Booking } from "../../models/Booking.js";
 import { Transaction } from "../../models/Transaction.js";
 import { recordOfficePayment, round2, voidOfficePayment } from "../../services/bookingPayment.service.js";
+import { notifyRefundIssued } from "../../services/notify.service.js";
 import * as razorpay from "../../services/razorpay.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -121,6 +122,15 @@ export const refund = asyncHandler(async (req: Request, res: Response) => {
   booking.paymentStatus = fullyRefunded ? "refunded" : "refund_initiated";
   if (fullyRefunded) booking.status = "cancelled";
   await booking.save();
+
+  // A fully refunded booking that had used wallet credit gives that credit back.
+  const credit = booking.pricing.walletCreditApplied ?? 0;
+  if (fullyRefunded && credit > 0) {
+    const { restoreWalletCredit } = await import("../../services/referral.service.js");
+    await restoreWalletCredit(String(booking.customerId), credit, String(booking._id));
+  }
+
+  void notifyRefundIssued(String(booking._id), refundAmount);
 
   res.json({ item: booking });
 });

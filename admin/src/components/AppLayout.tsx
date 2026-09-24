@@ -34,6 +34,7 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
     heading: "Marketing",
     items: [
       { to: "/promo-codes", label: "Promo Codes", icon: "promoCodes", roles: ["admin"] },
+      { to: "/notifications", label: "Notifications", icon: "notifications", roles: ["admin"] },
       { to: "/reviews", label: "Reviews", icon: "reviews", roles: ["admin"] },
       { to: "/referrals", label: "Referrals", icon: "referrals", roles: ["admin"] },
     ],

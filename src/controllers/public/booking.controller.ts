@@ -111,6 +111,9 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
 
   let finalAmount = Math.round((baseAmount - discountAmount) * 100) / 100;
 
+  // Wallet credit comes off the price here but is only *spent* when the booking's
+  // first payment lands (see finalizePaidBooking) — so backing out of checkout
+  // never burns it.
   let walletCreditApplied = 0;
   if (body.useWalletCredit) {
     const { getWalletBalance } = await import("../../services/referral.service.js");
@@ -167,11 +170,6 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       await Booking.deleteOne({ _id: booking._id });
       throw err;
     }
-  }
-
-  if (walletCreditApplied > 0) {
-    const { redeemWalletCredit } = await import("../../services/referral.service.js");
-    await redeemWalletCredit(req.customer!.sub, walletCreditApplied, String(booking._id));
   }
 
   res.status(201).json({ item: booking });

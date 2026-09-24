@@ -15,6 +15,7 @@ import { CustomersPage } from "./pages/Customers";
 import { GalleryImagesPage } from "./pages/GalleryImages";
 import { HomeCoversPage } from "./pages/HomeCovers";
 import { LoginPage } from "./pages/Login";
+import { NotificationsPage } from "./pages/Notifications";
 import { PromoCodesPage } from "./pages/PromoCodes";
 import { ReferralsPage } from "./pages/Referrals";
 import { ReviewsPage } from "./pages/Reviews";
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
           { path: "/airports", element: <AirportsPage /> },
           { path: "/categories", element: <CategoriesPage /> },
           { path: "/promo-codes", element: <PromoCodesPage /> },
+          { path: "/notifications", element: <NotificationsPage /> },
           { path: "/reviews", element: <ReviewsPage /> },
           { path: "/referrals", element: <ReferralsPage /> },
           { path: "/tour-dates", element: <TourDatesPage /> },
