@@ -81,6 +81,9 @@ const envSchema = z.object({
 
   // Module K — AI chatbot (OpenAI).
   LLM_API_KEY: z.string().optional().default(""),
+  // The OpenAI model behind the chat assistant. Change it here (no code change)
+  // to trade cost for smarter answers.
+  LLM_MODEL: z.string().min(1).default("gpt-4o-mini"),
 });
 
 const parsed = envSchema.safeParse(process.env);

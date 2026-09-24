@@ -45,6 +45,9 @@ services:
         value: false
       - key: LLM_API_KEY
         sync: false
+      # Which OpenAI model powers the chat assistant (optional; defaults to gpt-4o-mini).
+      - key: LLM_MODEL
+        value: gpt-4o-mini
       - key: FIREBASE_SERVICE_ACCOUNT_B64
         sync: false
       # Password-reset emails. Values are set in the Render dashboard (never
