@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { Pagination, usePagination } from "../components/Pagination";
 
 type Person = { _id: string; name: string; email?: string } | string;
 
@@ -41,6 +42,9 @@ export function ReferralsPage() {
     queryKey: ["/admin/referrals/wallets"],
     queryFn: async () => (await api.get("/admin/referrals/wallets")).data.items as Wallet[],
   });
+
+  const refPager = usePagination(referrals, 6);
+  const walletPager = usePagination(wallets, 6);
 
   const [adjustFor, setAdjustFor] = useState<Wallet | null>(null);
   const [adjustAmount, setAdjustAmount] = useState("");
@@ -85,7 +89,7 @@ export function ReferralsPage() {
             </tr>
           </thead>
           <tbody>
-            {referrals?.map((r) => (
+            {refPager.pageItems.map((r) => (
               <tr key={r._id} className="border-b border-neutral-100 last:border-0">
                 <td className="px-4 py-2 text-neutral-700">{name(r.referrerCustomerId)}</td>
                 <td className="px-4 py-2 text-neutral-700">{name(r.refereeCustomerId)}</td>
@@ -108,6 +112,14 @@ export function ReferralsPage() {
             )}
           </tbody>
         </table>
+        <Pagination
+          page={refPager.page}
+          pageCount={refPager.pageCount}
+          total={refPager.total}
+          pageSize={refPager.pageSize}
+          onPage={refPager.setPage}
+          label="referrals"
+        />
       </div>
 
       <h2 className="mb-3 mt-8 text-base font-semibold text-neutral-900">Wallet Balances</h2>
@@ -121,7 +133,7 @@ export function ReferralsPage() {
             </tr>
           </thead>
           <tbody>
-            {wallets?.map((w) => (
+            {walletPager.pageItems.map((w) => (
               <tr key={w._id} className="border-b border-neutral-100 last:border-0">
                 <td className="px-4 py-2 text-neutral-700">{name(w.customerId)}</td>
                 <td className="px-4 py-2 text-neutral-700">₹{w.balance.toLocaleString("en-IN")}</td>
@@ -141,6 +153,14 @@ export function ReferralsPage() {
             )}
           </tbody>
         </table>
+        <Pagination
+          page={walletPager.page}
+          pageCount={walletPager.pageCount}
+          total={walletPager.total}
+          pageSize={walletPager.pageSize}
+          onPage={walletPager.setPage}
+          label="wallets"
+        />
       </div>
 
       {adjustFor && (

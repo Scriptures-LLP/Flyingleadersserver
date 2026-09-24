@@ -71,7 +71,14 @@ export const s3Adapter: StorageAdapter = {
   },
 
   urlFor(key) {
-    return `${publicBase()}/${key}`;
+    if (!key) return key;
+    // Some records (legacy imports / manual entries / older upload flows) store
+    // a full URL rather than a bare storage key. Prefixing the public base onto
+    // those produces a broken "https://base/https://…" URL — so pass absolute
+    // URLs (and protocol-relative ones) through unchanged.
+    if (/^(https?:)?\/\//i.test(key)) return key;
+    // Tolerate an accidental leading slash on the stored key.
+    return `${publicBase()}/${key.replace(/^\/+/, "")}`;
   },
 } satisfies StorageAdapter;
 

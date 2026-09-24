@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { Pagination, usePagination } from "../components/Pagination";
 
 type Customer = {
   id: string;
@@ -27,6 +28,8 @@ export function CustomersPage() {
     mutationFn: async (c: Customer) => api.patch(`/admin/customers/${c.id}/active`, { isActive: !c.isActive }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/admin/customers"] }),
   });
+
+  const pager = usePagination(customers, 6, search);
 
   return (
     <div>
@@ -61,7 +64,7 @@ export function CustomersPage() {
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
+              {pager.pageItems.map((c) => (
                 <tr key={c.id} className="border-b border-neutral-100 last:border-0">
                   <td className="px-4 py-2 text-neutral-700">{c.name}</td>
                   <td className="px-4 py-2 text-neutral-700">{c.email ?? "—"}</td>
@@ -98,6 +101,14 @@ export function CustomersPage() {
               )}
             </tbody>
           </table>
+          <Pagination
+            page={pager.page}
+            pageCount={pager.pageCount}
+            total={pager.total}
+            pageSize={pager.pageSize}
+            onPage={pager.setPage}
+            label="customers"
+          />
         </div>
       )}
     </div>

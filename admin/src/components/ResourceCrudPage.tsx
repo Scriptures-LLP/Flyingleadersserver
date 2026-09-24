@@ -1,3 +1,4 @@
+import { Pagination, usePagination } from "./Pagination";
 import { ResourceFormModal } from "./ResourceFormModal";
 import { apiErrorMessage } from "../lib/api";
 import { useResourceForm, type FieldConfig } from "./resourceForm";
@@ -28,6 +29,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
   const form = useResourceForm<T>(resourcePath, fields);
   const { data, isLoading, error, modalItem, openCreate, openEdit, deleteMutation } = form;
   const singular = title.replace(/s$/, "");
+  const pager = usePagination(data, 6);
 
   return (
     <div>
@@ -69,7 +71,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
               </tr>
             </thead>
             <tbody>
-              {data.map((item) => (
+              {pager.pageItems.map((item) => (
                 <tr key={item._id} className="border-b border-neutral-100 transition-colors last:border-0 hover:bg-neutral-50/70">
                   {columns.map((c) => (
                     <td key={c.key} className="px-4 py-2 text-neutral-700">
@@ -102,6 +104,14 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
               )}
             </tbody>
           </table>
+          <Pagination
+            page={pager.page}
+            pageCount={pager.pageCount}
+            total={pager.total}
+            pageSize={pager.pageSize}
+            onPage={pager.setPage}
+            label={title.toLowerCase()}
+          />
         </div>
       )}
 

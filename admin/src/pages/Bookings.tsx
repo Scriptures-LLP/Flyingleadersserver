@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { Pagination, usePagination } from "../components/Pagination";
 
 type Traveller = { name: string; age?: number; gender?: string; type: "adult" | "child" | "infant" };
 
@@ -85,30 +86,49 @@ const TXN_STATUS: Record<Transaction["status"], { label: string; className: stri
   refunded: { label: "Refunded", className: "bg-neutral-100 text-neutral-600" },
   created: { label: "Not paid — checkout not completed", className: "bg-neutral-100 text-neutral-500" },
   failed: { label: "Failed / cancelled", className: "bg-red-50 text-red-700" },
-  voided: { label: "Voided", className: "bg-red-50 text-red-700" },
+};
+
+// Each status gets its own colour so the payment state is obvious at a glance.
+const STATUS_LABEL: Record<Booking["status"], string> = {
+  pending_payment: "Pending payment",
+  confirmed: "Confirmed",
+  cancelled: "Cancelled",
+  completed: "Completed",
 };
 
 const STATUS_STYLE: Record<Booking["status"], string> = {
-  pending_payment: "bg-red-50 text-red-700",
-  confirmed: "bg-green-50 text-green-700",
-  cancelled: "bg-red-50 text-red-700",
-  completed: "bg-green-50 text-green-700",
+  pending_payment: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  confirmed: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  cancelled: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+  completed: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+};
+
+// The customer-facing wording the team asked for: Pending / Partially paid /
+// Fully paid, plus the two refund states — each in a distinct colour.
+const PAYMENT_LABEL: Record<Booking["paymentStatus"], string> = {
+  unpaid: "Pending",
+  partial: "Partially paid",
+  paid: "Fully paid",
+  refund_initiated: "Refund initiated",
+  refunded: "Refunded",
 };
 
 const PAYMENT_STYLE: Record<Booking["paymentStatus"], string> = {
-  unpaid: "bg-neutral-100 text-neutral-600",
-  partial: "bg-red-50 text-red-700",
-  paid: "bg-green-50 text-green-700",
-  refund_initiated: "bg-red-50 text-red-700",
-  refunded: "bg-neutral-100 text-neutral-500",
+  unpaid: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  partial: "bg-sky-50 text-sky-700 ring-1 ring-sky-200",
+  paid: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  refund_initiated: "bg-orange-50 text-orange-700 ring-1 ring-orange-200",
+  refunded: "bg-violet-50 text-violet-700 ring-1 ring-violet-200",
 };
 
 const inr = (n: number) => `₹${(n ?? 0).toLocaleString("en-IN")}`;
 
-// What's still to pay. A cancelled / refunded booking owes nothing, so it's 0
-// rather than the full price.
+// What's still to pay. A cancelled booking, or one that has had any refund
+// issued (fully `refunded` or partially `refund_initiated`), owes nothing — so
+// it's 0 rather than "price − reduced-paid", which would wrongly resurface the
+// refunded money as an outstanding balance.
 function remainingOf(b: Booking): number {
-  if (b.status === "cancelled" || b.paymentStatus === "refunded") return 0;
+  if (b.status === "cancelled" || b.paymentStatus === "refunded" || b.paymentStatus === "refund_initiated") return 0;
   return Math.max(0, Math.round(((b.pricing?.finalAmount ?? 0) - (b.amountPaid ?? 0)) * 100) / 100);
 }
 
@@ -141,6 +161,8 @@ export function BookingsPage() {
     queryKey: ["/admin/bookings"],
     queryFn: async () => (await api.get("/admin/bookings")).data.items as Booking[],
   });
+
+  const pager = usePagination(bookings, 6);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const { data: detail } = useQuery({
@@ -268,26 +290,26 @@ export function BookingsPage() {
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => (
-                <tr key={b._id} className="border-b border-neutral-100 last:border-0">
-                  <td className="px-4 py-2 font-mono text-xs text-neutral-700">{b.bookingRef}</td>
-                  <td className="px-4 py-2 text-neutral-700">{name(b.tourId)}</td>
-                  <td className="px-4 py-2 text-neutral-700">{name(b.customerId)}</td>
-                  <td className="px-4 py-2 text-neutral-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
-                  <td className="px-4 py-2 text-neutral-700">{travellerSummary(b.travellers)}</td>
-                  <td className="px-4 py-2 text-neutral-700">{inr(b.pricing?.finalAmount)}</td>
-                  <td className="px-4 py-2 font-medium text-neutral-900">{inr(b.amountPaid)}</td>
-                  <td className={`px-4 py-2 ${remainingOf(b) > 0 ? "font-medium text-red-700" : "text-neutral-500"}`}>
+              {pager.pageItems.map((b) => (
+                <tr key={b._id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-2 font-mono text-xs text-slate-700">{b.bookingRef}</td>
+                  <td className="px-4 py-2 text-slate-700">{name(b.tourId)}</td>
+                  <td className="px-4 py-2 text-slate-700">{name(b.customerId)}</td>
+                  <td className="px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
+                  <td className="px-4 py-2 text-slate-700">{inr(b.pricing?.finalAmount)}</td>
+                  <td className="px-4 py-2 font-medium text-slate-900">{inr(b.amountPaid)}</td>
+                  <td className={`px-4 py-2 ${remainingOf(b) > 0 ? "font-medium text-red-700" : "text-slate-500"}`}>
                     {inr(remainingOf(b))}
                   </td>
                   <td className="px-4 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[b.status]}`}>
-                      {b.status.replace("_", " ")}
+                    <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[b.status]}`}>
+                      {STATUS_LABEL[b.status]}
                     </span>
                   </td>
                   <td className="px-4 py-2">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PAYMENT_STYLE[b.paymentStatus]}`}>
-                      {b.paymentStatus.replace("_", " ")}
+                    <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${PAYMENT_STYLE[b.paymentStatus]}`}>
+                      {PAYMENT_LABEL[b.paymentStatus]}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">
@@ -306,6 +328,14 @@ export function BookingsPage() {
               )}
             </tbody>
           </table>
+          <Pagination
+            page={pager.page}
+            pageCount={pager.pageCount}
+            total={pager.total}
+            pageSize={pager.pageSize}
+            onPage={pager.setPage}
+            label="bookings"
+          />
         </div>
       )}
 

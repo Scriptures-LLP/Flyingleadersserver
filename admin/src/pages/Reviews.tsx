@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { Pagination, usePagination } from "../components/Pagination";
 
 type Review = {
   _id: string;
@@ -45,6 +46,7 @@ export function ReviewsPage() {
   });
 
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
+  const pager = usePagination(reviews, 6, tab);
 
   const moderateMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) =>
@@ -77,7 +79,7 @@ export function ReviewsPage() {
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       <div className="flex flex-col gap-3">
-        {reviews?.map((r) => (
+        {pager.pageItems.map((r) => (
           <div key={r._id} className="rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
             <div className="mb-1 flex items-start justify-between">
               <div>
@@ -123,6 +125,19 @@ export function ReviewsPage() {
         ))}
         {reviews?.length === 0 && <p className="py-6 text-center text-neutral-400">Nothing here yet.</p>}
       </div>
+
+      {pager.total > pager.pageSize && (
+        <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <Pagination
+            page={pager.page}
+            pageCount={pager.pageCount}
+            total={pager.total}
+            pageSize={pager.pageSize}
+            onPage={pager.setPage}
+            label="reviews"
+          />
+        </div>
+      )}
     </div>
   );
 }

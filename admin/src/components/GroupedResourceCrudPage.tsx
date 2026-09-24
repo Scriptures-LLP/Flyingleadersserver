@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+import { Pagination, usePagination } from "./Pagination";
 import { ResourceFormModal } from "./ResourceFormModal";
 import { useResourceForm, type FieldConfig } from "./resourceForm";
 
@@ -71,6 +72,9 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
     return q ? all.filter((g) => g.tour.title.toLowerCase().includes(q)) : all;
   }, [data, tours, search, sortRows]);
 
+  // Paginate the tour containers (reset to page 1 when the search changes).
+  const pager = usePagination(groups, 6, search);
+
   const toggle = (tourId: string) =>
     setOpen((prev) => {
       const next = new Set(prev);
@@ -124,7 +128,7 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
       )}
 
       <div className="flex flex-col gap-3">
-        {groups.map(({ tour, items }) => {
+        {pager.pageItems.map(({ tour, items }) => {
           const isOpen = open.has(tour._id);
           return (
             <div key={tour._id} className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
@@ -201,6 +205,19 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
           );
         })}
       </div>
+
+      {pager.total > pager.pageSize && (
+        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <Pagination
+            page={pager.page}
+            pageCount={pager.pageCount}
+            total={pager.total}
+            pageSize={pager.pageSize}
+            onPage={pager.setPage}
+            label="tours"
+          />
+        </div>
+      )}
 
       <ResourceFormModal<T>
         title={singular}

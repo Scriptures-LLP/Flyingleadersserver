@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Icon } from "../components/icons";
 import { ImageCropModal } from "../components/ImageCropModal";
+import { Pagination, usePagination } from "../components/Pagination";
 import { RichTextEditor } from "../components/RichTextEditor";
 import { StagedGalleryUploader } from "../components/StagedGalleryUploader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -96,6 +97,8 @@ export function ToursPage() {
   });
 
   const catLabel = (slug?: string) => categories?.find((c) => c.slug === slug)?.label ?? slug ?? "";
+
+  const pager = usePagination(tours, 6);
 
   const [editing, setEditing] = useState<Tour | null | undefined>(undefined);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm);
@@ -243,7 +246,7 @@ export function ToursPage() {
               </tr>
             </thead>
             <tbody>
-              {tours.map((tour) => (
+              {pager.pageItems.map((tour) => (
                 <tr key={tour._id} className="border-b border-neutral-100 last:border-0">
                   <td className="px-4 py-2 text-neutral-700">{tour.title}</td>
                   <td className="px-4 py-2 text-neutral-700">
@@ -286,6 +289,14 @@ export function ToursPage() {
               )}
             </tbody>
           </table>
+          <Pagination
+            page={pager.page}
+            pageCount={pager.pageCount}
+            total={pager.total}
+            pageSize={pager.pageSize}
+            onPage={pager.setPage}
+            label="tours"
+          />
         </div>
       )}
 
