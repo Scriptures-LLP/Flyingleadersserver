@@ -13,9 +13,10 @@ const tourDateSchema = new Schema(
     tourId: { type: Schema.Types.ObjectId, ref: "Tour", required: true },
     airportId: { type: Schema.Types.ObjectId, ref: "Airport", default: null },
     date: { type: Date, required: true },
-    // Optional — a date can exist purely to be selectable, with no add-on
-    // price at all. When it does have one, appliesTo controls which
-    // traveller types it's actually charged for (defaults to all three).
+    // Optional — a date can exist purely to be selectable, with no charge at
+    // all. When it does have one (the "travel charge"), appliesTo controls
+    // which traveller types it's folded into the price of (defaults to all
+    // three) — it is never shown to the customer as a separate line.
     price: { type: Number, min: 0, default: 0 },
     appliesTo: {
       adult: { type: Boolean, default: true },

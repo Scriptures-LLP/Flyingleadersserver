@@ -10,24 +10,33 @@ type SyncConfig = {
   remove: (legacyMysqlId?: number) => Promise<void>;
 };
 
-/** Simple CRUD controller for flat admin-managed reference data (Airport, PromoCode, ...). */
-export function makeCrudController(model: Model<any>, resourceName: string, sync?: SyncConfig) {
+/**
+ * Simple CRUD controller for flat admin-managed reference data (Airport, PromoCode, ...).
+ * `serialize` reshapes a document on the way out — used where the admin grid can only
+ * bind flat fields (e.g. flattening a nested `appliesTo` into checkbox fields).
+ */
+export function makeCrudController(
+  model: Model<any>,
+  resourceName: string,
+  sync?: SyncConfig,
+  serialize: (doc: any) => unknown = (doc) => doc,
+) {
   const controller = {
     list: asyncHandler(async (_req: Request, res: Response) => {
       const items = await model.find().sort({ sortOrder: 1, createdAt: -1 });
-      res.json({ items });
+      res.json({ items: items.map(serialize) });
     }),
 
     get: asyncHandler(async (req: Request, res: Response) => {
       const item = await model.findById(req.params.id);
       if (!item) throw ApiError.notFound(`${resourceName} not found`);
-      res.json({ item });
+      res.json({ item: serialize(item) });
     }),
 
     create: asyncHandler(async (req: Request, res: Response) => {
       const item = await model.create(req.body);
       if (sync) await runMysqlSync(model, item, () => sync.upsert(item));
-      res.status(201).json({ item });
+      res.status(201).json({ item: serialize(item) });
     }),
 
     update: asyncHandler(async (req: Request, res: Response) => {
@@ -37,7 +46,7 @@ export function makeCrudController(model: Model<any>, resourceName: string, sync
       });
       if (!item) throw ApiError.notFound(`${resourceName} not found`);
       if (sync) await runMysqlSync(model, item, () => sync.upsert(item));
-      res.json({ item });
+      res.json({ item: serialize(item) });
     }),
 
     remove: asyncHandler(async (req: Request, res: Response) => {
@@ -57,7 +66,7 @@ export function makeCrudController(model: Model<any>, resourceName: string, sync
       if (!item) throw ApiError.notFound(`${resourceName} not found`);
       await runMysqlSync(model, item, () => sync.upsert(item));
       const refreshed = await model.findById(item._id);
-      res.json({ item: refreshed });
+      res.json({ item: refreshed ? serialize(refreshed) : refreshed });
     }),
   };
 

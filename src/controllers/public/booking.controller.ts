@@ -83,11 +83,18 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     throw ApiError.badRequest("Selected airport is not available for this tour");
   }
 
-  const { baseAmount, breakdown, addons } = computeBaseAmount(
+  // The airport and travel-date charges are folded into each traveller type's
+  // per-person price (only for the types ticked on the charge) — see
+  // computeBaseAmount.
+  const { baseAmount, breakdown } = computeBaseAmount(
     tour,
     travellers,
     tourDateDoc,
-    chosenAirport && { code: chosenAirport.code, addonPrice: chosenAirport.addonPrice },
+    chosenAirport && {
+      code: chosenAirport.code,
+      addonPrice: chosenAirport.addonPrice,
+      appliesTo: chosenAirport.appliesTo,
+    },
   );
 
   let discountAmount = 0;
@@ -136,7 +143,6 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       tokenAmount,
       walletCreditApplied,
       breakdown,
-      addons,
     },
     // Reserves one use of the promo code while this booking is unpaid.
     promoHoldUntil: promoDoc ? promoHoldExpiry() : undefined,

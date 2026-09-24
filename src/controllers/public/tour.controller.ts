@@ -60,8 +60,8 @@ export const getBySlug = asyncHandler(async (req: Request, res: Response) => {
 });
 
 // Tour Dates — the dates and nothing else. No prices: a date's optional
-// add-on is charged (and itemised) at booking time, never blended into what
-// this list shows. `airport` is set only when the admin tied the date to one
+// travel charge is folded into the per-person price when a booking is priced,
+// never shown here. `airport` is set only when the admin tied the date to one
 // airport; null means the date works from any of the tour's airports.
 export const listDates = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
@@ -70,11 +70,14 @@ export const listDates = asyncHandler(async (req: Request, res: Response) => {
   res.json({ items: await listTourDates(tour._id) });
 });
 
-// Tour Airport Prices — the departure airports and each one's own add-on
-// price, independent of the dates list above.
+// The tour's departure airports, independent of the dates list above. Each
+// airport's charge (Tour Airport Prices) is deliberately NOT sent: it is folded
+// into the per-person Adult / Child / Infant price when a booking is priced, so
+// customers never see it as a separate amount.
 export const listAirports = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
   if (!tour) throw ApiError.notFound("Tour not found");
 
-  res.json({ items: await listTourAirports(tour._id) });
+  const airports = await listTourAirports(tour._id);
+  res.json({ items: airports.map(({ id, code, name }) => ({ id, code, name })) });
 });

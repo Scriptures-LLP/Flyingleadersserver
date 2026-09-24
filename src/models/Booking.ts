@@ -25,7 +25,11 @@ const pricingSchema = new Schema(
     walletCreditApplied: { type: Number, min: 0, default: 0 },
     // Per-traveller-type price breakdown at booking time (e.g. "2 adults @
     // Rs.X") — shown on the payment summary and carried onto the invoice/PDF
-    // so it can't drift from what was actually charged.
+    // so it can't drift from what was actually charged. unitPrice is the final
+    // per-person price: the tour's price for the type PLUS any airport /
+    // travel-date charge ticked for that type. chargesIncluded is how much of
+    // it came from those charges — for the admin's records; customers only see
+    // unitPrice.
     breakdown: {
       type: [
         {
@@ -33,14 +37,15 @@ const pricingSchema = new Schema(
           type: { type: String, enum: ["adult", "child", "infant"], required: true },
           count: { type: Number, required: true, min: 1 },
           unitPrice: { type: Number, required: true, min: 0 },
+          chargesIncluded: { type: Number, min: 0, default: 0 },
           subtotal: { type: Number, required: true, min: 0 },
         },
       ],
       default: [],
     },
-    // Airport / travel-date charges, kept as their own lines (never blended
-    // into the per-type prices above) so the summary and invoice show each
-    // configured price separately. Older bookings simply have none.
+    // LEGACY. Bookings made before airport / date charges were folded into the
+    // per-type prices carry them here as separate lines; new bookings leave this
+    // empty. Kept so those older bookings still read correctly.
     addons: {
       type: [
         {

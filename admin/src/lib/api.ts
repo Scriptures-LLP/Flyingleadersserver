@@ -36,7 +36,15 @@ api.interceptors.response.use(
 
 export function apiErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
-    return err.response?.data?.error?.message ?? err.message;
+    const error = err.response?.data?.error;
+    // "Validation failed" alone doesn't say what to fix — add the first specific
+    // reason (a field-level issue names its field; a form-level rule stands alone).
+    const issue = Array.isArray(error?.details) ? error.details[0] : undefined;
+    if (error?.message && issue?.message) {
+      const field = Array.isArray(issue.path) && issue.path.length ? `${issue.path.join(".")}: ` : "";
+      return `${error.message} — ${field}${issue.message}`;
+    }
+    return error?.message ?? err.message;
   }
   return err instanceof Error ? err.message : "Something went wrong";
 }

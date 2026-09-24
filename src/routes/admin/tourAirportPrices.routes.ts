@@ -4,7 +4,11 @@ import { tourAirportPriceController } from "../../controllers/admin/tourAirportP
 import { requireAdminAuth } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
-import { idParamSchema, tourAirportPriceSchema } from "../../validators/entities.validators.js";
+import {
+  idParamSchema,
+  tourAirportPriceSchema,
+  tourAirportPriceUpdateSchema,
+} from "../../validators/entities.validators.js";
 
 export const adminTourAirportPricesRoutes = Router();
 
@@ -15,7 +19,7 @@ adminTourAirportPricesRoutes.get("/:id", validate({ params: idParamSchema }), to
 adminTourAirportPricesRoutes.post("/", validate({ body: tourAirportPriceSchema }), tourAirportPriceController.create);
 adminTourAirportPricesRoutes.put(
   "/:id",
-  validate({ params: idParamSchema, body: tourAirportPriceSchema.partial() }),
+  validate({ params: idParamSchema, body: tourAirportPriceUpdateSchema }),
   tourAirportPriceController.update,
 );
 adminTourAirportPricesRoutes.delete("/:id", validate({ params: idParamSchema }), tourAirportPriceController.remove);

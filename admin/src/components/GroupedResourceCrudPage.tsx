@@ -83,25 +83,25 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
-          <p className="mt-0.5 text-xs text-slate-500">One container per tour — click a tour to see its {title.toLowerCase()}.</p>
+          <h1 className="text-lg font-semibold text-neutral-900">{title}</h1>
+          <p className="mt-0.5 text-xs text-neutral-500">One container per tour — click a tour to see its {title.toLowerCase()}.</p>
         </div>
         <div className="flex items-center gap-2">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tours…"
-            className="w-48 rounded-md border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
+            className="w-48 rounded-md border border-neutral-300 px-3 py-1.5 text-sm outline-none focus:border-red-500"
           />
           <button
             onClick={() => setOpen(new Set(groups.map((g) => g.tour._id)))}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
           >
             Expand all
           </button>
           <button
             onClick={() => setOpen(new Set())}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
           >
             Collapse all
           </button>
@@ -114,11 +114,11 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
         </div>
       </div>
 
-      {isLoading && <p className="text-slate-500">Loading…</p>}
+      {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {data && groups.length === 0 && (
-        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-400">
+        <p className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-center text-sm text-neutral-400">
           {search ? "No tours match that search." : `No ${title.toLowerCase()} yet — click "Add ${singular}" to create one.`}
         </p>
       )}
@@ -127,20 +127,20 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
         {groups.map(({ tour, items }) => {
           const isOpen = open.has(tour._id);
           return (
-            <div key={tour._id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div key={tour._id} className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
               <button
                 onClick={() => toggle(tour._id)}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50"
+                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-neutral-50"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   {tour.coverImageUrl ? (
                     <img src={tour.coverImageUrl} alt="" className="h-10 w-14 shrink-0 rounded-md object-cover" />
                   ) : (
-                    <div className="h-10 w-14 shrink-0 rounded-md bg-slate-100" />
+                    <div className="h-10 w-14 shrink-0 rounded-md bg-neutral-100" />
                   )}
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-900">{tour.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="truncate font-medium text-neutral-900">{tour.title}</p>
+                    <p className="text-xs text-neutral-500">
                       {items.length} {items.length === 1 ? singular.toLowerCase() : title.toLowerCase()}
                     </p>
                   </div>
@@ -154,18 +154,18 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
                       openCreate({ [tourField]: tour._id });
                     }}
                     onKeyDown={(e) => e.key === "Enter" && e.stopPropagation()}
-                    className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                    className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
                   >
                     + Add here
                   </span>
-                  <span className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                  <span className={`text-neutral-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
                 </div>
               </button>
 
               {isOpen && (
-                <div className="overflow-x-auto border-t border-slate-100">
+                <div className="overflow-x-auto border-t border-neutral-100">
                   <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
+                    <thead className="bg-neutral-50 text-neutral-600">
                       <tr>
                         {rowColumns.map((c) => (
                           <th key={c} className="px-4 py-2 font-medium">
@@ -177,7 +177,7 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
                     </thead>
                     <tbody>
                       {items.map((item) => (
-                        <tr key={item._id} className="border-b border-slate-100 last:border-0">
+                        <tr key={item._id} className="border-b border-neutral-100 last:border-0">
                           {renderRow(item, {
                             onEdit: () => openEdit(item),
                             onDelete: () => {
@@ -188,7 +188,7 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
                       ))}
                       {items.length === 0 && (
                         <tr>
-                          <td colSpan={rowColumns.length + 1} className="px-4 py-4 text-center text-slate-400">
+                          <td colSpan={rowColumns.length + 1} className="px-4 py-4 text-center text-neutral-400">
                             {emptyRowLabel}
                           </td>
                         </tr>

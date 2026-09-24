@@ -55,7 +55,7 @@ export function ResourceFormModal<T extends { _id: string }>({
             }}
             className="my-8 w-full max-w-md rounded-xl bg-white p-6 shadow-lg"
           >
-            <h2 className="mb-4 text-base font-semibold text-slate-900">
+            <h2 className="mb-4 text-base font-semibold text-neutral-900">
               {modalItem ? `Edit ${title}` : `New ${title}`}
             </h2>
 
@@ -69,7 +69,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                   // control, which would re-open the file picker when the user just
                   // wants to look at the picked image.
                   <div key={f.name} className="block text-sm">
-                    <span className="mb-1 block font-medium text-slate-700">{f.label}</span>
+                    <span className="mb-1 block font-medium text-neutral-700">{f.label}</span>
                     <input
                       type="file"
                       accept={f.accept ?? "image/*"}
@@ -79,7 +79,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                         if (picked && f.crop) setCropTarget({ field: f, file: picked });
                         else setFormFiles((v) => ({ ...v, [f.name]: picked }));
                       }}
-                      className="w-full text-sm text-slate-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
+                      className="w-full text-sm text-neutral-500 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-red-600 file:px-3 file:py-1 file:text-xs file:font-medium file:text-white hover:file:bg-red-700"
                     />
                     {(() => {
                       const picked = !!formFiles[f.name];
@@ -94,7 +94,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                             src={preview}
                             alt={`${f.label} preview`}
                             onClick={() => setLightbox(preview)}
-                            className="max-h-48 w-full cursor-zoom-in rounded-md border border-slate-200 bg-slate-50 object-contain"
+                            className="max-h-48 w-full cursor-zoom-in rounded-md border border-neutral-200 bg-neutral-50 object-contain"
                           />
                           {picked && (
                             <button
@@ -113,7 +113,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                   </div>
                 ) : (
                   <label key={f.name} className="block text-sm">
-                    <span className="mb-1 block font-medium text-slate-700">{f.label}</span>
+                    <span className="mb-1 block font-medium text-neutral-700">{f.label}</span>
                     {f.type === "checkbox" ? (
                       <input
                         type="checkbox"
@@ -125,7 +125,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                         required={f.required}
                         value={(formValues[f.name] as string | undefined) ?? ""}
                         onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-red-500"
+                        className="w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-red-500"
                       >
                         {(f.allowBlank ?? true) && <option value="">—</option>}
                         {f.options.map((o) => (
@@ -141,7 +141,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                         min={f.type === "number" ? 0 : undefined}
                         value={(formValues[f.name] as string | number | undefined) ?? ""}
                         onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 outline-none focus:border-red-500"
+                        className="w-full rounded-md border border-neutral-300 px-3 py-2 outline-none focus:border-red-500"
                       />
                     )}
                   </label>
@@ -153,7 +153,7 @@ export function ResourceFormModal<T extends { _id: string }>({
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
               >
                 Cancel
               </button>

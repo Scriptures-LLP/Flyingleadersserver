@@ -35,6 +35,24 @@ const tourDateBaseSchema = z.object({
   sortOrder: z.coerce.number().min(0).optional(),
 });
 
+const NO_CATEGORY_MESSAGE =
+  "Tick at least one of Adult / Child / Infant — a charge has to apply to someone to be added to a price";
+
+// A charge is added to the per-person price of the ticked categories. With an
+// amount but every category unticked it would silently do nothing, so refuse it.
+// (Only checked when the form sent all three — a partial update is left alone.)
+function assertChargeHasCategory(v: {
+  price?: number;
+  addonPrice?: number;
+  appliesToAdult?: boolean;
+  appliesToChild?: boolean;
+  appliesToInfant?: boolean;
+}) {
+  const amount = v.price ?? v.addonPrice ?? 0;
+  const sent = [v.appliesToAdult, v.appliesToChild, v.appliesToInfant];
+  return !(amount > 0 && sent.every((x) => x === false));
+}
+
 function reshapeAppliesTo<T extends { appliesToAdult?: boolean; appliesToChild?: boolean; appliesToInfant?: boolean }>(
   v: T,
 ) {
@@ -52,16 +70,34 @@ function reshapeAppliesTo<T extends { appliesToAdult?: boolean; appliesToChild?:
   };
 }
 
-export const tourDateSchema = tourDateBaseSchema.transform(reshapeAppliesTo);
-export const tourDateUpdateSchema = tourDateBaseSchema.partial().transform(reshapeAppliesTo);
+export const tourDateSchema = tourDateBaseSchema
+  .refine(assertChargeHasCategory, { message: NO_CATEGORY_MESSAGE })
+  .transform(reshapeAppliesTo);
+export const tourDateUpdateSchema = tourDateBaseSchema
+  .partial()
+  .refine(assertChargeHasCategory, { message: NO_CATEGORY_MESSAGE })
+  .transform(reshapeAppliesTo);
 
-export const tourAirportPriceSchema = z.object({
+const tourAirportPriceBaseSchema = z.object({
   tourId: z.string().min(1),
   airportId: z.string().min(1),
-  // Optional: an airport can be added before its price is decided.
+  // Optional: an airport can be added before its charge is decided.
   addonPrice: z.coerce.number().min(0).optional(),
+  // Flat fields, same as tour dates — reshaped into the nested `appliesTo`.
+  // Which traveller types the airport charge is added to.
+  appliesToAdult: zStrictBoolean.optional(),
+  appliesToChild: zStrictBoolean.optional(),
+  appliesToInfant: zStrictBoolean.optional(),
   isActive: zStrictBoolean.optional(),
 });
+
+export const tourAirportPriceSchema = tourAirportPriceBaseSchema
+  .refine(assertChargeHasCategory, { message: NO_CATEGORY_MESSAGE })
+  .transform(reshapeAppliesTo);
+export const tourAirportPriceUpdateSchema = tourAirportPriceBaseSchema
+  .partial()
+  .refine(assertChargeHasCategory, { message: NO_CATEGORY_MESSAGE })
+  .transform(reshapeAppliesTo);
 
 export const galleryImageSchema = z.object({
   title: z.string().trim().optional(),

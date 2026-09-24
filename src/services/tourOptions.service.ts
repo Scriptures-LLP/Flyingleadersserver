@@ -4,7 +4,16 @@ import { Airport } from "../models/Airport.js";
 import { TourAirportPrice } from "../models/TourAirportPrice.js";
 import { TourDate } from "../models/TourDate.js";
 
-export type TourAirportOption = { id: string; code: string; name: string; addonPrice: number };
+export type ChargeCategories = { adult: boolean; child: boolean; infant: boolean };
+export type TourAirportOption = {
+  id: string;
+  code: string;
+  name: string;
+  /** The airport charge — internal: it is folded into per-type prices, never sent to customers. */
+  addonPrice: number;
+  /** Which traveller types that charge is added to. */
+  appliesTo: ChargeCategories;
+};
 
 /**
  * The departure airports a tour can be booked from, with each airport's own
@@ -31,8 +40,17 @@ export async function listTourAirports(tourId: Types.ObjectId | string): Promise
   ]);
 
   const switchedOff = new Set(priceRows.filter((r) => !r.isActive).map((r) => String(r.airportId)));
-  const addonByAirport = new Map(
-    priceRows.filter((r) => r.isActive).map((r) => [String(r.airportId), r.addonPrice ?? 0] as const),
+  const activeRows = priceRows.filter((r) => r.isActive);
+  const addonByAirport = new Map(activeRows.map((r) => [String(r.airportId), r.addonPrice ?? 0] as const));
+  // Rows saved before categories existed have no appliesTo: they applied to everyone.
+  const categoriesByAirport = new Map(
+    activeRows.map(
+      (r) =>
+        [
+          String(r.airportId),
+          { adult: r.appliesTo?.adult ?? true, child: r.appliesTo?.child ?? true, infant: r.appliesTo?.infant ?? true },
+        ] as const,
+    ),
   );
 
   const ids = new Set([...addonByAirport.keys(), ...datedAirportIds.map(String)]);
@@ -45,6 +63,7 @@ export async function listTourAirports(tourId: Types.ObjectId | string): Promise
     code: a.code,
     name: a.name,
     addonPrice: addonByAirport.get(a.id as string) ?? 0,
+    appliesTo: categoriesByAirport.get(a.id as string) ?? { adult: true, child: true, infant: true },
   }));
 }
 
