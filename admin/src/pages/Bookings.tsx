@@ -86,6 +86,8 @@ const TXN_STATUS: Record<Transaction["status"], { label: string; className: stri
   refunded: { label: "Refunded", className: "bg-neutral-100 text-neutral-600" },
   created: { label: "Not paid — checkout not completed", className: "bg-neutral-100 text-neutral-500" },
   failed: { label: "Failed / cancelled", className: "bg-red-50 text-red-700" },
+  // An office payment that was entered by mistake and reversed (kept in the books, marked void).
+  voided: { label: "Voided", className: "bg-red-50 text-red-700" },
 };
 
 // Each status gets its own colour so the payment state is obvious at a glance.
