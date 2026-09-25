@@ -42,15 +42,31 @@ export function notifyPaymentReceived(bookingId: string, amount: number, via: "a
   });
 }
 
-/** A refund was started on a booking. */
-export function notifyRefundIssued(bookingId: string, amount: number) {
+/** A refund was started on a booking — and, usually, the booking was cancelled with it. */
+export function notifyRefundIssued(bookingId: string, amount: number, cancelled = false) {
   return safely("refund", async () => {
     const b = await Booking.findById(bookingId);
     if (!b) return;
     await deliverToCustomers([String(b.customerId)], {
       category: "bookingUpdates",
-      title: "Refund initiated",
-      body: `Your refund of ${inr(amount)} for ${tourTitle(b)} (${b.bookingRef}) has been initiated.`,
+      title: cancelled ? "Booking cancelled" : "Refund initiated",
+      body: cancelled
+        ? `Your booking for ${tourTitle(b)} (${b.bookingRef}) has been cancelled and a refund of ${inr(amount)} has been initiated.`
+        : `Your refund of ${inr(amount)} for ${tourTitle(b)} (${b.bookingRef}) has been initiated.`,
+      data: { screen: "booking", bookingId: String(b._id) },
+    });
+  });
+}
+
+/** A booking was cancelled by the office without a refund going through the app. */
+export function notifyBookingCancelled(bookingId: string) {
+  return safely("booking cancelled", async () => {
+    const b = await Booking.findById(bookingId);
+    if (!b) return;
+    await deliverToCustomers([String(b.customerId)], {
+      category: "bookingUpdates",
+      title: "Booking cancelled",
+      body: `Your booking for ${tourTitle(b)} (${b.bookingRef}) has been cancelled. Contact us if you have any questions.`,
       data: { screen: "booking", bookingId: String(b._id) },
     });
   });

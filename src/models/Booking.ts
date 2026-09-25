@@ -95,6 +95,11 @@ const bookingSchema = new Schema(
       default: "unpaid",
     },
 
+    // Set when the booking is cancelled — by the office, or by a refund that
+    // closes it — so the books show when and why, not just that status flipped.
+    cancelledAt: { type: Date },
+    cancellationReason: { type: String, trim: true },
+
     // While a booking that used a promo code is still unpaid, it *reserves*
     // one use of that code until this time (see promoUsage.service.ts) — so a
     // limited code can't be handed out to many unpaid bookings at once, yet an

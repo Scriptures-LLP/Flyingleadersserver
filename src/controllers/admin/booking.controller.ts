@@ -2,8 +2,14 @@ import type { Request, Response } from "express";
 
 import { Booking } from "../../models/Booking.js";
 import { Transaction } from "../../models/Transaction.js";
-import { recordOfficePayment, round2, voidOfficePayment } from "../../services/bookingPayment.service.js";
-import { notifyRefundIssued } from "../../services/notify.service.js";
+import {
+  applyRefundToBooking,
+  cancelBooking,
+  recordOfficePayment,
+  round2,
+  voidOfficePayment,
+} from "../../services/bookingPayment.service.js";
+import { notifyBookingCancelled, notifyRefundIssued } from "../../services/notify.service.js";
 import * as razorpay from "../../services/razorpay.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -74,7 +80,7 @@ export const voidPayment = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refund = asyncHandler(async (req: Request, res: Response) => {
-  const { amount, reason } = req.body as { amount?: number; reason?: string };
+  const { amount, reason, cancelBooking: cancel } = req.body as { amount?: number; reason?: string; cancelBooking?: boolean };
 
   const booking = await Booking.findById(req.params.id);
   if (!booking) throw ApiError.notFound("Booking not found");
@@ -117,20 +123,18 @@ export const refund = asyncHandler(async (req: Request, res: Response) => {
     },
   });
 
-  booking.amountPaid = round2(booking.amountPaid - refundAmount);
-  const fullyRefunded = booking.amountPaid <= 0;
-  booking.paymentStatus = fullyRefunded ? "refunded" : "refund_initiated";
-  if (fullyRefunded) booking.status = "cancelled";
-  await booking.save();
+  const result = await applyRefundToBooking(booking, refundAmount, { cancel, reason });
 
-  // A fully refunded booking that had used wallet credit gives that credit back.
-  const credit = booking.pricing.walletCreditApplied ?? 0;
-  if (fullyRefunded && credit > 0) {
-    const { restoreWalletCredit } = await import("../../services/referral.service.js");
-    await restoreWalletCredit(String(booking.customerId), credit, String(booking._id));
-  }
+  void notifyRefundIssued(String(booking._id), refundAmount, result.cancelled);
 
-  void notifyRefundIssued(String(booking._id), refundAmount);
+  res.json({ item: result.booking });
+});
 
+export const cancel = asyncHandler(async (req: Request, res: Response) => {
+  const { reason } = req.body as { reason?: string };
+  const { booking, changed } = await cancelBooking(String(req.params.id), reason);
+  if (!changed) throw ApiError.badRequest("This booking is already cancelled");
+  void notifyBookingCancelled(String(booking._id));
   res.json({ item: booking });
 });
+

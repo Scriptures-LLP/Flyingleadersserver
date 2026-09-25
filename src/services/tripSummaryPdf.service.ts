@@ -36,10 +36,56 @@ function htmlToLines(html: string): string[] {
     .filter(Boolean);
 }
 
+// Symbols admins commonly type that the PDF's built-in fonts have no glyph for.
+const SYMBOL_FALLBACKS: Record<string, string> = {
+  "₹": "Rs. ", "✓": "-", "✔": "-", "✅": "-", "✗": "x", "✘": "x", "❌": "x", "→": "->", "←": "<-", "★": "*", "☆": "*",
+  "\u2011": "-", "\u2212": "-", "\u2009": " ", "\u200a": " ", "\u202f": " ",
+};
+
+/**
+ * The built-in PDF fonts only cover Latin-1 ("WinAnsi") and pdf-lib THROWS on
+ * any other character — one emoji in a tour's itinerary (the admin's editor
+ * lets them type freely) would make the whole download fail. So everything
+ * headed for the page goes through here first: known symbols are swapped for a
+ * plain equivalent, accents are folded when the letter itself isn't covered,
+ * invisible/emoji characters are dropped, and any letter still unsupported
+ * (e.g. a Devanagari name) shows as "?" rather than breaking the document.
+ */
+export function toPdfSafeText(input: string, supported: Set<number>): string {
+  let out = "";
+  for (const ch of input.normalize("NFC")) {
+    const cp = ch.codePointAt(0)!;
+    if (supported.has(cp) && cp >= 0x20) {
+      out += ch;
+      continue;
+    }
+    const swap = SYMBOL_FALLBACKS[ch];
+    if (swap !== undefined) {
+      out += swap;
+      continue;
+    }
+    if (ch === "\t") {
+      out += " ";
+      continue;
+    }
+    const folded = ch.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+    if (folded !== ch && [...folded].every((c) => supported.has(c.codePointAt(0)!))) {
+      out += folded;
+      continue;
+    }
+    // Emoji, variation selectors, joiners, other symbols, control characters: drop.
+    if (/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Cf}\p{Cc}\p{So}\p{Sk}\p{Mn}\p{Me}]/u.test(ch)) continue;
+    // A real letter we can't draw: keep the gap visible.
+    out += "?";
+  }
+  return out.replace(/ {2,}/g, " ").trim();
+}
+
 export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const supported = new Set(font.getCharacterSet());
 
   let page = doc.addPage([595.28, 841.89]); // A4
   const margin = 50;
@@ -53,17 +99,57 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
     }
   }
 
+  const maxWidth = page.getWidth() - margin * 2;
+
+  // Breaks a line into pieces that fit the page width, at word boundaries
+  // (a single word longer than the line is split by characters).
+  function wrap(str: string, f: typeof font, size: number, indent: number): string[] {
+    const width = maxWidth - indent;
+    const lines: string[] = [];
+    let current = "";
+    for (const word of str.split(" ")) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (f.widthOfTextAtSize(candidate, size) <= width) {
+        current = candidate;
+        continue;
+      }
+      if (current) lines.push(current);
+      current = "";
+      let rest = word;
+      while (f.widthOfTextAtSize(rest, size) > width) {
+        let cut = rest.length - 1;
+        while (cut > 1 && f.widthOfTextAtSize(rest.slice(0, cut), size) > width) cut -= 1;
+        lines.push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+      }
+      current = rest;
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+
   function text(str: string, opts: { size?: number; bold?: boolean; color?: [number, number, number]; gap?: number } = {}) {
     const size = opts.size ?? 11;
-    ensureSpace(size + (opts.gap ?? lineGap));
-    page.drawText(str, {
-      x: margin,
-      y,
-      size,
-      font: opts.bold ? bold : font,
-      color: opts.color ? rgb(...opts.color) : rgb(0.1, 0.1, 0.12),
+    const gap = opts.gap ?? lineGap;
+    const f = opts.bold ? bold : font;
+    const safe = toPdfSafeText(str, supported);
+    // Bullet lines hang their wrapped continuation under the text, not the bullet.
+    const indent = safe.startsWith("\u2022 ") ? f.widthOfTextAtSize("\u2022 ", size) : 0;
+    const pieces = wrap(safe, f, size, indent);
+    // A wrapped line packs tighter than the gap that separates paragraphs.
+    const lineHeight = pieces.length > 1 ? Math.min(gap, size + 4) : gap;
+    pieces.forEach((piece, i) => {
+      const last = i === pieces.length - 1;
+      ensureSpace(size + (last ? gap : lineHeight));
+      page.drawText(piece, {
+        x: margin + (i > 0 ? indent : 0),
+        y,
+        size,
+        font: f,
+        color: opts.color ? rgb(...opts.color) : rgb(0.1, 0.1, 0.12),
+      });
+      y -= last ? gap : lineHeight;
     });
-    y -= opts.gap ?? lineGap;
   }
 
   function divider() {
@@ -134,7 +220,7 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
   }
 
   ensureSpace(30);
-  page.drawText(`Generated ${new Date().toLocaleString("en-IN")} — Flying Leader`, {
+  page.drawText(toPdfSafeText(`Generated ${new Date().toLocaleString("en-IN")} — Flying Leader`, supported), {
     x: margin,
     y: margin - 10,
     size: 8,

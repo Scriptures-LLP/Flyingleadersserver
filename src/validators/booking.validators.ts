@@ -48,6 +48,13 @@ export const verifyPaymentSchema = z.discriminatedUnion("status", [
 export const refundBookingSchema = z.object({
   amount: z.coerce.number().min(0).optional(),
   reason: z.string().trim().optional(),
+  // A refund normally ends the booking: it moves to Cancelled and its seats go
+  // back on sale. Send false only to refund part of the money and keep the trip.
+  cancelBooking: z.boolean().optional(),
+});
+
+export const cancelBookingSchema = z.object({
+  reason: z.string().trim().max(300).optional(),
 });
 
 export const idParamSchema = z.object({ id: z.string().min(1) });

@@ -51,6 +51,71 @@ export async function finalizePaidBooking(updated: BookingDoc): Promise<BookingD
   return updated;
 }
 
+/**
+ * Cancels a booking: status → cancelled, seats it was holding go back on sale,
+ * and any promo reservation is released. Money is NOT touched here — a refund
+ * is its own step (see applyRefundToBooking) — so a booking paid at the office
+ * can be cancelled too and refunded over the counter.
+ *
+ * The status flip is a conditional update, so two requests cancelling the same
+ * booking can't both give the seats back. Returns `changed: false` when it was
+ * already cancelled.
+ */
+export async function cancelBooking(bookingId: string, reason?: string) {
+  const before = await Booking.findOneAndUpdate(
+    { _id: bookingId, status: { $ne: "cancelled" } },
+    {
+      $set: { status: "cancelled", cancelledAt: new Date(), ...(reason ? { cancellationReason: reason } : {}) },
+      $unset: { promoHoldUntil: 1, promoHoldFirm: 1 },
+    },
+    { new: false },
+  );
+  const booking = await Booking.findById(bookingId);
+  if (!booking) throw ApiError.notFound("Booking not found");
+  if (!before) return { booking, changed: false };
+
+  // Seats are taken when a booking is first confirmed (finalizePaidBooking), so
+  // only a booking that got that far has any to give back. Tours with no seat
+  // limit (seatsAvailable unset) have nothing to restore.
+  if ((before.status === "confirmed" || before.status === "completed") && before.tourId) {
+    await Tour.updateOne(
+      { _id: before.tourId, seatsAvailable: { $type: "number" } },
+      { $inc: { seatsAvailable: before.travellers.length } },
+    );
+  }
+  return { booking, changed: true };
+}
+
+/**
+ * Books a refund that has already gone through Razorpay onto the booking:
+ * the paid amount drops, the payment status shows the refund, and — unless the
+ * admin chose to keep the trip — the booking is cancelled, so what the
+ * customer sees in My Trips, the trip summary and the admin panel all agree.
+ * A refund that returns everything always cancels. Wallet credit the booking
+ * used comes back only on a full refund.
+ */
+export async function applyRefundToBooking(
+  booking: BookingDoc,
+  refundAmount: number,
+  opts: { cancel?: boolean; reason?: string } = {},
+) {
+  booking.amountPaid = Math.max(0, round2(booking.amountPaid - refundAmount));
+  const fullyRefunded = booking.amountPaid <= 0;
+  booking.paymentStatus = fullyRefunded ? "refunded" : "refund_initiated";
+  await booking.save();
+
+  const cancelled = fullyRefunded || opts.cancel !== false;
+  const result = cancelled ? await cancelBooking(String(booking._id), opts.reason) : { booking, changed: false };
+
+  // A fully refunded booking that had used wallet credit gives that credit back.
+  const credit = booking.pricing.walletCreditApplied ?? 0;
+  if (fullyRefunded && credit > 0) {
+    const { restoreWalletCredit } = await import("./referral.service.js");
+    await restoreWalletCredit(String(booking.customerId), credit, String(booking._id));
+  }
+  return { booking: result.booking, fullyRefunded, cancelled };
+}
+
 export type OfficePaymentInput = {
   amount: number;
   method: OfficePaymentMethod;
