@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
 import { Pagination, usePagination } from "../components/Pagination";
@@ -33,6 +33,8 @@ type Booking = {
   paymentStatus: "unpaid" | "partial" | "paid" | "refund_initiated" | "refunded";
   cancelledAt?: string;
   cancellationReason?: string;
+  // Total returned to the customer through Razorpay (list endpoint only).
+  refundedAmount?: number;
   createdAt: string;
 };
 
@@ -142,6 +144,63 @@ function canRecordOffice(b: Booking): boolean {
   return b.status !== "cancelled" && (b.paymentStatus === "unpaid" || b.paymentStatus === "partial") && remainingOf(b) > 0;
 }
 
+// The payment-status filter. A booking counts under Pending / Partially paid /
+// Fully paid only while it is live; Cancelled is every cancelled booking and
+// Refunded is any booking that has had money returned (fully or partly) — so a
+// cancelled booking that was refunded shows under both, by design.
+type PaymentFilter = "all" | "pending" | "partial" | "paid" | "cancelled" | "refunded";
+
+const PAYMENT_FILTERS: {
+  key: Exclude<PaymentFilter, "all">;
+  label: string;
+  match: (b: Booking) => boolean;
+  // The one amount that best describes this group, and what it means.
+  amount: (b: Booking) => number;
+  amountLabel: string;
+  dot: string;
+}[] = [
+  {
+    key: "pending",
+    label: "Pending payment",
+    match: (b) => b.status !== "cancelled" && b.paymentStatus === "unpaid",
+    amount: (b) => b.pricing?.finalAmount ?? 0,
+    amountLabel: "awaiting payment",
+    dot: "bg-amber-500",
+  },
+  {
+    key: "partial",
+    label: "Partially paid",
+    match: (b) => b.status !== "cancelled" && b.paymentStatus === "partial",
+    amount: (b) => b.amountPaid ?? 0,
+    amountLabel: "collected so far",
+    dot: "bg-sky-500",
+  },
+  {
+    key: "paid",
+    label: "Fully paid",
+    match: (b) => b.status !== "cancelled" && b.paymentStatus === "paid",
+    amount: (b) => b.amountPaid ?? 0,
+    amountLabel: "collected",
+    dot: "bg-emerald-500",
+  },
+  {
+    key: "cancelled",
+    label: "Cancelled",
+    match: (b) => b.status === "cancelled",
+    amount: (b) => b.pricing?.finalAmount ?? 0,
+    amountLabel: "booking value",
+    dot: "bg-rose-500",
+  },
+  {
+    key: "refunded",
+    label: "Refunded",
+    match: (b) => b.paymentStatus === "refunded" || b.paymentStatus === "refund_initiated",
+    amount: (b) => b.refundedAmount ?? 0,
+    amountLabel: "refunded",
+    dot: "bg-violet-500",
+  },
+];
+
 function name(v: Booking["tourId"] | Booking["customerId"]): string {
   if (!v) return "—";
   if (typeof v === "string") return v;
@@ -166,7 +225,22 @@ export function BookingsPage() {
     queryFn: async () => (await api.get("/admin/bookings")).data.items as Booking[],
   });
 
-  const pager = usePagination(bookings, 6);
+  const [filter, setFilter] = useState<PaymentFilter>("all");
+  // Count + amount for every payment status, always over ALL bookings so the
+  // numbers stay put while a filter is applied.
+  const summary = useMemo(
+    () =>
+      PAYMENT_FILTERS.map((f) => {
+        const rows = (bookings ?? []).filter(f.match);
+        return { ...f, count: rows.length, total: rows.reduce((n, b) => n + f.amount(b), 0) };
+      }),
+    [bookings],
+  );
+  const shown = useMemo(() => {
+    const active = PAYMENT_FILTERS.find((f) => f.key === filter);
+    return active ? (bookings ?? []).filter(active.match) : bookings;
+  }, [bookings, filter]);
+  const pager = usePagination(shown, 6, filter);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const { data: detail } = useQuery({
@@ -300,6 +374,48 @@ export function BookingsPage() {
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {bookings && (
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+            <button
+              type="button"
+              aria-pressed={filter === "all"}
+              onClick={() => setFilter("all")}
+              className={`rounded-xl border p-3 text-left shadow-sm transition ${
+                filter === "all" ? "border-red-500 bg-red-50 ring-1 ring-red-500" : "border-neutral-200 bg-white hover:border-neutral-300"
+              }`}
+            >
+              <p className="text-xs font-medium text-neutral-500">All bookings</p>
+              <p className="mt-1 text-xl font-bold text-neutral-900">{bookings.length}</p>
+              <p className="text-xs text-neutral-400">{inr(bookings.reduce((n, b) => n + (b.amountPaid ?? 0), 0))} collected</p>
+            </button>
+            {summary.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={filter === f.key}
+                onClick={() => setFilter(filter === f.key ? "all" : f.key)}
+                className={`rounded-xl border p-3 text-left shadow-sm transition ${
+                  filter === f.key ? "border-red-500 bg-red-50 ring-1 ring-red-500" : "border-neutral-200 bg-white hover:border-neutral-300"
+                }`}
+              >
+                <p className="flex items-center gap-1.5 text-xs font-medium text-neutral-500">
+                  <span className={`h-2 w-2 rounded-full ${f.dot}`} />
+                  {f.label}
+                </p>
+                <p className="mt-1 text-xl font-bold text-neutral-900">{f.count}</p>
+                <p className="text-xs text-neutral-400">
+                  {inr(f.total)} {f.amountLabel}
+                </p>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-neutral-400">
+            Click a card to filter the table. A cancelled booking that was refunded is counted under both Cancelled and Refunded.
+          </p>
+        </div>
+      )}
+
+      {bookings && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
@@ -347,10 +463,19 @@ export function BookingsPage() {
                   </td>
                 </tr>
               ))}
-              {bookings.length === 0 && (
+              {pager.total === 0 && (
                 <tr>
                   <td colSpan={11} className="px-4 py-6 text-center text-neutral-400">
-                    No bookings yet.
+                    {bookings.length === 0 ? (
+                      "No bookings yet."
+                    ) : (
+                      <>
+                        No bookings match this filter.{" "}
+                        <button onClick={() => setFilter("all")} className="text-red-600 hover:underline">
+                          Show all
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               )}

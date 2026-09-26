@@ -15,11 +15,17 @@ import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const list = asyncHandler(async (req: Request, res: Response) => {
-  const bookings = await Booking.find()
-    .populate("tourId", "title slug")
-    .populate("customerId", "name email")
-    .sort({ createdAt: -1 });
-  res.json({ items: bookings });
+  const [bookings, refunds] = await Promise.all([
+    Booking.find().populate("tourId", "title slug").populate("customerId", "name email").sort({ createdAt: -1 }),
+    // What has actually gone back to customers through Razorpay, per booking — the
+    // list shows it as the "Refunded" total (a booking's own amountPaid drops on refund).
+    Transaction.aggregate<{ _id: unknown; total: number }>([
+      { $match: { type: "refund", status: "refunded" } },
+      { $group: { _id: "$bookingId", total: { $sum: "$amount" } } },
+    ]),
+  ]);
+  const refunded = new Map(refunds.map((r) => [String(r._id), round2(r.total)]));
+  res.json({ items: bookings.map((b) => ({ ...b.toObject(), refundedAmount: refunded.get(String(b._id)) ?? 0 })) });
 });
 
 /**
