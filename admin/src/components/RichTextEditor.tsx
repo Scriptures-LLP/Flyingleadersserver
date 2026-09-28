@@ -83,7 +83,17 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
 
   return (
     <div className="rounded-md border border-neutral-300">
-      <div className="flex flex-wrap items-center gap-1 border-b border-neutral-200 bg-neutral-50 p-1.5">
+      <div
+        className="flex flex-wrap items-center gap-1 border-b border-neutral-200 bg-neutral-50 p-1.5"
+        // Keep the editor's text selection when a toolbar control is pressed.
+        // Without this, mousedown moves focus out of the editor and collapses the
+        // selection before the click handler runs — so color / font-size / marks
+        // land on an empty selection and appear to "do nothing". The <select>
+        // dropdowns are exempted so they can still open.
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest("select")) e.preventDefault();
+        }}
+      >
         <button type="button" className={btn(editor.isActive("bold"))} onClick={() => editor.chain().focus().toggleBold().run()}>
           <b>B</b>
         </button>
