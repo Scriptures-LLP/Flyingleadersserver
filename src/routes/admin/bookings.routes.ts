@@ -6,6 +6,7 @@ import { requireRole } from "../../middlewares/role.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
   bookingTransactionParamSchema,
+  cancelBookingSchema,
   idParamSchema,
   recordOfficePaymentSchema,
   refundBookingSchema,
@@ -22,6 +23,11 @@ adminBookingsRoutes.post(
   "/:id/refund",
   validate({ params: idParamSchema, body: refundBookingSchema }),
   bookingController.refund,
+);
+adminBookingsRoutes.post(
+  "/:id/cancel",
+  validate({ params: idParamSchema, body: cancelBookingSchema }),
+  bookingController.cancel,
 );
 adminBookingsRoutes.post(
   "/:id/payments",

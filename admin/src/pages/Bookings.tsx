@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
 import { Pagination, usePagination } from "../components/Pagination";
@@ -31,6 +31,10 @@ type Booking = {
   amountPaid: number;
   status: "pending_payment" | "confirmed" | "cancelled" | "completed";
   paymentStatus: "unpaid" | "partial" | "paid" | "refund_initiated" | "refunded";
+  cancelledAt?: string;
+  cancellationReason?: string;
+  // Total returned to the customer through Razorpay (list endpoint only).
+  refundedAmount?: number;
   createdAt: string;
 };
 
@@ -86,6 +90,8 @@ const TXN_STATUS: Record<Transaction["status"], { label: string; className: stri
   refunded: { label: "Refunded", className: "bg-neutral-100 text-neutral-600" },
   created: { label: "Not paid — checkout not completed", className: "bg-neutral-100 text-neutral-500" },
   failed: { label: "Failed / cancelled", className: "bg-red-50 text-red-700" },
+  // An office payment that was entered by mistake and reversed (kept in the books, marked void).
+  voided: { label: "Voided", className: "bg-red-50 text-red-700" },
 };
 
 // Each status gets its own colour so the payment state is obvious at a glance.
@@ -138,6 +144,63 @@ function canRecordOffice(b: Booking): boolean {
   return b.status !== "cancelled" && (b.paymentStatus === "unpaid" || b.paymentStatus === "partial") && remainingOf(b) > 0;
 }
 
+// The payment-status filter. A booking counts under Pending / Partially paid /
+// Fully paid only while it is live; Cancelled is every cancelled booking and
+// Refunded is any booking that has had money returned (fully or partly) — so a
+// cancelled booking that was refunded shows under both, by design.
+type PaymentFilter = "all" | "pending" | "partial" | "paid" | "cancelled" | "refunded";
+
+const PAYMENT_FILTERS: {
+  key: Exclude<PaymentFilter, "all">;
+  label: string;
+  match: (b: Booking) => boolean;
+  // The one amount that best describes this group, and what it means.
+  amount: (b: Booking) => number;
+  amountLabel: string;
+  dot: string;
+}[] = [
+  {
+    key: "pending",
+    label: "Pending payment",
+    match: (b) => b.status !== "cancelled" && b.paymentStatus === "unpaid",
+    amount: (b) => b.pricing?.finalAmount ?? 0,
+    amountLabel: "awaiting payment",
+    dot: "bg-amber-500",
+  },
+  {
+    key: "partial",
+    label: "Partially paid",
+    match: (b) => b.status !== "cancelled" && b.paymentStatus === "partial",
+    amount: (b) => b.amountPaid ?? 0,
+    amountLabel: "collected so far",
+    dot: "bg-sky-500",
+  },
+  {
+    key: "paid",
+    label: "Fully paid",
+    match: (b) => b.status !== "cancelled" && b.paymentStatus === "paid",
+    amount: (b) => b.amountPaid ?? 0,
+    amountLabel: "collected",
+    dot: "bg-emerald-500",
+  },
+  {
+    key: "cancelled",
+    label: "Cancelled",
+    match: (b) => b.status === "cancelled",
+    amount: (b) => b.pricing?.finalAmount ?? 0,
+    amountLabel: "booking value",
+    dot: "bg-rose-500",
+  },
+  {
+    key: "refunded",
+    label: "Refunded",
+    match: (b) => b.paymentStatus === "refunded" || b.paymentStatus === "refund_initiated",
+    amount: (b) => b.refundedAmount ?? 0,
+    amountLabel: "refunded",
+    dot: "bg-violet-500",
+  },
+];
+
 function name(v: Booking["tourId"] | Booking["customerId"]): string {
   if (!v) return "—";
   if (typeof v === "string") return v;
@@ -162,7 +225,22 @@ export function BookingsPage() {
     queryFn: async () => (await api.get("/admin/bookings")).data.items as Booking[],
   });
 
-  const pager = usePagination(bookings, 6);
+  const [filter, setFilter] = useState<PaymentFilter>("all");
+  // Count + amount for every payment status, always over ALL bookings so the
+  // numbers stay put while a filter is applied.
+  const summary = useMemo(
+    () =>
+      PAYMENT_FILTERS.map((f) => {
+        const rows = (bookings ?? []).filter(f.match);
+        return { ...f, count: rows.length, total: rows.reduce((n, b) => n + f.amount(b), 0) };
+      }),
+    [bookings],
+  );
+  const shown = useMemo(() => {
+    const active = PAYMENT_FILTERS.find((f) => f.key === filter);
+    return active ? (bookings ?? []).filter(active.match) : bookings;
+  }, [bookings, filter]);
+  const pager = usePagination(shown, 6, filter);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const { data: detail } = useQuery({
@@ -205,6 +283,9 @@ export function BookingsPage() {
     setOfficeError(null);
     setVoidError(null);
     setRefundError(null);
+    setRefundCancels(true);
+    setCancelReason("");
+    setCancelError(null);
   };
 
   const recordMutation = useMutation({
@@ -242,13 +323,18 @@ export function BookingsPage() {
 
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
+  // A refund normally ends the booking (→ Cancelled, seats freed); untick to refund part and keep the trip.
+  const [refundCancels, setRefundCancels] = useState(true);
   const [refundError, setRefundError] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const refundMutation = useMutation({
     mutationFn: async () => {
       const body: Record<string, unknown> = {};
       if (refundAmount) body.amount = Number(refundAmount);
       if (refundReason) body.reason = refundReason;
+      body.cancelBooking = refundCancels;
       return api.post(`/admin/bookings/${detailId}/refund`, body);
     },
     onSuccess: () => {
@@ -256,9 +342,25 @@ export function BookingsPage() {
       queryClient.invalidateQueries({ queryKey: ["/admin/bookings", detailId] });
       setRefundAmount("");
       setRefundReason("");
+      setRefundCancels(true);
       setRefundError(null);
     },
     onError: (err) => setRefundError(apiErrorMessage(err)),
+  });
+
+  // Cancels the booking without moving any money (refunds are their own step).
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const body: Record<string, unknown> = {};
+      if (cancelReason) body.reason = cancelReason;
+      return api.post(`/admin/bookings/${detailId}/cancel`, body);
+    },
+    onSuccess: () => {
+      refreshBooking();
+      setCancelReason("");
+      setCancelError(null);
+    },
+    onError: (err) => setCancelError(apiErrorMessage(err)),
   });
 
   return (
@@ -270,6 +372,48 @@ export function BookingsPage() {
 
       {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
+
+      {bookings && (
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+            <button
+              type="button"
+              aria-pressed={filter === "all"}
+              onClick={() => setFilter("all")}
+              className={`rounded-xl border p-3 text-left shadow-sm transition ${
+                filter === "all" ? "border-red-500 bg-red-50 ring-1 ring-red-500" : "border-neutral-200 bg-white hover:border-neutral-300"
+              }`}
+            >
+              <p className="text-xs font-medium text-neutral-500">All bookings</p>
+              <p className="mt-1 text-xl font-bold text-neutral-900">{bookings.length}</p>
+              <p className="text-xs text-neutral-400">{inr(bookings.reduce((n, b) => n + (b.amountPaid ?? 0), 0))} collected</p>
+            </button>
+            {summary.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={filter === f.key}
+                onClick={() => setFilter(filter === f.key ? "all" : f.key)}
+                className={`rounded-xl border p-3 text-left shadow-sm transition ${
+                  filter === f.key ? "border-red-500 bg-red-50 ring-1 ring-red-500" : "border-neutral-200 bg-white hover:border-neutral-300"
+                }`}
+              >
+                <p className="flex items-center gap-1.5 text-xs font-medium text-neutral-500">
+                  <span className={`h-2 w-2 rounded-full ${f.dot}`} />
+                  {f.label}
+                </p>
+                <p className="mt-1 text-xl font-bold text-neutral-900">{f.count}</p>
+                <p className="text-xs text-neutral-400">
+                  {inr(f.total)} {f.amountLabel}
+                </p>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-neutral-400">
+            Click a card to filter the table. A cancelled booking that was refunded is counted under both Cancelled and Refunded.
+          </p>
+        </div>
+      )}
 
       {bookings && (
         <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
@@ -319,10 +463,19 @@ export function BookingsPage() {
                   </td>
                 </tr>
               ))}
-              {bookings.length === 0 && (
+              {pager.total === 0 && (
                 <tr>
                   <td colSpan={11} className="px-4 py-6 text-center text-neutral-400">
-                    No bookings yet.
+                    {bookings.length === 0 ? (
+                      "No bookings yet."
+                    ) : (
+                      <>
+                        No bookings match this filter.{" "}
+                        <button onClick={() => setFilter("all")} className="text-red-600 hover:underline">
+                          Show all
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               )}
@@ -350,6 +503,20 @@ export function BookingsPage() {
                   <div>
                     <h2 className="text-base font-semibold text-neutral-900">{detail.item.bookingRef}</h2>
                     <p className="text-sm text-neutral-500">{name(detail.item.tourId)}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[detail.item.status]}`}>
+                        {STATUS_LABEL[detail.item.status]}
+                      </span>
+                      <span className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${PAYMENT_STYLE[detail.item.paymentStatus]}`}>
+                        {PAYMENT_LABEL[detail.item.paymentStatus]}
+                      </span>
+                    </div>
+                    {detail.item.status === "cancelled" && (
+                      <p className="mt-1.5 text-xs text-neutral-500">
+                        Cancelled{detail.item.cancelledAt ? ` on ${new Date(detail.item.cancelledAt).toLocaleDateString("en-IN")}` : ""}
+                        {detail.item.cancellationReason ? ` — ${detail.item.cancellationReason}` : ""}
+                      </p>
+                    )}
                   </div>
                   <button onClick={closeDetail} className="text-neutral-400 hover:text-neutral-600">
                     ✕
@@ -587,7 +754,10 @@ export function BookingsPage() {
                   )}
                 </div>
 
-                {(detail.item.paymentStatus === "paid" || detail.item.paymentStatus === "partial") &&
+                {(detail.item.paymentStatus === "paid" ||
+                  detail.item.paymentStatus === "partial" ||
+                  detail.item.paymentStatus === "refund_initiated") &&
+                  detail.item.amountPaid > 0 &&
                   (detail.onlineRefundable > 0 ? (
                     <div className="mt-5 rounded-lg border border-neutral-200 p-3">
                       <p className="mb-1 text-sm font-medium text-neutral-700">Issue refund</p>
@@ -597,6 +767,20 @@ export function BookingsPage() {
                           " Money paid at the office has to be refunded at the office."}
                       </p>
                       {refundError && <p className="mb-2 text-sm text-red-600">{refundError}</p>}
+                      {detail.item.status !== "cancelled" && (
+                        <label className="mb-2 flex items-start gap-2 text-xs text-neutral-700">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            checked={refundCancels}
+                            onChange={(e) => setRefundCancels(e.target.checked)}
+                          />
+                          <span>
+                            Also cancel this booking — it moves to <strong>Cancelled</strong> (in the customer's My Trips
+                            too) and its seats go back on sale. A refund of everything paid always cancels it.
+                          </span>
+                        </label>
+                      )}
                       <div className="flex gap-2">
                         <input
                           type="number"
@@ -615,7 +799,15 @@ export function BookingsPage() {
                         />
                         <button
                           onClick={() => {
-                            if (confirm("Issue this refund via Razorpay? This moves real money.")) refundMutation.mutate();
+                            const ends =
+                              detail.item.status !== "cancelled" &&
+                              (refundCancels || (refundAmount !== "" && Number(refundAmount) >= detail.item.amountPaid));
+                            if (
+                              confirm(
+                                `Issue this refund via Razorpay? This moves real money.${ends ? "\n\nThe booking will be marked Cancelled." : ""}`,
+                              )
+                            )
+                              refundMutation.mutate();
                           }}
                           disabled={refundMutation.isPending}
                           className="shrink-0 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
@@ -630,6 +822,36 @@ export function BookingsPage() {
                       refund has to be handled there.
                     </p>
                   ))}
+
+                {detail.item.status !== "cancelled" && (
+                  <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50/50 p-3">
+                    <p className="mb-1 text-sm font-medium text-neutral-800">Cancel booking</p>
+                    <p className="mb-2 text-xs text-neutral-500">
+                      Marks the booking Cancelled — the customer sees it under Cancelled in My Trips — and puts its seats
+                      back on sale.
+                      {detail.item.amountPaid > 0 &&
+                        ` It does not return the ${inr(detail.item.amountPaid)} already paid: refund that separately (above for online payments, at the office for cash).`}
+                    </p>
+                    {cancelError && <p className="mb-2 text-sm text-red-600">{cancelError}</p>}
+                    <div className="flex gap-2">
+                      <input
+                        placeholder="Reason (optional)"
+                        className="input"
+                        value={cancelReason}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                      />
+                      <button
+                        onClick={() => {
+                          if (confirm(`Cancel booking ${detail.item.bookingRef}? The customer will be notified.`)) cancelMutation.mutate();
+                        }}
+                        disabled={cancelMutation.isPending}
+                        className="shrink-0 rounded-md border border-rose-300 bg-white px-3 py-1.5 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                      >
+                        {cancelMutation.isPending ? "Cancelling…" : "Cancel booking"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>

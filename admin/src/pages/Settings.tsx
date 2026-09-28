@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { RichTextEditor } from "../components/RichTextEditor";
 import { api, apiErrorMessage } from "../lib/api";
+import { cleanSocialUrl, SOCIAL_PLATFORMS, type SocialKey } from "../lib/socialLinks";
 
 function useSetting(key: string) {
   const queryClient = useQueryClient();
@@ -139,6 +140,96 @@ function AgeCategorySettings() {
   );
 }
 
+function SocialLinksSettings() {
+  const queryClient = useQueryClient();
+  const keys = SOCIAL_PLATFORMS.map((p) => `social_${p.key}`);
+  const { data, isLoading } = useQuery({
+    queryKey: ["/admin/settings", "social"],
+    queryFn: async () => {
+      const rows = await Promise.all(keys.map(async (k) => (await api.get(`/admin/settings/${k}`)).data.item as { key: string; value: string }));
+      return Object.fromEntries(rows.map((r) => [r.key.replace("social_", ""), r.value])) as Record<SocialKey, string>;
+    },
+  });
+
+  const [values, setValues] = useState<Record<SocialKey, string>>({ instagram: "", facebook: "", youtube: "", linkedin: "" });
+  const [errors, setErrors] = useState<Partial<Record<SocialKey, string>>>({});
+  const [saved, setSaved] = useState(false);
+  useEffect(() => {
+    if (data) setValues({ instagram: data.instagram ?? "", facebook: data.facebook ?? "", youtube: data.youtube ?? "", linkedin: data.linkedin ?? "" });
+  }, [data]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (cleaned: Record<SocialKey, string>) =>
+      Promise.all(SOCIAL_PLATFORMS.map((p) => api.put(`/admin/settings/social_${p.key}`, { value: cleaned[p.key] }))),
+    onSuccess: (_r, cleaned) => {
+      setValues(cleaned);
+      queryClient.invalidateQueries({ queryKey: ["/admin/settings", "social"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    },
+  });
+
+  const save = () => {
+    const nextErrors: Partial<Record<SocialKey, string>> = {};
+    const cleaned = {} as Record<SocialKey, string>;
+    for (const p of SOCIAL_PLATFORMS) {
+      const raw = values[p.key].trim();
+      const url = cleanSocialUrl(p.key, raw);
+      if (raw && !url) nextErrors[p.key] = `That doesn't look like a ${p.label} link (expected ${p.hosts[0]}).`;
+      cleaned[p.key] = url ?? "";
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length === 0) saveMutation.mutate(cleaned);
+  };
+
+  return (
+    <div className="mt-6">
+      <h2 className="mb-1 text-base font-semibold text-neutral-900">Social media links</h2>
+      <p className="mb-3 text-sm text-neutral-500">
+        Shown as the "Connect With Us" icons at the bottom of the app's Home screen. Paste each official page link — changes appear in
+        the app straight away, no new app version needed. Leave one empty to hide that icon; with all four empty the section is hidden.
+      </p>
+      {isLoading ? (
+        <p className="text-neutral-500">Loading…</p>
+      ) : (
+        <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+          {saveMutation.isError && (
+            <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{apiErrorMessage(saveMutation.error)}</div>
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {SOCIAL_PLATFORMS.map((p) => (
+              <label key={p.key} className="text-sm text-neutral-700">
+                {p.label}
+                <input
+                  className="input mt-1"
+                  inputMode="url"
+                  placeholder={p.placeholder}
+                  value={values[p.key]}
+                  onChange={(e) => {
+                    setValues((v) => ({ ...v, [p.key]: e.target.value }));
+                    setErrors((er) => ({ ...er, [p.key]: undefined }));
+                  }}
+                />
+                {errors[p.key] && <span className="mt-1 block text-xs text-red-600">{errors[p.key]}</span>}
+              </label>
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              onClick={save}
+              disabled={saveMutation.isPending}
+              className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {saveMutation.isPending ? "Saving…" : "Save"}
+            </button>
+            {saved && <span className="text-sm text-neutral-600">Saved</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { data, isLoading, saveMutation } = useSetting("terms_html");
 
@@ -191,6 +282,7 @@ export function SettingsPage() {
 
       <ReferralRewardSetting />
       <AgeCategorySettings />
+      <SocialLinksSettings />
     </div>
   );
 }
