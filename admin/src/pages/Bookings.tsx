@@ -423,6 +423,7 @@ export function BookingsPage() {
                 <th className="px-4 py-2 font-medium">Ref</th>
                 <th className="px-4 py-2 font-medium">Tour</th>
                 <th className="px-4 py-2 font-medium">Customer</th>
+                <th className="px-4 py-2 font-medium">Booked on</th>
                 <th className="px-4 py-2 font-medium">Travel date</th>
                 <th className="px-4 py-2 font-medium">Travellers</th>
                 <th className="px-4 py-2 font-medium">Total</th>
@@ -439,6 +440,9 @@ export function BookingsPage() {
                   <td className="px-4 py-2 font-mono text-xs text-slate-700">{b.bookingRef}</td>
                   <td className="px-4 py-2 text-slate-700">{name(b.tourId)}</td>
                   <td className="px-4 py-2 text-slate-700">{name(b.customerId)}</td>
+                  <td className="px-4 py-2 text-slate-500">
+                    {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </td>
                   <td className="px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
                   <td className="px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
                   <td className="px-4 py-2 text-slate-700">{inr(b.pricing?.finalAmount)}</td>
@@ -465,7 +469,7 @@ export function BookingsPage() {
               ))}
               {pager.total === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-6 text-center text-neutral-400">
+                  <td colSpan={12} className="px-4 py-6 text-center text-neutral-400">
                     {bookings.length === 0 ? (
                       "No bookings yet."
                     ) : (
