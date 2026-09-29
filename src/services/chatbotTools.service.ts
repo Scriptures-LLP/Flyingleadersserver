@@ -231,7 +231,7 @@ async function getTourDetails(args: ToolArgs) {
       pricePerInfant: (t.priceInfant ?? 0) > 0 ? inr(t.priceInfant ?? 0) : "No charge for the tour itself",
       travellerTypes: `Infant: up to ${ageConfig.infantMaxAge} years, Child: ${ageConfig.infantMaxAge + 1}–${ageConfig.childMaxAge} years, Adult: ${ageConfig.childMaxAge + 1}+ years`,
       partPayment: t.allowTokenPayment && (t.tokenAmount ?? 0) > 0 ? `Can book with a token payment of ${inr(t.tokenAmount ?? 0)}, balance later` : "Full payment at booking",
-      note: "These are starting prices. The exact price depends on each traveller's age, the travel date and the departure airport — use get_price_quote for the real figure.",
+      note: "These are per-person STARTING prices for reference only — do not multiply or add them up yourself, even roughly. For any total covering a specific group (more than one traveller, or any traveller whose age you know), call get_price_quote and state only the numbers it returns.",
     };
   }
   if (sections.has("itinerary")) out.itinerary = htmlToText(t.itinerary, 3500) || "Not available";
