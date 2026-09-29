@@ -18,7 +18,7 @@ type TourDate = {
   isActive: boolean;
 };
 
-type Airport = { _id: string; code: string; name: string };
+type Airport = { _id: string; code: string; name: string; isActive: boolean };
 
 export function TourDatesPage() {
   const { data: tours } = useQuery({
@@ -29,6 +29,16 @@ export function TourDatesPage() {
     queryKey: ["/admin/airports"],
     queryFn: async () => (await api.get("/admin/airports")).data.items as Airport[],
   });
+
+
+  // Inactive airports stay pickable here (an existing row can reference one),
+  // but sorted after the active ones and clearly labelled — so deactivating an
+  // airport is visibly reflected the moment an admin opens this dropdown,
+  // instead of it silently still looking like a normal, live option.
+  const airportOptions = (airports ?? [])
+    .slice()
+    .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.code.localeCompare(b.code))
+    .map((a) => ({ value: a._id, label: `${a.code} — ${a.name}${a.isActive ? "" : " (Inactive)"}` }));
 
   const airport = (id?: string | null) => (id ? airports?.find((a) => a._id === id) : null);
   const isPast = (iso: string) => new Date(iso).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0);
@@ -100,7 +110,7 @@ export function TourDatesPage() {
           name: "airportId",
           label: "Airport (leave blank for any)",
           type: "select",
-          options: (airports ?? []).map((a) => ({ value: a._id, label: `${a.code} — ${a.name}` })),
+          options: airportOptions,
         },
         { name: "date", label: "Date", type: "date", required: true },
         {

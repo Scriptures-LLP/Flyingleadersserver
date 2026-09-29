@@ -15,7 +15,7 @@ type TourAirportPrice = {
   appliesToInfant: boolean;
   isActive: boolean;
 };
-type Airport = { _id: string; code: string; name: string };
+type Airport = { _id: string; code: string; name: string; isActive: boolean };
 
 export function TourAirportPricesPage() {
   const { data: tours } = useQuery({
@@ -26,6 +26,16 @@ export function TourAirportPricesPage() {
     queryKey: ["/admin/airports"],
     queryFn: async () => (await api.get("/admin/airports")).data.items as Airport[],
   });
+
+
+  // Inactive airports stay pickable here (an existing row can reference one),
+  // but sorted after the active ones and clearly labelled — so deactivating an
+  // airport is visibly reflected the moment an admin opens this dropdown,
+  // instead of it silently still looking like a normal, live option.
+  const airportOptions = (airports ?? [])
+    .slice()
+    .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.code.localeCompare(b.code))
+    .map((a) => ({ value: a._id, label: `${a.code} — ${a.name}${a.isActive ? "" : " (Inactive)"}` }));
 
   const airport = (id: string) => airports?.find((a) => a._id === id);
 
@@ -90,7 +100,7 @@ export function TourAirportPricesPage() {
           type: "select",
           required: true,
           allowBlank: false,
-          options: (airports ?? []).map((a) => ({ value: a._id, label: `${a.code} — ${a.name}` })),
+          options: airportOptions,
         },
         {
           name: "addonPrice",

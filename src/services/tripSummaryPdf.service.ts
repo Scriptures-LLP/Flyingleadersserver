@@ -199,7 +199,15 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
     divider();
     text("Itinerary", { size: 13, bold: true, gap: 20 });
     for (const line of htmlToLines(booking.itinerarySnapshot.itinerary)) {
-      text(line, { size: 10 });
+      // The admin writes each day as its own plain-text line ("Day 1 |
+      // Welcome to Hanoi") with nothing marking it up as a heading, so the
+      // whole itinerary used to read as one undifferentiated block. Detecting
+      // that pattern here — instead of asking every admin to remember to
+      // format it — makes each day's start visibly stand out.
+      // Not anchored to the start: admins often lead the line with an emoji
+      // (dropped later by the PDF's own text sanitizing, not here).
+      const isDayHeader = /\bday\s*\d+\b/i.test(line);
+      text(line, isDayHeader ? { size: 12, bold: true, gap: 16 } : { size: 10 });
     }
   }
 
