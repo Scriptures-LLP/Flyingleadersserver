@@ -43,10 +43,20 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   // The wallet credit on this booking is only spent once it's paid — make sure it's still there.
   await assertWalletCreditAvailable(booking);
 
-  const order = await razorpay.createOrder(amount, booking.bookingRef, {
-    bookingId: String(booking._id),
-    mode,
-  });
+  // Razorpay's own API is the one call here with no retry/circuit-breaking —
+  // a hiccup on their end (or the odd cold-start moment) used to surface to the
+  // customer as a bare "Internal server error" with no hint to just try again.
+  // Booking itself is unaffected either way: nothing has been written yet.
+  let order: Awaited<ReturnType<typeof razorpay.createOrder>>;
+  try {
+    order = await razorpay.createOrder(amount, booking.bookingRef, {
+      bookingId: String(booking._id),
+      mode,
+    });
+  } catch (err) {
+    console.error("[payments] Razorpay order creation failed:", err);
+    throw ApiError.serviceUnavailable("Payment gateway is temporarily unavailable. Please try again in a moment.");
+  }
 
   await Transaction.create({
     bookingId: booking._id,
