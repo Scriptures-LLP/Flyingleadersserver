@@ -9,7 +9,7 @@ import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { FontSize } from "./tiptapFontSize";
 
@@ -37,6 +37,15 @@ const NoShortcutHeading = Heading.extend({ addInputRules: () => [] });
 // alignment, color, lists) rather than a plain textarea they'd have to
 // hand-write HTML into.
 export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }: Props) {
+  // The toolbar's onMouseDown below can't preventDefault for a <select> (that
+  // would stop it opening at all), so opening one still lets the browser steal
+  // the editor's selection the same way a plain button click used to before it
+  // was guarded. Snapshot the selection here, on the select's own mousedown —
+  // which fires before that happens — and restore it in the change handler
+  // before running the command, instead of trusting .focus() to still know
+  // where the text was.
+  const savedSelection = useRef<{ from: number; to: number } | null>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -81,6 +90,14 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
     `rounded px-2 py-1 text-xs font-medium ${active ? "bg-red-600 text-white" : "text-neutral-600 hover:bg-neutral-100"}`;
   const sep = <div className="mx-1 w-px self-stretch bg-neutral-200" />;
 
+  const captureSelection = () => {
+    savedSelection.current = { from: editor.state.selection.from, to: editor.state.selection.to };
+  };
+  const withSavedSelection = (chain: ReturnType<typeof editor.chain>) => {
+    const sel = savedSelection.current;
+    return sel ? chain.setTextSelection(sel) : chain;
+  };
+
   return (
     <div className="rounded-md border border-neutral-300">
       <div
@@ -108,10 +125,12 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
           title="Block style — applies to the whole line/paragraph"
           className="rounded border border-neutral-300 bg-white px-1.5 py-1 text-xs"
           value={editor.isActive("heading", { level: 1 }) ? "1" : editor.isActive("heading", { level: 2 }) ? "2" : editor.isActive("heading", { level: 3 }) ? "3" : "0"}
+          onMouseDown={captureSelection}
           onChange={(e) => {
             const level = Number(e.target.value);
-            if (level === 0) editor.chain().focus().setParagraph().run();
-            else editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run();
+            const chain = withSavedSelection(editor.chain().focus());
+            if (level === 0) chain.setParagraph().run();
+            else chain.toggleHeading({ level: level as 1 | 2 | 3 }).run();
           }}
         >
           <option value="0">Paragraph</option>
@@ -123,10 +142,12 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
           title="Font size — applies only to the selected text"
           className="rounded border border-neutral-300 bg-white px-1.5 py-1 text-xs"
           value={(editor.getAttributes("textStyle").fontSize as string | undefined) ?? ""}
+          onMouseDown={captureSelection}
           onChange={(e) => {
             const size = e.target.value;
-            if (!size) editor.chain().focus().unsetFontSize().run();
-            else editor.chain().focus().setFontSize(size).run();
+            const chain = withSavedSelection(editor.chain().focus());
+            if (!size) chain.unsetFontSize().run();
+            else chain.setFontSize(size).run();
           }}
         >
           <option value="">Normal size</option>
