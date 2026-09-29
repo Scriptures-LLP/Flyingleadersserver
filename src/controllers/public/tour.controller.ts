@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { Tour } from "../../models/Tour.js";
+import { TourDate } from "../../models/TourDate.js";
 import { TourMedia } from "../../models/TourMedia.js";
 import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
 import { serializeTourDetail, serializeTourSummary } from "../../services/tourSerializer.service.js";
@@ -63,11 +64,23 @@ export const getBySlug = asyncHandler(async (req: Request, res: Response) => {
 // travel charge is folded into the per-person price when a booking is priced,
 // never shown here. `airport` is set only when the admin tied the date to one
 // airport; null means the date works from any of the tour's airports.
+//
+// `usesDateSystem` says whether this tour has EVER had a Tour Date row (active,
+// inactive, or expired) — separate from `items`, which is only the ones
+// bookable right now. A tour set up with specific departure dates that have all
+// since passed must still ask "which date?" (and show nothing until one is
+// picked) rather than quietly falling back to "any airport, any time" just
+// because none of its dates happen to be current at this exact moment; a tour
+// that was never given dates at all should keep going straight to airports.
 export const listDates = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ slug: req.params.slug, isActive: true });
   if (!tour) throw ApiError.notFound("Tour not found");
 
-  res.json({ items: await listTourDates(tour._id) });
+  const [items, usesDateSystem] = await Promise.all([
+    listTourDates(tour._id),
+    TourDate.exists({ tourId: tour._id }).then(Boolean),
+  ]);
+  res.json({ items, usesDateSystem });
 });
 
 // The tour's departure airports, independent of the dates list above. Each
