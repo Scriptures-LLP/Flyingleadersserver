@@ -236,11 +236,15 @@ export function BookingsPage() {
       }),
     [bookings],
   );
+  const [search, setSearch] = useState("");
   const shown = useMemo(() => {
     const active = PAYMENT_FILTERS.find((f) => f.key === filter);
-    return active ? (bookings ?? []).filter(active.match) : bookings;
-  }, [bookings, filter]);
-  const pager = usePagination(shown, 6, filter);
+    const filtered = active ? (bookings ?? []).filter(active.match) : bookings;
+    const q = search.trim().toLowerCase();
+    if (!q || !filtered) return filtered;
+    return filtered.filter((b) => b.bookingRef.toLowerCase().includes(q) || name(b.customerId).toLowerCase().includes(q));
+  }, [bookings, filter, search]);
+  const pager = usePagination(shown, 6, `${filter}:${search}`);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const { data: detail } = useQuery({
@@ -365,9 +369,38 @@ export function BookingsPage() {
 
   return (
     <div>
-      <div className="mb-5 flex items-center gap-2.5">
-        <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">Bookings</h1>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
+          <h1 className="text-xl font-bold tracking-tight text-neutral-900">Bookings</h1>
+        </div>
+        <div className="relative w-full max-w-xs">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <circle cx={11} cy={11} r={7} />
+            <line x1={21} y1={21} x2={16.65} y2={16.65} />
+          </svg>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by booking ref or customer name…"
+            className="input w-full pl-9"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading && <p className="text-neutral-500">Loading…</p>}
@@ -474,9 +507,15 @@ export function BookingsPage() {
                       "No bookings yet."
                     ) : (
                       <>
-                        No bookings match this filter.{" "}
-                        <button onClick={() => setFilter("all")} className="text-red-600 hover:underline">
-                          Show all
+                        No bookings match this {filter !== "all" && search ? "filter and search" : filter !== "all" ? "filter" : "search"}.{" "}
+                        <button
+                          onClick={() => {
+                            setFilter("all");
+                            setSearch("");
+                          }}
+                          className="text-red-600 hover:underline"
+                        >
+                          Clear
                         </button>
                       </>
                     )}

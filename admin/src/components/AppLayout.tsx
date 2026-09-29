@@ -189,8 +189,13 @@ export function AppLayout() {
             </button>
           </div>
         </header>
-        <main className="flex-1 p-6 lg:p-8">
-          <div className="page-enter mx-auto max-w-6xl">
+        {/* The content column was capped at max-w-6xl (1152px) on every screen size —
+            fine on a laptop, but on a real desktop monitor it left a growing band of
+            empty space on both sides instead of using the room a wide screen actually
+            has. Widening the cap only at larger breakpoints (never below xl) keeps
+            laptop-width screens exactly as they were. */}
+        <main className="flex-1 p-6 lg:p-8 2xl:p-10">
+          <div className="page-enter mx-auto max-w-6xl xl:max-w-[1440px] 2xl:max-w-[1760px]">
             <Outlet />
           </div>
         </main>
