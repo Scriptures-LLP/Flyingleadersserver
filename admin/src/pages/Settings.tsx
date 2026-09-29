@@ -151,11 +151,15 @@ function SocialLinksSettings() {
     },
   });
 
-  const [values, setValues] = useState<Record<SocialKey, string>>({ instagram: "", facebook: "", youtube: "", linkedin: "" });
+  // Derived from SOCIAL_PLATFORMS rather than listed by hand, so adding a new
+  // network there (as WhatsApp just was) can't silently leave this out of sync.
+  const emptyValues = () => Object.fromEntries(SOCIAL_PLATFORMS.map((p) => [p.key, ""])) as Record<SocialKey, string>;
+  const [values, setValues] = useState<Record<SocialKey, string>>(emptyValues);
   const [errors, setErrors] = useState<Partial<Record<SocialKey, string>>>({});
   const [saved, setSaved] = useState(false);
   useEffect(() => {
-    if (data) setValues({ instagram: data.instagram ?? "", facebook: data.facebook ?? "", youtube: data.youtube ?? "", linkedin: data.linkedin ?? "" });
+    if (data) setValues({ ...emptyValues(), ...data });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const saveMutation = useMutation({

@@ -1,6 +1,6 @@
 import { Setting } from "../models/Setting.js";
 
-export const SOCIAL_PLATFORMS = ["instagram", "facebook", "youtube", "linkedin"] as const;
+export const SOCIAL_PLATFORMS = ["instagram", "facebook", "youtube", "linkedin", "whatsapp"] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
 export type SocialLinks = Partial<Record<SocialPlatform, string>>;
 
@@ -11,6 +11,8 @@ const HOSTS: Record<SocialPlatform, string[]> = {
   facebook: ["facebook.com", "fb.com", "fb.me"],
   youtube: ["youtube.com", "youtu.be"],
   linkedin: ["linkedin.com", "lnkd.in"],
+  // A WhatsApp "chat with us" link — wa.me/<number> or api.whatsapp.com/send?phone=...
+  whatsapp: ["wa.me", "whatsapp.com", "api.whatsapp.com"],
 };
 
 export const socialSettingKey = (platform: SocialPlatform) => `social_${platform}`;

@@ -6,6 +6,7 @@ export const SOCIAL_PLATFORMS = [
   { key: "facebook", label: "Facebook", hosts: ["facebook.com", "fb.com", "fb.me"], placeholder: "https://www.facebook.com/your-page" },
   { key: "youtube", label: "YouTube", hosts: ["youtube.com", "youtu.be"], placeholder: "https://www.youtube.com/@your-channel" },
   { key: "linkedin", label: "LinkedIn", hosts: ["linkedin.com", "lnkd.in"], placeholder: "https://www.linkedin.com/company/your-page" },
+  { key: "whatsapp", label: "WhatsApp", hosts: ["wa.me", "whatsapp.com", "api.whatsapp.com"], placeholder: "https://wa.me/91XXXXXXXXXX" },
 ] as const;
 
 export type SocialKey = (typeof SOCIAL_PLATFORMS)[number]["key"];

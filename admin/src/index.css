@@ -21,6 +21,25 @@ body {
   @apply w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none transition-colors focus:border-red-500 focus:ring-2 focus:ring-red-500/20;
 }
 
+/* On a real desktop monitor the content column is now noticeably wider
+   (AppLayout's xl/2xl max-width), but table text stayed at the same fixed
+   size as a laptop — so it read as small/thin against all that extra room.
+   A small, deliberate bump only at the widest breakpoint (never below it,
+   so a laptop is untouched) gives tables a bit more presence there. */
+@media (min-width: 1536px) {
+  table {
+    font-size: 0.9rem;
+  }
+  table th {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+  table td {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+}
+
 /* Gentle entrance for routed content — adds a premium, considered feel. */
 @keyframes pageEnter {
   from {

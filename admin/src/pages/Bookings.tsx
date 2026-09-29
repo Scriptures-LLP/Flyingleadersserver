@@ -389,7 +389,11 @@ export function BookingsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by booking ref or customer name…"
-            className="input w-full pl-9"
+            className="input w-full"
+            // The .input class's own px-3 (in index.css) was winning the cascade over
+            // the pl-9 utility class here, collapsing the icon into the placeholder
+            // text — an inline style always wins, so the extra room is guaranteed.
+            style={{ paddingLeft: 36, paddingRight: search ? 30 : undefined }}
           />
           {search && (
             <button
