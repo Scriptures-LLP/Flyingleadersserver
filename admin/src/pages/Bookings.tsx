@@ -44,7 +44,11 @@ type Transaction = {
   _id: string;
   channel?: "online" | "office";
   razorpayOrderId?: string;
+  // The payment this transaction moved money on. For a refund row this is
+  // still the ORIGINAL payment it refunded, not the refund itself -- that's
+  // refund.razorpayRefundId below.
   razorpayPaymentId?: string;
+  refund?: { razorpayRefundId?: string };
   amount: number;
   type: "token" | "full" | "balance" | "refund";
   status: "created" | "paid" | "failed" | "refunded" | "voided";
@@ -742,6 +746,12 @@ export function BookingsPage() {
                         const st = TXN_STATUS[t.status];
                         const moved = t.status === "paid" || t.status === "refunded";
                         const office = t.channel === "office" ? t.office : undefined;
+                        // Office payments have their own reference (receipt/UPI/cheque no.);
+                        // an online payment or refund has Razorpay's own id instead -- this
+                        // used to only ever show the office one, so every online transaction
+                        // (the vast majority) showed no id at all here, with nothing to match
+                        // against Razorpay's dashboard for a refund/dispute lookup.
+                        const razorpayRef = t.type === "refund" ? t.refund?.razorpayRefundId : t.razorpayPaymentId;
                         return (
                           <li key={t._id} className="flex items-center justify-between gap-3 py-1.5">
                             <div>
@@ -755,8 +765,12 @@ export function BookingsPage() {
                                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.className}`}>
                                   {st.label}
                                 </span>
-                                {office?.reference && (
+                                {office?.reference ? (
                                   <span className="ml-2 text-xs text-neutral-500">Ref: {office.reference}</span>
+                                ) : (
+                                  razorpayRef && (
+                                    <span className="ml-2 text-xs text-neutral-500">Ref: {razorpayRef}</span>
+                                  )
                                 )}
                               </div>
                               {office && (

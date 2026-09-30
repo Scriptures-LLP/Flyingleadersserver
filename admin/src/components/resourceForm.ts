@@ -63,11 +63,25 @@ export function buildPayload(fields: FieldConfig[], values: Record<string, unkno
         body[f.name] = !!values[f.name];
         continue;
       }
-      // Omit blank optional fields entirely — an empty string fails Mongoose's
-      // ObjectId cast on a "select" ref field, and is meaningless for others too.
       const v = values[f.name];
       if (v === "" || v === null || v === undefined) {
-        if ("blankAs" in f && f.blankAs !== undefined) body[f.name] = f.blankAs;
+        if ("blankAs" in f && f.blankAs !== undefined) {
+          body[f.name] = f.blankAs;
+        } else if (f.type === "select") {
+          // Send null (not omit) for a cleared "select" ref field. An empty
+          // string fails Mongoose's ObjectId cast, which is why this used to
+          // be omitted entirely -- but omitting it means findByIdAndUpdate
+          // (a plain, non-$set body only touches the keys it's given) never
+          // actually clears an existing value: picking "-- / All tours /
+          // Any airport" on an EDIT and saving silently kept the old id, even
+          // though the form showed the blank option selected. null casts
+          // fine and is what these fields default to anyway (e.g. a promo
+          // code's tourId), so this clears them for real.
+          body[f.name] = null;
+        }
+        // Other field types stay omitted on blank -- on an edit that keeps
+        // the existing value, which is what they're for (e.g. a date/number
+        // that's merely optional, not a clearable relation).
         continue;
       }
       body[f.name] = f.type === "datetime-local" ? withIstOffset(v) : v;
