@@ -189,7 +189,23 @@ async function searchTours(args: ToolArgs) {
       allTours: catalog.map((c) => ({ name: c.tour.title, destination: c.destination || undefined, startingPricePerAdult: inr(c.tour.price) })),
     };
   }
-  return { count: matches.length, tours: matches.slice(0, 8).map((x) => summarize(x.c)) };
+  // When the top result isn't a clear winner — a tie, or a near-tie broken only
+  // by price — the FIRST entry is not "the" match, it's just whichever of
+  // several equally-likely tours happened to sort first. Flag it explicitly:
+  // without this, a customer naming a destination that matches two similarly
+  // named tours (e.g. a real package and an old test/duplicate entry) got
+  // quoted for whichever was cheaper, with no indication anything was unclear.
+  const [best, second] = matches;
+  const tied = tokens.length > 0 && second !== undefined && second.score === best!.score && best!.score < 100;
+  return {
+    count: matches.length,
+    tours: matches.slice(0, 8).map((x) => summarize(x.c)),
+    ...(tied
+      ? {
+          note: `The top ${matches.filter((x) => x.score === best!.score).length} results matched equally closely — this list is not ranked by which one the customer meant. If it's not obvious from context which tour they mean, name them and ask, rather than picking the first one.`,
+        }
+      : {}),
+  };
 }
 
 const ALL_SECTIONS = ["overview", "pricing", "itinerary", "inclusions", "exclusions", "flights_hotels"] as const;
