@@ -9,7 +9,7 @@ import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { FontSize } from "./tiptapFontSize";
 
@@ -46,8 +46,27 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
   // where the text was.
   const savedSelection = useRef<{ from: number; to: number } | null>(null);
 
-  const editor = useEditor({
-    extensions: [
+  // onChange's identity changes every render (it's an inline arrow at every call
+  // site, e.g. `(html) => set("shortDesc", html)`) — keep onUpdate's closure off
+  // of that entirely via a ref, so it's never a reason for `extensions` below to
+  // need to change either.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // TipTap reinitializes the whole editor when the `extensions` array it's given
+  // is a new reference — documented TipTap behaviour, not a bug in their code.
+  // This used to be a plain array literal inline in useEditor(), i.e. a brand
+  // new array on every render, which React gives you on EVERY keystroke here
+  // (typing -> onUpdate -> onChange -> the parent's state update -> re-render).
+  // Reinitializing the editor drops the DOM's own live cursor/selection, so
+  // characters typed right as a reinit lands went missing or landed in the
+  // wrong place -- reproduced live: typing a full sentence left only its last
+  // few words in the field, no styling applied despite clicking the toolbar,
+  // and a few visible flickers, all from repeated silent reinitialization.
+  // Memoizing on `placeholder` (its only real input) keeps the array the same
+  // reference across every render that doesn't actually change it.
+  const extensions = useMemo(
+    () => [
       StarterKit.configure({
         bulletList: false,
         orderedList: false,
@@ -71,16 +90,84 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Placeholder.configure({ placeholder: placeholder ?? "" }),
     ],
-    content: value,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    [placeholder],
+  );
+
+  // useEditor re-applies `content` (among its other options) via a live
+  // editor.setOptions() whenever it sees ANY tracked option differ from the
+  // previous render -- and `content` legitimately differs on every single
+  // keystroke here (that's the whole point of a controlled value), so this
+  // fired on nearly every keystroke regardless of the extensions fix above.
+  // setOptions({content}) resets the document wholesale, which drops the
+  // DOM's own live cursor/selection even when the text ends up identical --
+  // reproduced live: typing a full sentence left only its last few words in
+  // the field, with no styling applied despite clicking every toolbar button.
+  // Only ever hand useEditor the value this editor was FIRST created with;
+  // every update after that already goes through the useEffect below, which
+  // is the one place that correctly guards against fighting the user's own
+  // typing (it only calls setContent when value doesn't already match what's
+  // in the editor -- i.e. only for a genuinely external change, like loading
+  // a different tour to edit).
+  const initialValue = useRef(value).current;
+  // What we ourselves most recently emitted via onChange -- see the effect
+  // below for why this, and not editor.getHTML(), is what `value` needs
+  // comparing against.
+  const lastEmitted = useRef(initialValue);
+
+  const editor = useEditor({
+    extensions,
+    content: initialValue,
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      lastEmitted.current = html;
+      onChangeRef.current(html);
+    },
+    // A documented TipTap/ProseMirror quirk: clicking into an empty document
+    // can leave a mark (bold, in practice, every time this was tested) as the
+    // PENDING "stored mark" for whatever's typed next, with no toolbar button
+    // ever pressed and no sign of it until the text comes out already
+    // bolded. Reproduced live on a brand-new "Add Tour" form: the very first
+    // character typed into a totally empty description came out as
+    // <strong>, on both the local build and the already-deployed one — this
+    // is the library's own known behaviour around empty-paragraph stored
+    // marks, not something specific to how this file configures it.
+    //
+    // unsetAllMarks() doesn't touch this: it strips marks from the SELECTED
+    // TEXT, and a collapsed cursor in an empty paragraph has no text to act
+    // on, so it's a silent no-op here (confirmed -- it alone didn't stop the
+    // bug). What actually needs clearing is ProseMirror's stored-marks state
+    // directly, one level below TipTap's own commands.
+    onFocus: ({ editor }) => {
+      if (editor.isEmpty) editor.view.dispatch(editor.state.tr.setStoredMarks([]));
+    },
+    onSelectionUpdate: ({ editor }) => {
+      if (editor.isEmpty) editor.view.dispatch(editor.state.tr.setStoredMarks([]));
+    },
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (!editor) return;
+    // Comparing against editor.getHTML() (what this used to do) races fast
+    // typing: onUpdate fires -> onChange -> the parent re-renders with a NEW
+    // value prop, but React can take more than one keystroke's worth of time
+    // to actually deliver that prop back down here, by which point the
+    // editor's LIVE content has already moved further ahead (more keystrokes
+    // applied on top). That later, larger getHTML() no longer matches this
+    // now-stale `value`, so the guard below used to read as "value differs,
+    // this must be an external change" and call setContent(value) -- rolling
+    // the whole document back to that stale snapshot and silently discarding
+    // everything typed in between. Reproduced live: typing a full sentence
+    // fast left only its last few words in the field.
+    //
+    // Comparing against `lastEmitted` instead asks the right question: is
+    // this `value` something WE just told the parent (however late it
+    // arrives), or does it not match anything we emitted -- which only
+    // happens for a genuinely external change, like loading a different
+    // tour to edit. Only that second case should ever touch the document.
+    if (value !== lastEmitted.current) {
+      lastEmitted.current = value;
       editor.commands.setContent(value, false);
     }
-    // Only resync when the external value changes (e.g. after load/save) —
-    // not on every keystroke, which would fight the user's cursor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
