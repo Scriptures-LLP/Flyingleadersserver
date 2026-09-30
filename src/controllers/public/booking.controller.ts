@@ -33,9 +33,11 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   const tour = await Tour.findOne({ _id: body.tourId, isActive: true });
   if (!tour) throw ApiError.notFound("Tour not found");
 
-  if (tour.seatsAvailable != null && tour.seatsAvailable < body.travellers.length) {
-    throw ApiError.badRequest("Not enough seats available for this tour");
-  }
+  // Seats/remark validation disabled by request — customers may book any number
+  // of travellers regardless of the tour's remaining seat count.
+  // if (tour.seatsAvailable != null && tour.seatsAvailable < body.travellers.length) {
+  //   throw ApiError.badRequest("Not enough seats available for this tour");
+  // }
 
   // The client-supplied type is never trusted for pricing — age is the
   // source of truth everywhere (admin, app, pricing, invoice), derived from

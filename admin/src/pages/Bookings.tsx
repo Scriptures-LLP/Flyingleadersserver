@@ -145,9 +145,9 @@ function canRecordOffice(b: Booking): boolean {
 }
 
 // The payment-status filter. A booking counts under Pending / Partially paid /
-// Fully paid only while it is live; Cancelled is every cancelled booking and
-// Refunded is any booking that has had money returned (fully or partly) — so a
-// cancelled booking that was refunded shows under both, by design.
+// Fully paid only while it is live. Cancelled and Refunded are mutually
+// exclusive: any booking that had money returned (fully or partly) counts under
+// Refunded only, while Cancelled holds cancelled bookings that were never refunded.
 type PaymentFilter = "all" | "pending" | "partial" | "paid" | "cancelled" | "refunded";
 
 const PAYMENT_FILTERS: {
@@ -185,14 +185,22 @@ const PAYMENT_FILTERS: {
   },
   {
     key: "cancelled",
+    // Cancelled with NO money ever returned. A cancelled booking that had any
+    // refund (full or partial) belongs to Refunded only — the two are now
+    // mutually exclusive so nothing is double-counted.
     label: "Cancelled",
-    match: (b) => b.status === "cancelled",
+    match: (b) =>
+      b.status === "cancelled" &&
+      b.paymentStatus !== "refunded" &&
+      b.paymentStatus !== "refund_initiated",
     amount: (b) => b.pricing?.finalAmount ?? 0,
     amountLabel: "booking value",
     dot: "bg-rose-500",
   },
   {
     key: "refunded",
+    // Any booking that had money returned (full `refunded` or partial
+    // `refund_initiated`) — counted here only, never under Cancelled.
     label: "Refunded",
     match: (b) => b.paymentStatus === "refunded" || b.paymentStatus === "refund_initiated",
     amount: (b) => b.refundedAmount ?? 0,
@@ -447,7 +455,7 @@ export function BookingsPage() {
             ))}
           </div>
           <p className="mt-2 text-xs text-neutral-400">
-            Click a card to filter the table. A cancelled booking that was refunded is counted under both Cancelled and Refunded.
+            Click a card to filter the table. Cancelled and Refunded don't overlap: a booking that had any refund counts under Refunded only, and Cancelled shows cancellations that were never refunded.
           </p>
         </div>
       )}
