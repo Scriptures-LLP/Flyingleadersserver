@@ -31,7 +31,12 @@ export type FieldConfig =
       name: string;
       label: string;
       type: "select";
-      options: { value: string; label: string }[];
+      // `disabled` greys an option out and blocks picking it from the list,
+      // without removing it — used for e.g. an inactive airport: still shown
+      // (and still rendered as the current value on a row that already
+      // references it) but not something you can newly select until it's
+      // active again.
+      options: { value: string; label: string; disabled?: boolean }[];
       required?: boolean;
       allowBlank?: boolean;
     };

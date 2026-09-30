@@ -28,14 +28,17 @@ export function TourAirportPricesPage() {
   });
 
 
-  // Inactive airports stay pickable here (an existing row can reference one),
-  // but sorted after the active ones and clearly labelled — so deactivating an
-  // airport is visibly reflected the moment an admin opens this dropdown,
-  // instead of it silently still looking like a normal, live option.
+  // Inactive airports still show here — sorted after the active ones and
+  // clearly labelled — so deactivating an airport is visibly reflected the
+  // moment an admin opens this dropdown, instead of it silently still
+  // looking like a normal, live option. They're greyed out and unpickable
+  // (disabled) rather than removed: a row that already references one keeps
+  // showing it as its current value, it just can't be newly selected again
+  // until it's made active.
   const airportOptions = (airports ?? [])
     .slice()
     .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.code.localeCompare(b.code))
-    .map((a) => ({ value: a._id, label: `${a.code} — ${a.name}${a.isActive ? "" : " (Inactive)"}` }));
+    .map((a) => ({ value: a._id, label: `${a.code} — ${a.name}${a.isActive ? "" : " (Inactive)"}`, disabled: !a.isActive }));
 
   const airport = (id: string) => airports?.find((a) => a._id === id);
 

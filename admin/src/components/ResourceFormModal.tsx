@@ -129,7 +129,7 @@ export function ResourceFormModal<T extends { _id: string }>({
                       >
                         {(f.allowBlank ?? true) && <option value="">—</option>}
                         {f.options.map((o) => (
-                          <option key={o.value} value={o.value}>
+                          <option key={o.value} value={o.value} disabled={o.disabled}>
                             {o.label}
                           </option>
                         ))}
