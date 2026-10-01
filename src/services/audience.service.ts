@@ -10,10 +10,22 @@ export type AudienceSpec = {
   customerId?: string;
   /** travelling_soon: how many days ahead to look. */
   days?: number;
+  /** tour_booked: narrow to one departure (e.g. the 15 Nov batch, not 20 Dec too) — any date in this calendar day, omitted matches every date. */
+  travelDate?: string | Date;
 };
 
 // Statuses that mean money has actually been paid on a booking.
 const PAID = ["partial", "paid", "refund_initiated"] as const;
+
+// Same IST-calendar-day convention used elsewhere (chatbotTools.service.ts's
+// dayKey) — "15 November" should mean that whole day in India, regardless of
+// the exact UTC timestamp a particular booking's travelDate happens to carry.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+function istDayRange(d: Date): { $gte: Date; $lt: Date } {
+  const key = new Date(d.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+  const startUtc = new Date(`${key}T00:00:00.000Z`).getTime() - IST_OFFSET_MS;
+  return { $gte: new Date(startUtc), $lt: new Date(startUtc + 864e5) };
+}
 
 async function matchingCustomerIds(spec: AudienceSpec): Promise<string[]> {
   switch (spec.type) {
@@ -21,11 +33,12 @@ async function matchingCustomerIds(spec: AudienceSpec): Promise<string[]> {
       return (await Customer.find({ isActive: true }).distinct("_id")).map(String);
     case "customer":
       return spec.customerId ? [spec.customerId] : [];
-    case "tour_booked":
+    case "tour_booked": {
       if (!spec.tourId) return [];
-      return (
-        await Booking.distinct("customerId", { tourId: spec.tourId, paymentStatus: { $in: PAID }, status: { $ne: "cancelled" } })
-      ).map(String);
+      const filter: Record<string, unknown> = { tourId: spec.tourId, paymentStatus: { $in: PAID }, status: { $ne: "cancelled" } };
+      if (spec.travelDate) filter.travelDate = istDayRange(new Date(spec.travelDate));
+      return (await Booking.distinct("customerId", filter)).map(String);
+    }
     case "balance_due":
       return (await Booking.distinct("customerId", { paymentStatus: "partial", status: { $ne: "cancelled" } })).map(String);
     case "travelling_soon": {

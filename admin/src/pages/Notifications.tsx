@@ -17,6 +17,7 @@ type Campaign = {
     tourId?: { title: string } | string;
     customerId?: { name: string } | string;
     days?: number;
+    travelDate?: string;
   };
   stats: { audience: number; recipients: number; devices: number; sent: number; failed: number };
   sentBy?: { name: string } | string;
@@ -59,7 +60,9 @@ function audienceLabel(a: Campaign["audience"]): string {
     case "all":
       return "Everyone";
     case "tour_booked":
-      return `Booked ${typeof a.tourId === "object" ? a.tourId.title : "a tour"}`;
+      return `Booked ${typeof a.tourId === "object" ? a.tourId.title : "a tour"}${
+        a.travelDate ? ` · ${new Date(a.travelDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""
+      }`;
     case "balance_due":
       return "Balance to pay";
     case "travelling_soon":
@@ -87,6 +90,7 @@ export function NotificationsPage() {
   const [category, setCategory] = useState<Category>("promotions");
   const [audienceType, setAudienceType] = useState<AudienceType>("all");
   const [tourId, setTourId] = useState("");
+  const [travelDate, setTravelDate] = useState("");
   const [days, setDays] = useState("7");
   const [customer, setCustomer] = useState<{ _id: string; name: string; email?: string; phone?: string } | null>(null);
   const [customerQuery, setCustomerQuery] = useState("");
@@ -105,6 +109,16 @@ export function NotificationsPage() {
     queryKey: ["/admin/promo-codes"],
     queryFn: async () => (await api.get("/admin/promo-codes")).data.items as { _id: string; code: string; isActive?: boolean }[],
   });
+  // The tour's scheduled departures (one row per airport variant, same date can
+  // repeat) — deduped down to the distinct dates so the admin can target one
+  // batch of travellers (e.g. 15 Nov) without also hitting a different
+  // departure (e.g. 20 Dec) of the same tour.
+  const { data: tourDates } = useQuery({
+    queryKey: ["/admin/tour-dates", tourId],
+    queryFn: async () => (await api.get("/admin/tour-dates", { params: { tourId } })).data.items as { date: string; isActive?: boolean }[],
+    enabled: audienceType === "tour_booked" && !!tourId,
+  });
+  const departureDates = Array.from(new Set((tourDates ?? []).filter((d) => d.isActive !== false).map((d) => d.date))).sort();
 
   const debouncedQuery = useDebounced(customerQuery);
   const { data: matches } = useQuery({
@@ -123,7 +137,7 @@ export function NotificationsPage() {
   const audience =
     audienceType === "tour_booked"
       ? tourId
-        ? { type: audienceType, tourId }
+        ? { type: audienceType, tourId, ...(travelDate ? { travelDate } : {}) }
         : null
       : audienceType === "customer"
         ? customer
@@ -243,6 +257,7 @@ export function NotificationsPage() {
                 setAudienceType(e.target.value as AudienceType);
                 setCustomer(null);
                 setCustomerQuery("");
+                setTravelDate("");
               }}
             >
               {AUDIENCES.map((a) => (
@@ -253,14 +268,33 @@ export function NotificationsPage() {
             </select>
 
             {audienceType === "tour_booked" && (
-              <select className="input mt-2" value={tourId} onChange={(e) => setTourId(e.target.value)}>
-                <option value="">Choose a tour…</option>
-                {(tours ?? []).map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select
+                  className="input mt-2"
+                  value={tourId}
+                  onChange={(e) => {
+                    setTourId(e.target.value);
+                    setTravelDate("");
+                  }}
+                >
+                  <option value="">Choose a tour…</option>
+                  {(tours ?? []).map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                {tourId && departureDates.length > 0 && (
+                  <select className="input mt-2" value={travelDate} onChange={(e) => setTravelDate(e.target.value)}>
+                    <option value="">Any departure date</option>
+                    {departureDates.map((d) => (
+                      <option key={d} value={d}>
+                        {new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </>
             )}
 
             {audienceType === "travelling_soon" && (

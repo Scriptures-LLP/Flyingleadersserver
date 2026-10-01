@@ -13,6 +13,7 @@ const pushCampaignSchema = new Schema(
       tourId: { type: Schema.Types.ObjectId, ref: "Tour" },
       customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
       days: { type: Number },
+      travelDate: { type: Date },
     },
     data: { type: Schema.Types.Mixed },
     stats: {
