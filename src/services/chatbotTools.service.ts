@@ -356,7 +356,7 @@ async function getPriceQuote(args: ToolArgs) {
     total: inr(baseAmount),
     tokenPayment: tour.allowTokenPayment && (tour.tokenAmount ?? 0) > 0 ? `Can book now with just ${inr(Math.min(tour.tokenAmount ?? 0, baseAmount))}` : undefined,
     seatWarning: tour.seatsAvailable != null && tour.seatsAvailable < travellers.length ? `Only ${tour.seatsAvailable} seats are left` : undefined,
-    note: "Total before any promo code or wallet credit, which are applied at checkout.",
+    note: "Total before 2% TCS, and before any promo code or wallet credit — all applied at checkout.",
   };
 }
 

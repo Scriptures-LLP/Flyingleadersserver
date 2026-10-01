@@ -6,7 +6,7 @@ import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
-import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
+import { computeBaseAmount, computeTcs, validatePromoCode } from "../../services/pricing.service.js";
 import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
 import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -113,6 +113,12 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
 
   let finalAmount = Math.round((baseAmount - discountAmount) * 100) / 100;
 
+  // TCS (Tax Collected at Source) on the discounted package price — a
+  // government-mandated pass-through, added on top rather than folded into
+  // the price so it's always visible as its own line.
+  const tcsAmount = computeTcs(finalAmount);
+  finalAmount = Math.round((finalAmount + tcsAmount) * 100) / 100;
+
   // Wallet credit comes off the price here but is only *spent* when the booking's
   // first payment lands (see finalizePaidBooking) — so backing out of checkout
   // never burns it.
@@ -144,6 +150,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       discountAmount,
       promoCode,
       promoCodeId,
+      tcsAmount,
       finalAmount,
       tokenAmount,
       walletCreditApplied,

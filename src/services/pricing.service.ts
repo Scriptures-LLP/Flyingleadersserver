@@ -28,6 +28,15 @@ export type PricedAirport = { code: string; addonPrice: number; appliesTo?: Appl
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// Tax Collected at Source on overseas tour packages — 2% of the price the
+// customer is actually buying at (after any promo discount, before wallet
+// credit, which is a payment method rather than a price reduction). The one
+// place this is computed, so every quote/booking/invoice agrees.
+export const TCS_RATE = 0.02;
+export function computeTcs(amountAfterDiscount: number): number {
+  return round2(Math.max(0, amountAfterDiscount) * TCS_RATE);
+}
+
 // A charge with no category settings (older rows) applies to every type — that's
 // how charges behaved before categories were selectable.
 const appliesTo = (a: Applies | undefined, type: TravellerType) => a?.[type] ?? true;

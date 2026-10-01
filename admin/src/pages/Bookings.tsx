@@ -20,6 +20,7 @@ type Booking = {
     baseAmount: number;
     discountAmount: number;
     promoCode?: string;
+    tcsAmount?: number;
     finalAmount: number;
     tokenAmount: number;
     // Final per-person price per traveller type — the tour's price plus any
@@ -611,6 +612,9 @@ export function BookingsPage() {
                       <p className="text-neutral-600">
                         Discount ({detail.item.pricing.promoCode}): -{inr(detail.item.pricing.discountAmount)}
                       </p>
+                    )}
+                    {!!detail.item.pricing.tcsAmount && (
+                      <p className="text-neutral-600">TCS (2%): {inr(detail.item.pricing.tcsAmount)}</p>
                     )}
                     <p className="text-neutral-600">Total Amount: {inr(detail.item.pricing.finalAmount)}</p>
                     <p className="text-neutral-600">Paid Amount: {inr(detail.item.amountPaid)}</p>

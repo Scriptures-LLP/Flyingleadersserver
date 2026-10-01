@@ -16,6 +16,10 @@ const pricingSchema = new Schema(
     discountAmount: { type: Number, required: true, min: 0, default: 0 },
     promoCode: { type: String, trim: true, uppercase: true },
     promoCodeId: { type: Schema.Types.ObjectId, ref: "PromoCode" },
+    // Tax Collected at Source, 2% of the price after discount — a government-
+    // mandated pass-through, not part of the package price, so it's kept as
+    // its own line rather than folded into baseAmount (see pricing.service.ts#computeTcs).
+    tcsAmount: { type: Number, required: true, min: 0, default: 0 },
     finalAmount: { type: Number, required: true, min: 0 },
     // The token (partial-payment) amount available for this booking, copied
     // from the tour at booking time — 0 if the tour doesn't allow it.
