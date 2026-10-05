@@ -57,6 +57,14 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   // them: no date, or a stale / unavailable one, is refused here as well as in
   // the app, so a missing selection can never slip through to payment.
   const bookableDates = await listTourDates(tour._id, tourAirports);
+  // With nothing bookable at all, there's no departure to book -- refuse rather
+  // than create a booking with no date and no airport.
+  if (bookableDates.length === 0) {
+    if (tourAirports.length === 0) throw ApiError.badRequest("This tour has no departure airports open for booking right now");
+    if (await TourDate.exists({ tourId: tour._id })) {
+      throw ApiError.badRequest("This tour has no departure dates open for booking right now");
+    }
+  }
   if (bookableDates.length > 0 && !body.tourDateId) throw ApiError.badRequest("Select a travel date");
   if (body.tourDateId) {
     if (!bookableDates.some((d) => d.id === body.tourDateId)) {
