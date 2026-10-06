@@ -17,6 +17,7 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
     items: [
       { to: "/bookings", label: "Bookings", icon: "bookings", roles: ["admin"] },
       { to: "/customers", label: "Customers", icon: "customers", roles: ["admin"] },
+      { to: "/website-bookings", label: "Website Bookings", icon: "bookings", roles: ["admin"] },
     ],
   },
   {
