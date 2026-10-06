@@ -10,6 +10,7 @@ import { AuthProvider } from "./lib/auth";
 import { AirportsPage } from "./pages/Airports";
 import { BookingsPage } from "./pages/Bookings";
 import { CategoriesPage } from "./pages/Categories";
+import { ContactMessagesPage } from "./pages/ContactMessages";
 import { CountriesPage } from "./pages/Countries";
 import { CustomersPage } from "./pages/Customers";
 import { GalleryImagesPage } from "./pages/GalleryImages";
@@ -44,6 +45,7 @@ const router = createBrowserRouter([
           { path: "/promo-codes", element: <PromoCodesPage /> },
           { path: "/notifications", element: <NotificationsPage /> },
           { path: "/reviews", element: <ReviewsPage /> },
+          { path: "/contact-messages", element: <ContactMessagesPage /> },
           { path: "/referrals", element: <ReferralsPage /> },
           { path: "/tour-dates", element: <TourDatesPage /> },
           { path: "/tour-airport-prices", element: <TourAirportPricesPage /> },

@@ -37,6 +37,7 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
       { to: "/notifications", label: "Notifications", icon: "notifications", roles: ["admin"] },
       { to: "/reviews", label: "Reviews", icon: "reviews", roles: ["admin"] },
       { to: "/referrals", label: "Referrals", icon: "referrals", roles: ["admin"] },
+      { to: "/contact-messages", label: "Contact Messages", icon: "contactMessages", roles: ["admin"] },
     ],
   },
   {
