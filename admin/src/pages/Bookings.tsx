@@ -51,7 +51,7 @@ type Transaction = {
   razorpayPaymentId?: string;
   refund?: { razorpayRefundId?: string };
   amount: number;
-  type: "token" | "full" | "balance" | "refund";
+  type: "token" | "full" | "balance" | "custom" | "refund";
   status: "created" | "paid" | "failed" | "refunded" | "voided";
   createdAt: string;
   office?: {
@@ -85,6 +85,7 @@ const TXN_TYPE_LABEL: Record<Transaction["type"], string> = {
   token: "Partial (token) payment",
   full: "Full payment",
   balance: "Balance payment",
+  custom: "Custom amount payment",
   refund: "Refund",
 };
 
