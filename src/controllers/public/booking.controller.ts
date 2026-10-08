@@ -124,7 +124,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   // TCS (Tax Collected at Source) on the discounted package price — a
   // government-mandated pass-through, added on top rather than folded into
   // the price so it's always visible as its own line.
-  const tcsAmount = computeTcs(finalAmount);
+  const tcsAmount = computeTcs(finalAmount, tour.isDomestic);
   finalAmount = Math.round((finalAmount + tcsAmount) * 100) / 100;
 
   // Wallet credit comes off the price here but is only *spent* when the booking's

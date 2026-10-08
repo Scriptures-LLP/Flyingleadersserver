@@ -33,7 +33,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 // credit, which is a payment method rather than a price reduction). The one
 // place this is computed, so every quote/booking/invoice agrees.
 export const TCS_RATE = 0.02;
-export function computeTcs(amountAfterDiscount: number): number {
+export function computeTcs(amountAfterDiscount: number, isDomestic?: boolean): number {
+  if (isDomestic) return 0;
   return round2(Math.max(0, amountAfterDiscount) * TCS_RATE);
 }
 
