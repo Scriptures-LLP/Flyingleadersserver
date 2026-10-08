@@ -9,3 +9,4 @@ export const adminWebsiteBookingsRoutes = Router();
 adminWebsiteBookingsRoutes.use(requireAdminAuth, requireRole("admin"));
 
 adminWebsiteBookingsRoutes.get("/", websiteBookingController.list);
+adminWebsiteBookingsRoutes.get("/:id", websiteBookingController.get);

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { Pagination, usePagination } from "../components/Pagination";
 import { api, apiErrorMessage } from "../lib/api";
@@ -19,6 +20,11 @@ type WebsiteBooking = {
   status: "Paid" | "Pending";
 };
 
+type WebsiteBookingDetail = WebsiteBooking & {
+  notes: string | null;
+  rzpTokenOrderId: string | null;
+};
+
 const STATUS_STYLE: Record<WebsiteBooking["status"], string> = {
   Paid: "bg-green-50 text-green-700",
   Pending: "bg-amber-50 text-amber-700",
@@ -31,6 +37,13 @@ export function WebsiteBookingsPage() {
   });
 
   const pager = usePagination(bookings, 10);
+
+  const [viewingRef, setViewingRef] = useState<number | null>(null);
+  const { data: detail } = useQuery({
+    queryKey: ["/admin/website-bookings", viewingRef],
+    queryFn: async () => (await api.get(`/admin/website-bookings/${viewingRef}`)).data.item as WebsiteBookingDetail,
+    enabled: viewingRef !== null,
+  });
 
   return (
     <div>
@@ -57,6 +70,7 @@ export function WebsiteBookingsPage() {
               <th className="px-4 py-3">Travellers</th>
               <th className="px-4 py-3 text-right">Amount</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
@@ -91,6 +105,14 @@ export function WebsiteBookingsPage() {
                     {b.status}
                   </span>
                 </td>
+                <td className="whitespace-nowrap px-4 py-3">
+                  <button
+                    onClick={() => setViewingRef(b.ref)}
+                    className="rounded-md border border-neutral-200 px-2.5 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-50"
+                  >
+                    View
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -108,6 +130,75 @@ export function WebsiteBookingsPage() {
             onPage={pager.setPage}
             label="bookings"
           />
+        </div>
+      )}
+
+      {viewingRef !== null && (
+        <div className="fixed inset-0 flex items-start justify-center overflow-y-auto bg-black/30 p-4">
+          <div className="my-8 w-full max-w-lg rounded-xl bg-white p-6 shadow-lg">
+            {!detail ? (
+              <p className="text-neutral-500">Loading…</p>
+            ) : (
+              <>
+                <div className="mb-4 flex items-start justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-neutral-900">
+                      #{detail.ref} <span className="font-normal text-neutral-500">[Website]</span>
+                    </h2>
+                    <p className="text-sm text-neutral-500">{detail.tourTitle}</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[detail.status]}`}>
+                    {detail.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-neutral-500">Customer</p>
+                    <p className="text-neutral-800">{detail.name}</p>
+                    <p className="text-xs text-neutral-500">
+                      {detail.phone}
+                      {detail.email ? ` · ${detail.email}` : ""}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Amount</p>
+                    <p className="font-medium text-neutral-800">₹{detail.amount.toLocaleString("en-IN")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Travel date</p>
+                    <p className="text-neutral-800">
+                      {new Date(`${detail.travelDate}T00:00:00`).toLocaleDateString("en-IN")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-neutral-500">Razorpay order ID</p>
+                    <p className="font-mono text-xs text-neutral-800">{detail.rzpTokenOrderId || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <p className="mb-1 text-xs text-neutral-500">
+                    Raw booking notes — this is the actual evidence a payment marker was checked against. There's
+                    no separate payment-log table on this database, so this text is the real source of the
+                    Paid/Pending status above.
+                  </p>
+                  <div className="whitespace-pre-wrap rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
+                    {detail.notes || "No notes recorded."}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex justify-end">
+                  <button
+                    onClick={() => setViewingRef(null)}
+                    className="rounded-md border border-neutral-200 px-3 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
