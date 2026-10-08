@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Pagination, usePagination } from "../components/Pagination";
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 import { api, apiErrorMessage } from "../lib/api";
 
 type WebsiteBooking = {
@@ -58,7 +59,7 @@ export function WebsiteBookingsPage() {
       {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -118,7 +119,7 @@ export function WebsiteBookingsPage() {
           </tbody>
         </table>
         {bookings?.length === 0 && <p className="py-6 text-center text-neutral-400">Nothing here yet.</p>}
-      </div>
+      </ScrollShadowBox>
 
       {pager.total > pager.pageSize && (
         <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">

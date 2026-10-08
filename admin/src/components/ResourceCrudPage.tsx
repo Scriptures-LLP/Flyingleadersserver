@@ -1,5 +1,6 @@
 import { Pagination, usePagination } from "./Pagination";
 import { ResourceFormModal } from "./ResourceFormModal";
+import { ScrollShadowBox } from "./ScrollShadowBox";
 import { apiErrorMessage } from "../lib/api";
 import { useResourceForm, type FieldConfig } from "./resourceForm";
 
@@ -58,7 +59,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {data && (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-500">
               <tr>
@@ -112,7 +113,7 @@ export function ResourceCrudPage<T extends { _id: string; isActive?: boolean }>(
             onPage={pager.setPage}
             label={title.toLowerCase()}
           />
-        </div>
+        </ScrollShadowBox>
       )}
 
       <ResourceFormModal<T> title={singular} fields={fields} closeModal={form.closeModal} {...pick(form, modalItem)} />

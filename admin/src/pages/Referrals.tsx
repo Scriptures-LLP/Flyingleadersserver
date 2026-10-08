@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
 import { Pagination, usePagination } from "../components/Pagination";
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 
 type Person = { _id: string; name: string; email?: string } | string;
 
@@ -76,7 +77,7 @@ export function ReferralsPage() {
       {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
             <tr>
@@ -120,10 +121,10 @@ export function ReferralsPage() {
           onPage={refPager.setPage}
           label="referrals"
         />
-      </div>
+      </ScrollShadowBox>
 
       <h2 className="mb-3 mt-8 text-base font-semibold text-neutral-900">Wallet Balances</h2>
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
             <tr>
@@ -161,7 +162,7 @@ export function ReferralsPage() {
           onPage={walletPager.setPage}
           label="wallets"
         />
-      </div>
+      </ScrollShadowBox>
 
       {adjustFor && (
         <div className="fixed inset-0 flex items-start justify-center overflow-y-auto bg-black/30 p-4">

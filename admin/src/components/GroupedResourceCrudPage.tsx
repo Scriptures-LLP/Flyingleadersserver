@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { api, apiErrorMessage } from "../lib/api";
 import { Pagination, usePagination } from "./Pagination";
 import { ResourceFormModal } from "./ResourceFormModal";
+import { ScrollShadowBox } from "./ScrollShadowBox";
 import { useResourceForm, type FieldConfig } from "./resourceForm";
 
 type Tour = { _id: string; title: string; coverImageUrl?: string | null };
@@ -167,7 +168,7 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
               </button>
 
               {isOpen && (
-                <div className="overflow-x-auto border-t border-neutral-100">
+                <ScrollShadowBox className="border-t border-neutral-100">
                   <table className="w-full text-left text-sm">
                     <thead className="bg-neutral-50 text-neutral-600">
                       <tr>
@@ -199,7 +200,7 @@ export function GroupedResourceCrudPage<T extends { _id: string; tourId: string;
                       )}
                     </tbody>
                   </table>
-                </div>
+                </ScrollShadowBox>
               )}
             </div>
           );

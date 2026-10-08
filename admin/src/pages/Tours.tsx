@@ -5,6 +5,7 @@ import { Icon } from "../components/icons";
 import { ImageCropModal } from "../components/ImageCropModal";
 import { Pagination, usePagination } from "../components/Pagination";
 import { RichTextEditor } from "../components/RichTextEditor";
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 import { StagedGalleryUploader } from "../components/StagedGalleryUploader";
 import { StatusBadge } from "../components/StatusBadge";
 import { TourGalleryManager } from "../components/TourGalleryManager";
@@ -236,7 +237,7 @@ export function ToursPage() {
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {tours && (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
@@ -299,7 +300,7 @@ export function ToursPage() {
             onPage={pager.setPage}
             label="tours"
           />
-        </div>
+        </ScrollShadowBox>
       )}
 
       {editing !== undefined && (

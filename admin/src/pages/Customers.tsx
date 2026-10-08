@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
 import { Pagination, usePagination } from "../components/Pagination";
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 
 type Customer = {
   id: string;
@@ -50,7 +51,7 @@ export function CustomersPage() {
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
       {customers && (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
@@ -109,7 +110,7 @@ export function CustomersPage() {
             onPage={pager.setPage}
             label="customers"
           />
-        </div>
+        </ScrollShadowBox>
       )}
     </div>
   );

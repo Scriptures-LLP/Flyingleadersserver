@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 import { Pagination, usePagination } from "../components/Pagination";
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 import { api, apiErrorMessage } from "../lib/api";
 
 type Transaction = {
@@ -97,7 +98,7 @@ export function PaymentsPage() {
       {isLoading && <p className="text-neutral-500">Loading…</p>}
       {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
@@ -139,7 +140,7 @@ export function PaymentsPage() {
         {filtered.length === 0 && !isLoading && (
           <p className="py-6 text-center text-neutral-400">No payments {tab === "All" ? "yet" : `for ${tab.toLowerCase()}`}.</p>
         )}
-      </div>
+      </ScrollShadowBox>
 
       {pager.total > pager.pageSize && (
         <div className="mt-3 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">

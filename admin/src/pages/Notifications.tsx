@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 import { api, apiErrorMessage } from "../lib/api";
 
 type Category = "promotions" | "tripReminders" | "bookingUpdates";
@@ -488,7 +489,7 @@ export function NotificationsPage() {
 
       {/* history */}
       <h2 className="mb-2 mt-8 text-base font-semibold text-neutral-900">Sent so far</h2>
-      <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
             <tr>
@@ -530,7 +531,7 @@ export function NotificationsPage() {
             )}
           </tbody>
         </table>
-      </div>
+      </ScrollShadowBox>
     </div>
   );
 }
