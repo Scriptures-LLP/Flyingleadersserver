@@ -22,7 +22,7 @@ jobs:
 
       - name: Copy Production Environment
         run: |
-          cp ~/actions-runner/.env "$GITHUB_WORKSPACE/.env"
+          cp ~/actions-runner/_work/.env "$GITHUB_WORKSPACE/.env"
 
       - name: Install Dependencies
         run: npm ci
