@@ -29,6 +29,17 @@ export function TourDatesPage() {
     queryKey: ["/admin/airports"],
     queryFn: async () => (await api.get("/admin/airports")).data.items as Airport[],
   });
+  const { data: airportPrices } = useQuery({
+    queryKey: ["/admin/tour-airport-prices"],
+    queryFn: async () =>
+      (await api.get("/admin/tour-airport-prices")).data.items as { tourId: string; isActive: boolean }[],
+  });
+  // "Any airport" only actually means something once the tour has at least one
+  // real, active departure airport to fly from — a tour with none configured
+  // can't be booked from anywhere, no matter what its dates say (the booking
+  // API itself now refuses it), so that date needs calling out rather than
+  // looking like a normal, working setup.
+  const toursWithAirports = new Set((airportPrices ?? []).filter((p) => p.isActive).map((p) => p.tourId));
 
 
   // Inactive airports still show here — sorted after the active ones and
@@ -74,8 +85,15 @@ export function TourDatesPage() {
                   <span className="font-semibold">{a.code}</span>
                   <span className="text-neutral-500">{a.name}</span>
                 </span>
-              ) : (
+              ) : toursWithAirports.has(d.tourId) ? (
                 <span className="text-neutral-400">—</span>
+              ) : (
+                <span
+                  className="text-xs font-medium text-amber-600"
+                  title="This tour has no active departure airports configured (see Tour Airport Prices) — this date can't actually be booked from anywhere yet."
+                >
+                  ⚠ Any airport — none configured
+                </span>
               )}
             </td>
             <td className="px-4 py-2">

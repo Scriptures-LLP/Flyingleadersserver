@@ -1,5 +1,6 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
 import { StatusBadge } from "../components/StatusBadge";
+import { COVER_CROP } from "../lib/coverCrop";
 
 type Country = { _id: string; name: string; slug: string; coverImage?: string; sortOrder: number; isActive: boolean };
 
@@ -17,7 +18,7 @@ export function CountriesPage() {
       fields={[
         { name: "name", label: "Name", type: "text", required: true },
         { name: "sortOrder", label: "Sort order", type: "number" },
-        { name: "coverImage", label: "Cover image", type: "file" },
+        { name: "coverImage", label: "Cover image", type: "file", crop: COVER_CROP.country },
         { name: "isActive", label: "Active", type: "checkbox" },
       ]}
     />

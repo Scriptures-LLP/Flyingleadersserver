@@ -16,7 +16,9 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
     heading: "Operations",
     items: [
       { to: "/bookings", label: "Bookings", icon: "bookings", roles: ["admin"] },
+      { to: "/payments", label: "Payments", icon: "payments", roles: ["admin"] },
       { to: "/customers", label: "Customers", icon: "customers", roles: ["admin"] },
+      { to: "/website-bookings", label: "Website Bookings", icon: "bookings", roles: ["admin"] },
     ],
   },
   {
@@ -37,6 +39,7 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
       { to: "/notifications", label: "Notifications", icon: "notifications", roles: ["admin"] },
       { to: "/reviews", label: "Reviews", icon: "reviews", roles: ["admin"] },
       { to: "/referrals", label: "Referrals", icon: "referrals", roles: ["admin"] },
+      { to: "/contact-messages", label: "Contact Messages", icon: "contactMessages", roles: ["admin"] },
     ],
   },
   {
@@ -65,6 +68,9 @@ function initials(name?: string) {
 export function AppLayout() {
   const { admin, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === "1");
+  // Below md the sidebar is a drawer opened from the header; it always shows labels.
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const compact = collapsed && !mobileOpen;
 
   function toggleSidebar() {
     setCollapsed((c) => {
@@ -76,17 +82,25 @@ export function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-neutral-100 text-neutral-800">
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-neutral-900/40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <aside
-        className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-neutral-200/80 bg-gradient-to-b from-white to-neutral-50 transition-[width] duration-300 ${
-          collapsed ? "w-[76px]" : "w-64"
-        }`}
+        className={`flex-col border-r border-neutral-200/80 bg-gradient-to-b from-white to-neutral-50 transition-[width] duration-300 ${
+          mobileOpen ? "fixed inset-y-0 left-0 z-40 flex w-64" : "hidden md:flex"
+        } md:sticky md:top-0 md:h-screen md:shrink-0 ${compact ? "md:w-[76px]" : "md:w-64"}`}
       >
         <div
           className={`flex shrink-0 flex-col items-center gap-2 border-b border-neutral-100 ${
-            collapsed ? "px-2 py-4" : "px-4 py-5"
+            compact ? "px-2 py-4" : "px-4 py-5"
           }`}
         >
-          {collapsed ? (
+          {compact ? (
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-sm font-bold tracking-tight text-white shadow-sm shadow-red-600/30">
               FL
             </div>
@@ -108,7 +122,7 @@ export function AppLayout() {
             if (items.length === 0) return null;
             return (
               <div key={section.heading} className="mb-5 last:mb-0">
-                {collapsed ? (
+                {compact ? (
                   <div className="mx-2 mb-1.5 border-t border-neutral-100 first:border-t-0" />
                 ) : (
                   <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
@@ -120,10 +134,11 @@ export function AppLayout() {
                     <NavLink
                       key={item.to}
                       to={item.to}
-                      title={collapsed ? item.label : undefined}
+                      title={compact ? item.label : undefined}
+                      onClick={() => setMobileOpen(false)}
                       className={({ isActive }) =>
                         `group relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-all ${
-                          collapsed ? "justify-center px-0" : "px-3"
+                          compact ? "justify-center px-0" : "px-3"
                         } ${
                           isActive
                             ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-md shadow-red-600/25"
@@ -139,7 +154,7 @@ export function AppLayout() {
                               isActive ? "text-white" : "text-neutral-400 group-hover:text-neutral-600"
                             }`}
                           />
-                          {!collapsed && <span>{item.label}</span>}
+                          {!compact && <span>{item.label}</span>}
                         </>
                       )}
                     </NavLink>
@@ -150,32 +165,41 @@ export function AppLayout() {
           })}
         </nav>
 
-        <div className="border-t border-neutral-100 p-2">
+        <div className="hidden border-t border-neutral-100 p-2 md:block">
           <button
             onClick={toggleSidebar}
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 ${
-              collapsed ? "justify-center" : ""
+              compact ? "justify-center" : ""
             }`}
           >
             <Icon
               name="chevronLeft"
-              className={`h-4 w-4 shrink-0 transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
+              className={`h-4 w-4 shrink-0 transition-transform duration-300 ${compact ? "rotate-180" : ""}`}
             />
-            {!collapsed && <span>Collapse</span>}
+            {!compact && <span>Collapse</span>}
           </button>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col bg-[radial-gradient(50rem_34rem_at_100%_-8%,rgba(220,38,38,0.10),transparent),radial-gradient(38rem_30rem_at_-10%_110%,rgba(220,38,38,0.05),transparent)]">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-end border-b border-neutral-200/80 bg-white/70 px-6 backdrop-blur-md">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-neutral-200/80 bg-white/70 px-4 backdrop-blur-md md:justify-end md:px-6">
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 md:hidden"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-sm font-semibold text-white shadow-sm shadow-red-600/30">
                 {initials(admin?.name)}
               </div>
-              <div className="leading-tight">
+              <div className="hidden leading-tight sm:block">
                 <p className="text-sm font-medium text-neutral-800">{admin?.name}</p>
                 <p className="text-xs capitalize text-neutral-400">{admin?.role}</p>
               </div>
@@ -194,7 +218,7 @@ export function AppLayout() {
             empty space on both sides instead of using the room a wide screen actually
             has. Widening the cap only at larger breakpoints (never below xl) keeps
             laptop-width screens exactly as they were. */}
-        <main className="flex-1 p-6 lg:p-8 2xl:p-10">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 2xl:p-10">
           <div className="page-enter mx-auto max-w-6xl xl:max-w-[1440px] 2xl:max-w-[1760px]">
             <Outlet />
           </div>

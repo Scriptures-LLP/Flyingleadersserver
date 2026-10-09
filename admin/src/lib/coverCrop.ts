@@ -10,4 +10,6 @@ export const COVER_CROP = {
   tour: { aspect: 3 / 4, outputWidth: 1200 },
   // Past Trips render as square thumbnails in a 3-col grid on the app Home.
   pastTrip: { aspect: 1, outputWidth: 1080 },
+  // Country cards on the website render at 16:10 (aspect-[16/10], object-cover).
+  country: { aspect: 16 / 10, outputWidth: 1200 },
 } as const;

@@ -9,7 +9,7 @@ type BookingLike = {
   contactEmail: string;
   contactPhone: string;
   travellers: { name: string; type: string; age?: number }[];
-  pricing: { baseAmount: number; discountAmount: number; finalAmount: number; promoCode?: string };
+  pricing: { baseAmount: number; discountAmount: number; tcsAmount?: number; finalAmount: number; promoCode?: string };
   amountPaid: number;
   itinerarySnapshot: { title: string; duration?: string; inclusions?: string; exclusions?: string; itinerary?: string };
 };
@@ -189,6 +189,9 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
   text(`Package amount: ${inr(booking.pricing.baseAmount)}`);
   if (booking.pricing.discountAmount > 0) {
     text(`Discount${booking.pricing.promoCode ? ` (${booking.pricing.promoCode})` : ""}: -${inr(booking.pricing.discountAmount)}`);
+  }
+  if (booking.pricing.tcsAmount) {
+    text(`TCS (2%): ${inr(booking.pricing.tcsAmount)}`);
   }
   text(`Total Package Amount: ${inr(booking.pricing.finalAmount)}`, { bold: true });
   text(`Amount Paid: ${inr(booking.amountPaid)}`, { bold: true });

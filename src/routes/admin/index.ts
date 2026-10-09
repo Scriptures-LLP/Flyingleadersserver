@@ -4,11 +4,13 @@ import { adminAirportsRoutes } from "./airports.routes.js";
 import { adminAuthRoutes } from "./auth.routes.js";
 import { adminBookingsRoutes } from "./bookings.routes.js";
 import { adminCategoriesRoutes } from "./categories.routes.js";
+import { adminContactMessagesRoutes } from "./contactMessages.routes.js";
 import { adminCountriesRoutes } from "./countries.routes.js";
 import { adminCustomersRoutes } from "./customers.routes.js";
 import { adminGalleryImagesRoutes } from "./galleryImages.routes.js";
 import { adminHomeCoversRoutes } from "./homeCovers.routes.js";
 import { adminNotificationsRoutes } from "./notifications.routes.js";
+import { adminPaymentsRoutes } from "./payments.routes.js";
 import { adminPromoCodesRoutes } from "./promoCodes.routes.js";
 import { adminReferralsRoutes } from "./referrals.routes.js";
 import { adminReviewsRoutes } from "./reviews.routes.js";
@@ -17,6 +19,7 @@ import { adminTourAirportPricesRoutes } from "./tourAirportPrices.routes.js";
 import { adminTourDatesRoutes } from "./tourDates.routes.js";
 import { adminTourMediaRoutes } from "./tourMedia.routes.js";
 import { adminToursRoutes } from "./tours.routes.js";
+import { adminWebsiteBookingsRoutes } from "./websiteBookings.routes.js";
 
 export const adminRoutes = Router();
 
@@ -37,3 +40,6 @@ adminRoutes.use("/settings", adminSettingsRoutes);
 adminRoutes.use("/reviews", adminReviewsRoutes);
 adminRoutes.use("/referrals", adminReferralsRoutes);
 adminRoutes.use("/notifications", adminNotificationsRoutes);
+adminRoutes.use("/contact-messages", adminContactMessagesRoutes);
+adminRoutes.use("/website-bookings", adminWebsiteBookingsRoutes);
+adminRoutes.use("/payments", adminPaymentsRoutes);

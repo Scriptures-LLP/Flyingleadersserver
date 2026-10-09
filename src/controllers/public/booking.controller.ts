@@ -6,7 +6,7 @@ import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
-import { computeBaseAmount, validatePromoCode } from "../../services/pricing.service.js";
+import { computeBaseAmount, computeTcs, validatePromoCode } from "../../services/pricing.service.js";
 import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
 import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -57,6 +57,14 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   // them: no date, or a stale / unavailable one, is refused here as well as in
   // the app, so a missing selection can never slip through to payment.
   const bookableDates = await listTourDates(tour._id, tourAirports);
+  // With nothing bookable at all, there's no departure to book -- refuse rather
+  // than create a booking with no date and no airport.
+  if (bookableDates.length === 0) {
+    if (tourAirports.length === 0) throw ApiError.badRequest("This tour has no departure airports open for booking right now");
+    if (await TourDate.exists({ tourId: tour._id })) {
+      throw ApiError.badRequest("This tour has no departure dates open for booking right now");
+    }
+  }
   if (bookableDates.length > 0 && !body.tourDateId) throw ApiError.badRequest("Select a travel date");
   if (body.tourDateId) {
     if (!bookableDates.some((d) => d.id === body.tourDateId)) {
@@ -113,6 +121,12 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
 
   let finalAmount = Math.round((baseAmount - discountAmount) * 100) / 100;
 
+  // TCS (Tax Collected at Source) on the discounted package price — a
+  // government-mandated pass-through, added on top rather than folded into
+  // the price so it's always visible as its own line.
+  const tcsAmount = computeTcs(finalAmount, tour.isDomestic);
+  finalAmount = Math.round((finalAmount + tcsAmount) * 100) / 100;
+
   // Wallet credit comes off the price here but is only *spent* when the booking's
   // first payment lands (see finalizePaidBooking) — so backing out of checkout
   // never burns it.
@@ -144,6 +158,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       discountAmount,
       promoCode,
       promoCodeId,
+      tcsAmount,
       finalAmount,
       tokenAmount,
       walletCreditApplied,

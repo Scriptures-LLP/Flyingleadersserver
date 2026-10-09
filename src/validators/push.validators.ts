@@ -19,6 +19,7 @@ const audienceSchema = z
     tourId: objectId.optional(),
     customerId: objectId.optional(),
     days: z.coerce.number().int().min(1).max(365).optional(),
+    travelDate: z.coerce.date().optional(),
   })
   .superRefine((a, ctx) => {
     if (a.type === "tour_booked" && !a.tourId) ctx.addIssue({ code: "custom", message: "Choose a tour", path: ["tourId"] });
@@ -40,5 +41,6 @@ export const previewAudienceSchema = z.object({
   tourId: objectId.optional(),
   customerId: objectId.optional(),
   days: z.coerce.number().int().min(1).max(365).optional(),
+  travelDate: z.coerce.date().optional(),
   category: z.enum(["promotions", "bookingUpdates", "tripReminders"]).default("promotions"),
 });

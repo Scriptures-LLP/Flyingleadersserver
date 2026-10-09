@@ -10,12 +10,14 @@ import { AuthProvider } from "./lib/auth";
 import { AirportsPage } from "./pages/Airports";
 import { BookingsPage } from "./pages/Bookings";
 import { CategoriesPage } from "./pages/Categories";
+import { ContactMessagesPage } from "./pages/ContactMessages";
 import { CountriesPage } from "./pages/Countries";
 import { CustomersPage } from "./pages/Customers";
 import { GalleryImagesPage } from "./pages/GalleryImages";
 import { HomeCoversPage } from "./pages/HomeCovers";
 import { LoginPage } from "./pages/Login";
 import { NotificationsPage } from "./pages/Notifications";
+import { PaymentsPage } from "./pages/Payments";
 import { PromoCodesPage } from "./pages/PromoCodes";
 import { ReferralsPage } from "./pages/Referrals";
 import { ReviewsPage } from "./pages/Reviews";
@@ -23,6 +25,7 @@ import { SettingsPage } from "./pages/Settings";
 import { TourAirportPricesPage } from "./pages/TourAirportPrices";
 import { TourDatesPage } from "./pages/TourDates";
 import { ToursPage } from "./pages/Tours";
+import { WebsiteBookingsPage } from "./pages/WebsiteBookings";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +47,9 @@ const router = createBrowserRouter([
           { path: "/promo-codes", element: <PromoCodesPage /> },
           { path: "/notifications", element: <NotificationsPage /> },
           { path: "/reviews", element: <ReviewsPage /> },
+          { path: "/contact-messages", element: <ContactMessagesPage /> },
+          { path: "/website-bookings", element: <WebsiteBookingsPage /> },
+          { path: "/payments", element: <PaymentsPage /> },
           { path: "/referrals", element: <ReferralsPage /> },
           { path: "/tour-dates", element: <TourDatesPage /> },
           { path: "/tour-airport-prices", element: <TourAirportPricesPage /> },

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
 import { Pagination, usePagination } from "../components/Pagination";
+import { ScrollShadowBox } from "../components/ScrollShadowBox";
 
 type Traveller = { name: string; age?: number; gender?: string; type: "adult" | "child" | "infant" };
 
@@ -20,6 +21,7 @@ type Booking = {
     baseAmount: number;
     discountAmount: number;
     promoCode?: string;
+    tcsAmount?: number;
     finalAmount: number;
     tokenAmount: number;
     // Final per-person price per traveller type — the tour's price plus any
@@ -50,7 +52,7 @@ type Transaction = {
   razorpayPaymentId?: string;
   refund?: { razorpayRefundId?: string };
   amount: number;
-  type: "token" | "full" | "balance" | "refund";
+  type: "token" | "full" | "balance" | "custom" | "refund";
   status: "created" | "paid" | "failed" | "refunded" | "voided";
   createdAt: string;
   office?: {
@@ -84,6 +86,7 @@ const TXN_TYPE_LABEL: Record<Transaction["type"], string> = {
   token: "Partial (token) payment",
   full: "Full payment",
   balance: "Balance payment",
+  custom: "Custom amount payment",
   refund: "Refund",
 };
 
@@ -465,7 +468,7 @@ export function BookingsPage() {
       )}
 
       {bookings && (
-        <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
+        <ScrollShadowBox className="rounded-xl border border-neutral-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
@@ -548,7 +551,7 @@ export function BookingsPage() {
             onPage={pager.setPage}
             label="bookings"
           />
-        </div>
+        </ScrollShadowBox>
       )}
 
       {detailId && (
@@ -611,6 +614,9 @@ export function BookingsPage() {
                       <p className="text-neutral-600">
                         Discount ({detail.item.pricing.promoCode}): -{inr(detail.item.pricing.discountAmount)}
                       </p>
+                    )}
+                    {!!detail.item.pricing.tcsAmount && (
+                      <p className="text-neutral-600">TCS (2%): {inr(detail.item.pricing.tcsAmount)}</p>
                     )}
                     <p className="text-neutral-600">Total Amount: {inr(detail.item.pricing.finalAmount)}</p>
                     <p className="text-neutral-600">Paid Amount: {inr(detail.item.amountPaid)}</p>

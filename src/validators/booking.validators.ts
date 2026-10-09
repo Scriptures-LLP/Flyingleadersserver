@@ -25,7 +25,10 @@ export const createBookingSchema = z.object({
 
 export const createPaymentOrderSchema = z.object({
   bookingId: z.string().min(1),
-  mode: z.enum(["full", "token", "balance"]),
+  mode: z.enum(["full", "token", "balance", "custom"]),
+  // Only used (and required) when mode is "custom" — validated against the
+  // booking's actual remaining balance in the controller, not here.
+  amount: z.number().positive().optional(),
 });
 
 export const reconcilePaymentSchema = z.object({ bookingId: z.string().min(1) });

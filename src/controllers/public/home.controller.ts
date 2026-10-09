@@ -11,7 +11,11 @@ import { serializeTourSummary } from "../../services/tourSerializer.service.js";
 import { serializeCategory } from "./category.controller.js";
 import { serializeCountry } from "./country.controller.js";
 
-const FEATURED_LIMIT = 10;
+// There's no "featured" flag on Tour -- this is just "the most recent active
+// tours" -- so a low cap quietly makes any older active tour unreachable from
+// Home (still active, still bookable via search, just invisible here). Keep
+// this comfortably above the real catalog size so nothing active disappears.
+const FEATURED_LIMIT = 50;
 const TOP_COUNTRIES_LIMIT = 8;
 // AlbumOrbit's decorative collage layout is designed for a 1 hero + 8 orbiting shape.
 const GALLERY_LIMIT = 9;

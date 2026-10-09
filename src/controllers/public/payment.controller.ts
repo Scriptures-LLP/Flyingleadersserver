@@ -12,7 +12,11 @@ import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
-  const { bookingId, mode } = req.body as { bookingId: string; mode: "full" | "token" | "balance" };
+  const { bookingId, mode, amount: requestedAmount } = req.body as {
+    bookingId: string;
+    mode: "full" | "token" | "balance" | "custom";
+    amount?: number;
+  };
 
   const booking = await Booking.findOne({ _id: bookingId, customerId: req.customer!.sub });
   if (!booking) throw ApiError.notFound("Booking not found");
@@ -21,20 +25,28 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // "full" only makes sense before anything's been paid — once a token
-  // payment has landed, the only way to finish paying is "balance".
+  // payment has landed, the only way to finish paying is "balance" or "custom".
   if (mode === "full" && booking.amountPaid > 0) {
     throw ApiError.badRequest("Part of this booking is already paid — pay the remaining balance instead");
   }
+
+  const remaining = Math.round((booking.pricing.finalAmount - booking.amountPaid) * 100) / 100;
 
   const amount =
     mode === "token"
       ? booking.pricing.tokenAmount
       : mode === "balance"
-        ? Math.round((booking.pricing.finalAmount - booking.amountPaid) * 100) / 100
-        : booking.pricing.finalAmount;
+        ? remaining
+        : mode === "custom"
+          ? Math.round((requestedAmount ?? 0) * 100) / 100
+          : booking.pricing.finalAmount;
 
   if (mode === "token" && amount <= 0) throw ApiError.badRequest("Token payment isn't available for this booking");
   if (mode === "balance" && amount <= 0) throw ApiError.badRequest("Nothing outstanding on this booking");
+  if (mode === "custom") {
+    if (amount <= 0) throw ApiError.badRequest("Enter an amount to pay");
+    if (amount > remaining) throw ApiError.badRequest("That's more than the remaining balance");
+  }
 
   // Last moment before money can move: if this booking carries a promo code
   // and hasn't paid anything yet, make sure the code's usage limit hasn't been

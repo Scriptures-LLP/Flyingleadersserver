@@ -14,6 +14,12 @@ const tourSchema = new Schema(
     location: { type: String, trim: true },
     duration: { type: String, trim: true },
     countryId: { type: Schema.Types.ObjectId, ref: "Country" },
+    // TCS (Tax Collected at Source) is a government charge on OVERSEAS tour
+    // packages specifically — a domestic (within-India) tour never has it
+    // applied, regardless of countryId. Defaults to false (international) so
+    // every existing tour keeps its current TCS behaviour; an admin ticks this
+    // for domestic destinations like Goa, Manali, Kerala, etc.
+    isDomestic: { type: Boolean, default: false },
     // References Category.slug rather than its ObjectId, matching the app's
     // existing TourPackage.category field (a plain string like "beach").
     category: { type: String, trim: true },
