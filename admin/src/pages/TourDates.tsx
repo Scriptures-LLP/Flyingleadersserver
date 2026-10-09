@@ -75,7 +75,7 @@ export function TourDatesPage() {
                   <span className="text-neutral-500">{a.name}</span>
                 </span>
               ) : (
-                <span className="text-xs italic text-neutral-400">Any airport</span>
+                <span className="text-neutral-400">—</span>
               )}
             </td>
             <td className="px-4 py-2">
@@ -111,7 +111,7 @@ export function TourDatesPage() {
         },
         {
           name: "airportId",
-          label: "Airport (leave blank for any)",
+          label: "Departure Airport (optional)",
           type: "select",
           options: airportOptions,
         },

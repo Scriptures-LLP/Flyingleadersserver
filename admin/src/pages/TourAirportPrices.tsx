@@ -63,7 +63,7 @@ export function TourAirportPricesPage() {
                   <span className="text-neutral-500">{a.name}</span>
                 </span>
               ) : (
-                <span className="text-xs italic text-neutral-400">…</span>
+                <span className="text-neutral-400">—</span>
               )}
             </td>
             <td className="px-4 py-2">

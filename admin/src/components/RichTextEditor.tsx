@@ -7,7 +7,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
+import { TextSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef } from "react";
 
@@ -31,6 +32,35 @@ const TEXT_COLORS = ["#111827", "#DC2626", "#2563EB", "#16A34A", "#9333EA"];
 const NoShortcutBulletList = BulletList.extend({ addInputRules: () => [] });
 const NoShortcutOrderedList = OrderedList.extend({ addInputRules: () => [] });
 const NoShortcutHeading = Heading.extend({ addInputRules: () => [] });
+
+// Alignment belongs to a whole paragraph, but much of the content is several
+// lines joined by line breaks (<br>) inside ONE paragraph — pasted text, older
+// tours, Shift+Enter. Aligning one of those lines used to move all of them.
+// Turn the line breaks just outside the selection into real paragraph breaks
+// first, so only the selected line(s) become their own paragraph to align.
+function isolateSelectedLines(editor: Editor) {
+  const { state } = editor;
+  const { $from, $to } = state.selection;
+  const breaks = (parent: typeof $from.parent, start: number) => {
+    const out: number[] = [];
+    parent.forEach((child, offset) => {
+      if (child.type.name === "hardBreak") out.push(start + offset);
+    });
+    return out;
+  };
+  const before = breaks($from.parent, $from.start()).filter((p) => p < $from.pos).pop();
+  const after = breaks($to.parent, $to.start()).find((p) => p >= $to.pos);
+  // Later position first, so the earlier one isn't shifted by the first edit.
+  const cuts = [after, before].filter((p): p is number => p !== undefined);
+  if (!cuts.length) return;
+  const tr = state.tr;
+  for (const pos of cuts) tr.delete(pos, pos + 1).split(pos);
+  // Keep the selection's end on its own side of a new split — mapped as-is it
+  // could slide onto the next line, which would then get aligned too.
+  const from = tr.mapping.map($from.pos, 1);
+  tr.setSelection(TextSelection.create(tr.doc, from, Math.max(from, tr.mapping.map($to.pos, -1))));
+  editor.view.dispatch(tr);
+}
 
 // Edits the same HTML string the app/PDF render elsewhere — this is the one
 // place admins write it, so it needs to cover real formatting (headings,
@@ -97,6 +127,10 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
     const sel = savedSelection.current;
     return sel ? chain.setTextSelection(sel) : chain;
   };
+  const align = (side: "left" | "center" | "right") => {
+    isolateSelectedLines(editor);
+    editor.chain().focus().setTextAlign(side).run();
+  };
 
   return (
     <div className="rounded-md border border-neutral-300">
@@ -156,13 +190,13 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
           <option value="1.5em">Extra large</option>
         </select>
         {sep}
-        <button type="button" className={btn(editor.isActive({ textAlign: "left" }))} onClick={() => editor.chain().focus().setTextAlign("left").run()}>
+        <button type="button" className={btn(editor.isActive({ textAlign: "left" }))} onClick={() => align("left")}>
           Left
         </button>
-        <button type="button" className={btn(editor.isActive({ textAlign: "center" }))} onClick={() => editor.chain().focus().setTextAlign("center").run()}>
+        <button type="button" className={btn(editor.isActive({ textAlign: "center" }))} onClick={() => align("center")}>
           Center
         </button>
-        <button type="button" className={btn(editor.isActive({ textAlign: "right" }))} onClick={() => editor.chain().focus().setTextAlign("right").run()}>
+        <button type="button" className={btn(editor.isActive({ textAlign: "right" }))} onClick={() => align("right")}>
           Right
         </button>
         {sep}
@@ -200,7 +234,10 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
             title="Highlight"
             className="h-5 w-5 rounded-full border border-neutral-300"
             style={{ backgroundColor: c }}
-            onClick={() => editor.chain().focus().toggleHighlight({ color: c }).run()}
+            // set, not toggle: toggling removed the highlight instead whenever the
+            // selection already had that colour, so a click seemed to do nothing
+            // or wipe it. "None" is the way to remove one.
+            onClick={() => editor.chain().focus().setHighlight({ color: c }).run()}
           />
         ))}
         <button

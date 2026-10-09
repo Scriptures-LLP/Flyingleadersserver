@@ -100,7 +100,10 @@ body {
 .rte .ProseMirror h1 { font-size: 1.5rem; font-weight: 800; margin: 0.9rem 0 0.5rem; }
 .rte .ProseMirror h2 { font-size: 1.25rem; font-weight: 800; margin: 0.8rem 0 0.4rem; }
 .rte .ProseMirror h3 { font-size: 1.05rem; font-weight: 700; margin: 0.7rem 0 0.4rem; }
-.rte .ProseMirror mark { border-radius: 2px; padding: 0 1px; }
+/* No padding: a highlight crossing bold/colour boundaries is split into several
+   <mark>s, and per-piece padding made the text jump sideways (and the caret
+   land in the wrong spot) every time a highlight was applied. */
+.rte .ProseMirror mark { border-radius: 2px; }
 .rte .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder); float: left; height: 0; pointer-events: none; color: #94a3b8;
 }
