@@ -8,6 +8,7 @@ import { RichTextEditor } from "../components/RichTextEditor";
 import { ScrollShadowBox } from "../components/ScrollShadowBox";
 import { StagedGalleryUploader } from "../components/StagedGalleryUploader";
 import { StatusBadge } from "../components/StatusBadge";
+import { SyncStatusCell } from "../components/SyncStatusBadge";
 import { TourGalleryManager } from "../components/TourGalleryManager";
 import { api, apiErrorMessage } from "../lib/api";
 import { COVER_CROP } from "../lib/coverCrop";
@@ -44,6 +45,7 @@ type Tour = {
   groupSizeLabel?: string;
   hotelClassLabel?: string;
   isActive?: boolean;
+  mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
 
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
@@ -245,6 +247,7 @@ export function ToursPage() {
                 <th className="px-4 py-2 font-medium">Category</th>
                 <th className="px-4 py-2 font-medium">Price</th>
                 <th className="px-4 py-2 font-medium">Active</th>
+                <th className="px-4 py-2 font-medium">Website</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -258,6 +261,9 @@ export function ToursPage() {
                   <td className="px-4 py-2 text-neutral-700">₹{tour.price?.toLocaleString("en-IN")}</td>
                   <td className="px-4 py-2 text-neutral-700">
                     <StatusBadge active={tour.isActive} />
+                  </td>
+                  <td className="px-4 py-2 text-neutral-700">
+                    <SyncStatusCell resourcePath="/admin/tours" id={tour._id} mysqlSync={tour.mysqlSync} />
                   </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -285,7 +291,7 @@ export function ToursPage() {
               ))}
               {tours.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-neutral-400">
+                  <td colSpan={6} className="px-4 py-6 text-center text-neutral-400">
                     No tours yet.
                   </td>
                 </tr>

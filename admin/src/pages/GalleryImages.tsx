@@ -1,5 +1,6 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
 import { StatusBadge } from "../components/StatusBadge";
+import { SyncStatusCell } from "../components/SyncStatusBadge";
 import { thumbColumn } from "../components/thumbColumn";
 import { COVER_CROP } from "../lib/coverCrop";
 
@@ -11,6 +12,7 @@ type GalleryImage = {
   isFeatured: boolean;
   isActive: boolean;
   sortOrder: number;
+  mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
 
 export function GalleryImagesPage() {
@@ -29,6 +31,11 @@ export function GalleryImagesPage() {
           render: (g) => <StatusBadge active={g.isFeatured} activeLabel="Featured" inactiveLabel="No" />,
         },
         { key: "isActive", label: "Active", render: (g) => <StatusBadge active={g.isActive} /> },
+        {
+          key: "mysqlSync",
+          label: "Website",
+          render: (g) => <SyncStatusCell resourcePath="/admin/gallery-images" id={g._id} mysqlSync={g.mysqlSync} />,
+        },
       ]}
       fields={[
         { name: "title", label: "Title", type: "text" },

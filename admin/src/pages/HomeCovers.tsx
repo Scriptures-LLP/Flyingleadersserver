@@ -1,5 +1,6 @@
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
 import { StatusBadge } from "../components/StatusBadge";
+import { SyncStatusCell } from "../components/SyncStatusBadge";
 import { thumbColumn } from "../components/thumbColumn";
 import { COVER_CROP } from "../lib/coverCrop";
 
@@ -10,6 +11,7 @@ type HomeCover = {
   imageUrl?: string | null;
   isActive: boolean;
   sortOrder: number;
+  mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
 
 export function HomeCoversPage() {
@@ -23,6 +25,11 @@ export function HomeCoversPage() {
         { key: "altText", label: "Alt text" },
         { key: "sortOrder", label: "Sort order" },
         { key: "isActive", label: "Active", render: (c) => <StatusBadge active={c.isActive} /> },
+        {
+          key: "mysqlSync",
+          label: "Website",
+          render: (c) => <SyncStatusCell resourcePath="/admin/home-covers" id={c._id} mysqlSync={c.mysqlSync} />,
+        },
       ]}
       fields={[
         { name: "title", label: "Title", type: "text" },
