@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChargeCell } from "../components/ChargeCell";
 import { GroupedResourceCrudPage } from "../components/GroupedResourceCrudPage";
 import { StatusBadge } from "../components/StatusBadge";
+import { SyncStatusCell } from "../components/SyncStatusBadge";
 import { api } from "../lib/api";
 
 type TourAirportPrice = {
@@ -14,6 +15,7 @@ type TourAirportPrice = {
   appliesToChild: boolean;
   appliesToInfant: boolean;
   isActive: boolean;
+  mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
 type Airport = { _id: string; code: string; name: string; isActive: boolean };
 
@@ -47,7 +49,7 @@ export function TourAirportPricesPage() {
       title="Tour Airport Prices"
       resourcePath="/admin/tour-airport-prices"
       tourField="tourId"
-      rowColumns={["Departure Airport", "Airport Charge", "Status"]}
+      rowColumns={["Departure Airport", "Airport Charge", "Status", "Website"]}
       emptyRowLabel="No airport prices for this tour yet — click “Add here” to create one."
       // Alphabetical by airport, so the rates for every departure airport on a
       // tour are easy to scan and compare at a glance.
@@ -76,6 +78,9 @@ export function TourAirportPricesPage() {
             </td>
             <td className="px-4 py-2">
               <StatusBadge active={r.isActive} />
+            </td>
+            <td className="px-4 py-2">
+              <SyncStatusCell resourcePath="/admin/tour-airport-prices" id={r._id} mysqlSync={r.mysqlSync} />
             </td>
             <td className="px-4 py-2 text-right">
               <button onClick={onEdit} className="mr-3 text-neutral-600 hover:underline">

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChargeCell } from "../components/ChargeCell";
 import { GroupedResourceCrudPage } from "../components/GroupedResourceCrudPage";
 import { StatusBadge } from "../components/StatusBadge";
+import { SyncStatusCell } from "../components/SyncStatusBadge";
 import { api } from "../lib/api";
 
 type TourDate = {
@@ -16,6 +17,7 @@ type TourDate = {
   appliesToInfant: boolean;
   label?: string;
   isActive: boolean;
+  mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
 
 type Airport = { _id: string; code: string; name: string; isActive: boolean };
@@ -62,7 +64,7 @@ export function TourDatesPage() {
       title="Tour Dates"
       resourcePath="/admin/tour-dates"
       tourField="tourId"
-      rowColumns={["Date", "Departure Airport", "Travel Charge", "Status"]}
+      rowColumns={["Date", "Departure Airport", "Travel Charge", "Status", "Website"]}
       emptyRowLabel="No dates for this tour yet — click “Add here” to create one."
       sortRows={(a, b) => {
         const byDate = a.date.localeCompare(b.date);
@@ -106,6 +108,9 @@ export function TourDatesPage() {
             </td>
             <td className="px-4 py-2">
               <StatusBadge active={d.isActive} />
+            </td>
+            <td className="px-4 py-2">
+              <SyncStatusCell resourcePath="/admin/tour-dates" id={d._id} mysqlSync={d.mysqlSync} />
             </td>
             <td className="px-4 py-2 text-right">
               <button onClick={onEdit} className="mr-3 text-neutral-600 hover:underline">

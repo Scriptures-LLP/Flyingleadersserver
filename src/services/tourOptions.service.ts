@@ -24,8 +24,12 @@ export type TourAirportOption = {
  * that have active mapped dates):
  *  - an airport with an active price row is offered at that row's add-on;
  *  - an airport that only appears on active dates is offered at ₹0;
- *  - an airport whose price row is switched off is not offered at all, even
- *    if dates still reference it — the admin's explicit off-switch wins;
+ *  - an airport whose price row is switched off, but which still has its own
+ *    active dates, stays offered at ₹0 — Tour Dates and Tour Airport Prices
+ *    are independent switches, so turning one off must never silently hide
+ *    the other;
+ *  - an airport whose price row is switched off AND has no dates of its own
+ *    is not offered at all;
  *  - inactive airports never appear.
  */
 export async function listTourAirports(tourId: Types.ObjectId | string): Promise<TourAirportOption[]> {
@@ -53,8 +57,11 @@ export async function listTourAirports(tourId: Types.ObjectId | string): Promise
     ),
   );
 
-  const ids = new Set([...addonByAirport.keys(), ...datedAirportIds.map(String)]);
-  for (const id of switchedOff) ids.delete(id);
+  const datedIds = new Set(datedAirportIds.map(String));
+  const ids = new Set([...addonByAirport.keys(), ...datedIds]);
+  for (const id of switchedOff) {
+    if (!datedIds.has(id)) ids.delete(id);
+  }
   if (ids.size === 0) return [];
 
   const airports = await Airport.find({ _id: { $in: [...ids] }, isActive: true }).sort({ name: 1 });
@@ -77,8 +84,9 @@ export type TourDateItem = {
 /**
  * The departure dates a tour can actually be booked on: active, in the future,
  * and — when a date is tied to one airport — only if that airport is still
- * offered (a date tied to a deactivated / switched-off / deleted airport is
- * dropped rather than silently turning into an "any airport" date).
+ * offered (a date tied to a deactivated or deleted Airport is dropped rather
+ * than silently turning into an "any airport" date; its Tour Airport Price
+ * row being switched off does NOT drop it — see listTourAirports).
  *
  * The one definition of "bookable date": the public dates list and booking
  * validation both use it, so they can never disagree.

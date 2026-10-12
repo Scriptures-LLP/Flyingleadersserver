@@ -2,12 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ResourceCrudPage } from "../components/ResourceCrudPage";
 import { StatusBadge } from "../components/StatusBadge";
+import { SyncStatusCell } from "../components/SyncStatusBadge";
 import { api } from "../lib/api";
 
 type PromoCode = {
   _id: string;
   code: string;
   tourId?: string | null;
+  mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
   type: "percent" | "amount";
   value: number;
   maxDiscount?: number;
@@ -63,6 +65,11 @@ export function PromoCodesPage() {
           render: (p) => (p.perUserLimit ? `${p.perUserLimit} time${p.perUserLimit > 1 ? "s" : ""}` : "Unlimited"),
         },
         { key: "isActive", label: "Active", render: (p) => <StatusBadge active={p.isActive} /> },
+        {
+          key: "mysqlSync",
+          label: "Website",
+          render: (p) => <SyncStatusCell resourcePath="/admin/promo-codes" id={p._id} mysqlSync={p.mysqlSync} />,
+        },
       ]}
       fields={[
         { name: "code", label: "Code", type: "text", required: true },
