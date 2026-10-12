@@ -26,7 +26,7 @@ type Booking = {
     tokenAmount: number;
     // Final per-person price per traveller type — the tour's price plus any
     // airport / travel-date charge ticked for that type (chargesIncluded).
-    breakdown?: { type: "adult" | "child" | "infant"; count: number; unitPrice: number; chargesIncluded?: number; subtotal: number }[];
+    breakdown?: { type: "adult" | "child" | "infant"; categoryLabel?: string; count: number; unitPrice: number; chargesIncluded?: number; subtotal: number }[];
     // Legacy: separate charge lines on bookings made before charges were folded in.
     addons?: { label: string; count: number; unitPrice: number; subtotal: number }[];
   };
@@ -596,7 +596,7 @@ export function BookingsPage() {
                     <p className="font-medium text-neutral-700">Pricing</p>
                     {(detail.item.pricing.breakdown ?? []).map((l, i) => (
                       <p key={`b${i}`} className="text-neutral-600">
-                        {l.count} × {l.type}: {inr(l.unitPrice)}
+                        {l.count} × {l.categoryLabel || l.type}: {inr(l.unitPrice)}
                         {!!l.chargesIncluded && (
                           <span className="block text-xs text-neutral-400">
                             incl. {inr(l.chargesIncluded)} airport / travel charges

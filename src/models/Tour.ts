@@ -45,6 +45,26 @@ const tourSchema = new Schema(
       ],
       default: [],
     },
+    // Age-band pricing: a configurable list of named categories, each covering
+    // an age range with its own price (e.g. "Infant" 0–2 @ 0, "Child" 4–6 @
+    // 8000, "Child" 6–11 @ 9500). When a tour has any ageBands, a traveller
+    // whose age falls inside a band is priced at that band's price and shown
+    // under that band's label — the system resolves both category and price
+    // from the age alone (see pricing.service.ts#resolveAgeBand). This is
+    // purely additive: a tour with no ageBands keeps the existing
+    // adult/child/infant + childPricingTiers behaviour unchanged.
+    ageBands: {
+      type: [
+        {
+          _id: false,
+          label: { type: String, required: true, trim: true },
+          minAge: { type: Number, required: true, min: 0 },
+          maxAge: { type: Number, required: true, min: 0 },
+          price: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [],
+    },
     tokenAmount: { type: Number, min: 0, default: 0 },
     allowTokenPayment: { type: Boolean, default: false },
 

@@ -9,6 +9,7 @@ type TourLike = HydratedDocument<any>;
 type TravellerType = "adult" | "child" | "infant";
 type Traveller = { type: TravellerType; age?: number };
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
+type AgeBand = { label: string; minAge: number; maxAge: number; price: number };
 type Applies = { adult?: boolean; child?: boolean; infant?: boolean } | null;
 type TourDateLike = { price?: number; appliesTo?: Applies } | null;
 
@@ -19,6 +20,9 @@ type TourDateLike = { price?: number; appliesTo?: Applies } | null;
 // `unitPrice` came from those charges, for the admin's records only.
 export type PriceBreakdownLine = {
   type: TravellerType;
+  // The age-band category name this line was priced under (e.g. "Child"), set
+  // only when the tour uses age-band pricing. Display falls back to `type`.
+  categoryLabel?: string;
   count: number;
   unitPrice: number;
   chargesIncluded: number;
@@ -42,6 +46,17 @@ export function computeTcs(amountAfterDiscount: number, isDomestic?: boolean): n
 // how charges behaved before categories were selectable.
 const appliesTo = (a: Applies | undefined, type: TravellerType) => a?.[type] ?? true;
 
+// The configured age band a traveller's age falls into, if the tour uses
+// age-band pricing. The first band whose [minAge, maxAge] range contains the
+// age wins, so overlapping bands resolve deterministically in admin order.
+// Returns null when the tour has no bands or the age matches none of them —
+// the caller then falls back to the adult/child/infant pricing below.
+export function resolveAgeBand(tour: TourLike, age: number | undefined): AgeBand | null {
+  const bands = tour.ageBands as AgeBand[] | undefined;
+  if (!bands?.length || age === undefined) return null;
+  return bands.find((b) => age >= b.minAge && age <= b.maxAge) ?? null;
+}
+
 // Age-banded tiers take priority when configured and the traveller's age
 // falls in one of them; otherwise falls back to the flat priceChild (or the
 // adult price if that isn't set either) so tours without tiers keep working.
@@ -54,10 +69,16 @@ function childPrice(tour: TourLike, age: number | undefined): number {
   return tour.priceChild ?? tour.price;
 }
 
-function perPersonBase(tour: TourLike, traveller: Traveller): number {
-  if (traveller.type === "child") return childPrice(tour, traveller.age);
-  if (traveller.type === "infant") return tour.priceInfant ?? 0;
-  return tour.price;
+// The per-person base price for one traveller plus the age-band label it was
+// priced under (when age-band pricing applied). Age bands are the top-priority
+// source of both price and category when the tour defines them and the
+// traveller's age matches one; otherwise it's the existing type-based pricing.
+function perPersonBase(tour: TourLike, traveller: Traveller): { unitPrice: number; categoryLabel?: string } {
+  const band = resolveAgeBand(tour, traveller.age);
+  if (band) return { unitPrice: band.price, categoryLabel: band.label };
+  if (traveller.type === "child") return { unitPrice: childPrice(tour, traveller.age) };
+  if (traveller.type === "infant") return { unitPrice: tour.priceInfant ?? 0 };
+  return { unitPrice: tour.price };
 }
 
 /** The airport + travel-date charges that apply to one traveller of this type. */
@@ -90,14 +111,24 @@ export function computeBaseAmount(
   const groups = new Map<string, PriceBreakdownLine>();
   for (const t of travellers) {
     const chargesIncluded = chargesFor(t.type, tourDate, airport);
-    const unitPrice = round2(perPersonBase(tour, t) + chargesIncluded);
-    const key = `${t.type}:${unitPrice}`;
+    const base = perPersonBase(tour, t);
+    const unitPrice = round2(base.unitPrice + chargesIncluded);
+    // Travellers in different age bands (or at different prices) stay on their
+    // own line — the label is part of the key so two "Child" bands don't merge.
+    const key = `${t.type}:${base.categoryLabel ?? ""}:${unitPrice}`;
     const existing = groups.get(key);
     if (existing) {
       existing.count += 1;
       existing.subtotal = round2(existing.subtotal + unitPrice);
     } else {
-      groups.set(key, { type: t.type, count: 1, unitPrice, chargesIncluded, subtotal: unitPrice });
+      groups.set(key, {
+        type: t.type,
+        categoryLabel: base.categoryLabel,
+        count: 1,
+        unitPrice,
+        chargesIncluded,
+        subtotal: unitPrice,
+      });
     }
   }
   const order: Record<TravellerType, number> = { adult: 0, child: 1, infant: 2 };

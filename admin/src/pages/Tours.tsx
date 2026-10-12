@@ -29,6 +29,7 @@ type Tour = {
   priceChild?: number;
   priceInfant?: number;
   childPricingTiers?: ChildPricingTier[];
+  ageBands?: AgeBand[];
   tokenAmount?: number;
   allowTokenPayment?: boolean;
   itinerary?: string;
@@ -47,6 +48,7 @@ type Tour = {
 };
 
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
+type AgeBand = { label: string; minAge: number; maxAge: number; price: number };
 type Category = { _id: string; label: string; slug: string };
 type Country = { _id: string; name: string };
 
@@ -66,6 +68,7 @@ const emptyForm: Record<string, unknown> = {
   priceChild: "",
   priceInfant: "",
   childPricingTiers: [] as ChildPricingTier[],
+  ageBands: [] as AgeBand[],
   tokenAmount: "",
   allowTokenPayment: false,
   itinerary: "",
@@ -310,13 +313,13 @@ export function ToursPage() {
               e.preventDefault();
               saveMutation.mutate();
             }}
-            className="my-8 w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg"
+            className="my-8 w-full max-w-2xl rounded-xl bg-white p-4 shadow-lg sm:p-6"
           >
             <h2 className="mb-4 text-base font-semibold text-neutral-900">{editing ? "Edit Tour" : "New Tour"}</h2>
 
             {formError && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Title" required>
                 <input className="input" value={form.title as string} onChange={(e) => set("title", e.target.value)} required />
               </Field>
@@ -437,7 +440,7 @@ export function ToursPage() {
               <RichTextEditor value={form.itinerary as string} onChange={(html) => set("itinerary", html)} minHeight={200} />
             </Field>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Inclusions">
                 <RichTextEditor value={form.inclusions as string} onChange={(html) => set("inclusions", html)} minHeight={140} />
               </Field>
@@ -520,38 +523,140 @@ export function ToursPage() {
               ))}
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-4 text-sm">
-              <label className="flex items-center gap-2">
+            <div className="mt-4 rounded-lg border border-neutral-200 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-neutral-700">Age band pricing (optional)</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    set("ageBands", [
+                      ...((form.ageBands as AgeBand[]) ?? []),
+                      { label: "", minAge: 0, maxAge: 0, price: 0 },
+                    ])
+                  }
+                  className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  + Add band
+                </button>
+              </div>
+              <p className="mb-2 text-xs text-neutral-500">
+                Each band names a category (e.g. Infant, Child) with an age range and its price. When set, a traveller's
+                age picks the matching band for both their category and price — overriding the adult/child/infant prices
+                above. The first matching band wins.
+              </p>
+              {((form.ageBands as AgeBand[]) ?? []).map((band, i) => (
+                <div key={i} className="mb-2 flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Label (e.g. Child)"
+                    className="input w-32"
+                    value={band.label}
+                    onChange={(e) => {
+                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
+                      bands[i] = { ...bands[i], label: e.target.value };
+                      set("ageBands", bands);
+                    }}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Min age"
+                    className="input w-24"
+                    value={band.minAge}
+                    onChange={(e) => {
+                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
+                      bands[i] = { ...bands[i], minAge: Number(e.target.value) };
+                      set("ageBands", bands);
+                    }}
+                  />
+                  <span className="text-neutral-400">to</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Max age"
+                    className="input w-24"
+                    value={band.maxAge}
+                    onChange={(e) => {
+                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
+                      bands[i] = { ...bands[i], maxAge: Number(e.target.value) };
+                      set("ageBands", bands);
+                    }}
+                  />
+                  <span className="text-neutral-400">yrs @ ₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Price"
+                    className="input w-28"
+                    value={band.price}
+                    onChange={(e) => {
+                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
+                      bands[i] = { ...bands[i], price: Number(e.target.value) };
+                      set("ageBands", bands);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
+                      bands.splice(i, 1);
+                      set("ageBands", bands);
+                    }}
+                    className="shrink-0 text-red-600 hover:underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Each option is a full-width tappable row on mobile (two per row from
+                sm up): the whole label toggles, and the box is given an explicit
+                size + red accent so it's clearly visible and easy to hit. */}
+            <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition-colors hover:bg-neutral-50">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 cursor-pointer accent-red-600"
                   checked={!!form.showFlightDetails}
                   onChange={(e) => set("showFlightDetails", e.target.checked)}
                 />
                 Show flight details
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition-colors hover:bg-neutral-50">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 cursor-pointer accent-red-600"
                   checked={!!form.showHotelDetails}
                   onChange={(e) => set("showHotelDetails", e.target.checked)}
                 />
                 Show hotel details
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition-colors hover:bg-neutral-50">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 cursor-pointer accent-red-600"
                   checked={!!form.allowTokenPayment}
                   onChange={(e) => set("allowTokenPayment", e.target.checked)}
                 />
                 Allow token (partial) payment
               </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!form.isActive} onChange={(e) => set("isActive", e.target.checked)} />
-                Active
-              </label>
-              <label className="flex items-center gap-2" title="Domestic (within-India) tours never get TCS applied, regardless of Country">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition-colors hover:bg-neutral-50">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 cursor-pointer accent-red-600"
+                  checked={!!form.isActive}
+                  onChange={(e) => set("isActive", e.target.checked)}
+                />
+                Active
+              </label>
+              <label
+                className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-neutral-200 px-3 py-2.5 transition-colors hover:bg-neutral-50"
+                title="Domestic (within-India) tours never get TCS applied, regardless of Country"
+              >
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 shrink-0 cursor-pointer accent-red-600"
                   checked={!!form.isDomestic}
                   onChange={(e) => set("isDomestic", e.target.checked)}
                 />

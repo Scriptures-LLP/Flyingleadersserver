@@ -39,6 +39,11 @@ const pricingSchema = new Schema(
         {
           _id: false,
           type: { type: String, enum: ["adult", "child", "infant"], required: true },
+          // The age-band category name this line was priced under, when the tour
+          // uses age-band pricing (e.g. "Infant", "Child"). Falls back to the
+          // humanised `type` for display when absent. Optional so older bookings
+          // and tours without age bands are unaffected.
+          categoryLabel: { type: String, trim: true },
           count: { type: Number, required: true, min: 1 },
           unitPrice: { type: Number, required: true, min: 0 },
           chargesIncluded: { type: Number, min: 0, default: 0 },
