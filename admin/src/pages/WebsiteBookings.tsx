@@ -37,7 +37,7 @@ export function WebsiteBookingsPage() {
     queryFn: async () => (await api.get("/admin/website-bookings")).data.items as WebsiteBooking[],
   });
 
-  const pager = usePagination(bookings, 10);
+  const pager = usePagination(bookings, 6);
 
   const [viewingRef, setViewingRef] = useState<number | null>(null);
   const { data: detail } = useQuery({
@@ -63,14 +63,14 @@ export function WebsiteBookingsPage() {
         <table className="w-full text-left text-sm">
           <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
             <tr>
-              <th className="px-4 py-3">Ref</th>
-              <th className="px-4 py-3">Booked</th>
-              <th className="px-4 py-3">Tour</th>
-              <th className="px-4 py-3">Customer</th>
-              <th className="px-4 py-3">Travel date</th>
-              <th className="px-4 py-3">Travellers</th>
-              <th className="px-4 py-3 text-right">Amount</th>
-              <th className="px-4 py-3">Status</th>
+              <th className="whitespace-nowrap px-4 py-3">Ref</th>
+              <th className="whitespace-nowrap px-4 py-3">Booked</th>
+              <th className="whitespace-nowrap px-4 py-3">Tour</th>
+              <th className="whitespace-nowrap px-4 py-3">Customer</th>
+              <th className="whitespace-nowrap px-4 py-3">Travel date</th>
+              <th className="whitespace-nowrap px-4 py-3">Travellers</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right">Amount</th>
+              <th className="whitespace-nowrap px-4 py-3">Status</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -84,12 +84,19 @@ export function WebsiteBookingsPage() {
                   {new Date(b.bookedAt).toLocaleString("en-IN")}
                 </td>
                 <td className="px-4 py-3 text-neutral-800">
-                  {b.tourTitle}
-                  {b.airportCode && <span className="block text-xs text-neutral-500">{b.airportCode} · {b.airportName}</span>}
+                  <div className="max-w-[220px] truncate" title={b.tourTitle}>{b.tourTitle}</div>
+                  {b.airportCode && (
+                    <span className="block max-w-[220px] truncate text-xs text-neutral-500" title={`${b.airportCode} · ${b.airportName}`}>
+                      {b.airportCode} · {b.airportName}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
-                  <p className="font-medium text-neutral-800">{b.name}</p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="max-w-[180px] truncate font-medium text-neutral-800" title={b.name}>{b.name}</p>
+                  <p
+                    className="max-w-[180px] truncate text-xs text-neutral-500"
+                    title={`${b.phone}${b.email ? ` · ${b.email}` : ""}`}
+                  >
                     {b.phone}
                     {b.email ? ` · ${b.email}` : ""}
                   </p>

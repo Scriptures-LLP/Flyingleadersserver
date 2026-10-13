@@ -472,34 +472,42 @@ export function BookingsPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
-                <th className="px-4 py-2 font-medium">Ref</th>
-                <th className="px-4 py-2 font-medium">Tour</th>
-                <th className="px-4 py-2 font-medium">Customer</th>
-                <th className="px-4 py-2 font-medium">Booked on</th>
-                <th className="px-4 py-2 font-medium">Travel date</th>
-                <th className="px-4 py-2 font-medium">Travellers</th>
-                <th className="px-4 py-2 font-medium">Total</th>
-                <th className="px-4 py-2 font-medium">Paid</th>
-                <th className="px-4 py-2 font-medium">Remaining</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Payment</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Ref</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Tour</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Customer</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Booked on</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Travel date</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Travellers</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Total</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Paid</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Remaining</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Status</th>
+                <th className="whitespace-nowrap px-4 py-2 font-medium">Payment</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody>
               {pager.pageItems.map((b) => (
                 <tr key={b._id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-2 font-mono text-xs text-slate-700">{b.bookingRef}</td>
-                  <td className="px-4 py-2 text-slate-700">{name(b.tourId)}</td>
-                  <td className="px-4 py-2 text-slate-700">{name(b.customerId)}</td>
-                  <td className="px-4 py-2 text-slate-500">
+                  <td className="whitespace-nowrap px-4 py-2 font-mono text-xs text-slate-700">{b.bookingRef}</td>
+                  <td className="px-4 py-2 text-slate-700">
+                    <div className="max-w-[220px] truncate" title={name(b.tourId)}>
+                      {name(b.tourId)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-slate-700">
+                    <div className="max-w-[160px] truncate" title={name(b.customerId)}>
+                      {name(b.customerId)}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-500">
                     {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </td>
-                  <td className="px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
-                  <td className="px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
-                  <td className="px-4 py-2 text-slate-700">{inr(b.pricing?.finalAmount)}</td>
-                  <td className="px-4 py-2 font-medium text-slate-900">{inr(b.amountPaid)}</td>
-                  <td className={`px-4 py-2 ${remainingOf(b) > 0 ? "font-medium text-red-700" : "text-slate-500"}`}>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-700">{inr(b.pricing?.finalAmount)}</td>
+                  <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900">{inr(b.amountPaid)}</td>
+                  <td className={`whitespace-nowrap px-4 py-2 ${remainingOf(b) > 0 ? "font-medium text-red-700" : "text-slate-500"}`}>
                     {inr(remainingOf(b))}
                   </td>
                   <td className="px-4 py-2">
