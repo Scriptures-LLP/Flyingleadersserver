@@ -101,7 +101,7 @@ export function ReferralsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-neutral-700">{r.rewardAmount ? `₹${r.rewardAmount}` : "—"}</td>
-                <td className="px-4 py-2 text-neutral-500">{new Date(r.createdAt).toLocaleDateString("en-IN")}</td>
+                <td className="px-4 py-2 text-neutral-500">{new Date(r.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
               </tr>
             ))}
             {referrals?.length === 0 && (

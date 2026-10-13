@@ -48,7 +48,7 @@ export function PromoCodesPage() {
           label: "Valid",
           render: (p) =>
             p.startsAt || p.expiresAt
-              ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN") : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN") : "no end"}`
+              ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "no end"}`
               : "Always",
         },
         {

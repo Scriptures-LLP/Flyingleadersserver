@@ -49,7 +49,7 @@ export function ContactMessagesPage() {
                 </p>
                 <p className="text-xs text-neutral-500">
                   {m.email}
-                  {m.phone ? ` · ${m.phone}` : ""} · {new Date(m.createdAt).toLocaleString("en-IN")}
+                  {m.phone ? ` · ${m.phone}` : ""} · {new Date(m.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </p>
               </div>
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[m.status]}`}>

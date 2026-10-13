@@ -81,7 +81,7 @@ export function WebsiteBookingsPage() {
                   #{b.ref} <span className="ml-1 font-sans font-semibold text-neutral-500">[Website]</span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-neutral-600">
-                  {new Date(b.bookedAt).toLocaleString("en-IN")}
+                  {new Date(b.bookedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </td>
                 <td className="px-4 py-3 text-neutral-800">
                   {b.tourTitle}
