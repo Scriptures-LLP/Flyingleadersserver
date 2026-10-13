@@ -42,27 +42,49 @@ export function PromoCodesPage() {
         { key: "code", label: "Code" },
         { key: "type", label: "Type" },
         { key: "value", label: "Value" },
-        { key: "tourId", label: "Scope", render: (p) => (p.tourId ? tours?.find((t) => t._id === p.tourId)?.title ?? "…" : "All tours") },
+        {
+          key: "tourId",
+          label: "Scope",
+          render: (p) => {
+            const text = p.tourId ? tours?.find((t) => t._id === p.tourId)?.title ?? "…" : "All tours";
+            return (
+              <div className="max-w-[200px] truncate" title={text}>
+                {text}
+              </div>
+            );
+          },
+        },
         {
           key: "startsAt",
           label: "Valid",
-          render: (p) =>
-            p.startsAt || p.expiresAt
-              ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "no end"}`
-              : "Always",
+          render: (p) => (
+            <span className="whitespace-nowrap">
+              {p.startsAt || p.expiresAt
+                ? `${p.startsAt ? new Date(p.startsAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "any time"} → ${p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "no end"}`
+                : "Always"}
+            </span>
+          ),
         },
         {
           key: "usedCount",
           label: "Used",
           render: (p) => {
             const held = p.heldCount ? ` (+${p.heldCount} reserved)` : "";
-            return `${p.usedCount ?? 0}${p.usageLimit ? ` / ${p.usageLimit}` : ""}${held}`;
+            return (
+              <span className="whitespace-nowrap">
+                {`${p.usedCount ?? 0}${p.usageLimit ? ` / ${p.usageLimit}` : ""}${held}`}
+              </span>
+            );
           },
         },
         {
           key: "perUserLimit",
           label: "Per customer",
-          render: (p) => (p.perUserLimit ? `${p.perUserLimit} time${p.perUserLimit > 1 ? "s" : ""}` : "Unlimited"),
+          render: (p) => (
+            <span className="whitespace-nowrap">
+              {p.perUserLimit ? `${p.perUserLimit} time${p.perUserLimit > 1 ? "s" : ""}` : "Unlimited"}
+            </span>
+          ),
         },
         { key: "isActive", label: "Active", render: (p) => <StatusBadge active={p.isActive} /> },
         {
