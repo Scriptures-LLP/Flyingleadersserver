@@ -30,7 +30,6 @@ type Tour = {
   priceChild?: number;
   priceInfant?: number;
   childPricingTiers?: ChildPricingTier[];
-  ageBands?: AgeBand[];
   tokenAmount?: number;
   allowTokenPayment?: boolean;
   itinerary?: string;
@@ -50,7 +49,6 @@ type Tour = {
 };
 
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
-type AgeBand = { label: string; minAge: number; maxAge: number; price: number };
 type Category = { _id: string; label: string; slug: string };
 type Country = { _id: string; name: string };
 
@@ -70,7 +68,6 @@ const emptyForm: Record<string, unknown> = {
   priceChild: "",
   priceInfant: "",
   childPricingTiers: [] as ChildPricingTier[],
-  ageBands: [] as AgeBand[],
   tokenAmount: "",
   allowTokenPayment: false,
   itinerary: "",
@@ -118,6 +115,15 @@ export function ToursPage() {
   // A just-picked cover being adjusted in the crop dialog.
   const [coverCropFile, setCoverCropFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  // A brief page-level confirmation after a save/delete. The add/edit modal
+  // closes on success, so a message inside it would never be seen — this toast
+  // on the page is what tells the admin the tour actually uploaded (or failed).
+  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   // Preview: the freshly-picked file if any, otherwise the tour's saved cover
   // (unless it's been cleared).
@@ -209,22 +215,78 @@ export function ToursPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/admin/tours"] });
+      setToast({ type: "success", msg: editing ? "Tour updated successfully." : "Tour created successfully." });
       setEditing(undefined);
     },
+    // Keep the error in the modal (next to the form the admin is still looking
+    // at) so they can fix and retry without the dialog closing.
     onError: (err) => setFormError(apiErrorMessage(err)),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => api.delete(`/admin/tours/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/admin/tours"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/admin/tours"] });
+      setToast({ type: "success", msg: "Tour deleted." });
+    },
+    // Deletes used to fail silently — surface it so the admin isn't left unsure.
+    onError: (err) => setToast({ type: "error", msg: apiErrorMessage(err) }),
   });
 
   function set(name: string, value: unknown) {
     setForm((f) => ({ ...f, [name]: value }));
   }
 
+  // Everything the server (and the Tour schema) will reject, checked up front so
+  // the form can refuse to submit rather than firing a request that half-saves
+  // and then errors. Returns the first problem as a human message, or null when
+  // the form is good to send. Catches the cases native `required` can't — a child
+  // pricing band with a negative/empty price or reversed age range.
+  const invalidReason = ((): string | null => {
+    if (!(form.title as string)?.trim()) return "Title is required.";
+    const priceRaw = form.price as string;
+    const price = Number(priceRaw);
+    if (priceRaw === "" || priceRaw == null || Number.isNaN(price) || price < 0) {
+      return "Enter a valid adult price (₹0 or more).";
+    }
+    const tiers = (form.childPricingTiers as ChildPricingTier[]) ?? [];
+    for (let i = 0; i < tiers.length; i++) {
+      const t = tiers[i];
+      if ([t.minAge, t.maxAge, t.price].some((n) => Number.isNaN(Number(n)) || Number(n) < 0)) {
+        return `Child pricing band ${i + 1}: ages and price must be 0 or more.`;
+      }
+      if (Number(t.maxAge) < Number(t.minAge)) {
+        return `Child pricing band ${i + 1}: max age can't be less than min age.`;
+      }
+    }
+    return null;
+  })();
+
   return (
     <div>
+      {/* Page-level confirmation after a save/delete (the modal has closed by
+          now). Auto-dismisses; colour + icon make success vs. failure obvious. */}
+      {toast && (
+        <div
+          role="status"
+          className={`fixed right-4 top-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium shadow-lg ${
+            toast.type === "success"
+              ? "bg-green-600 text-white"
+              : "bg-red-600 text-white"
+          }`}
+        >
+          {toast.type === "success" ? <Icon name="check" className="h-4 w-4" /> : <span aria-hidden="true">⚠</span>}
+          <span>{toast.msg}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-1 text-white/80 hover:text-white"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="h-6 w-1.5 rounded-full bg-gradient-to-b from-red-500 to-red-600" />
@@ -317,6 +379,14 @@ export function ToursPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              // Catch the problems the browser's `required` can't (blank age-band
+              // label, reversed ranges, …) and show them instead of firing a
+              // request that half-saves and errors.
+              if (invalidReason) {
+                setFormError(invalidReason);
+                return;
+              }
+              setFormError(null);
               saveMutation.mutate();
             }}
             className="my-8 w-full max-w-2xl rounded-xl bg-white p-4 shadow-lg sm:p-6"
@@ -529,93 +599,6 @@ export function ToursPage() {
               ))}
             </div>
 
-            <div className="mt-4 rounded-lg border border-neutral-200 p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-medium text-neutral-700">Age band pricing (optional)</p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    set("ageBands", [
-                      ...((form.ageBands as AgeBand[]) ?? []),
-                      { label: "", minAge: 0, maxAge: 0, price: 0 },
-                    ])
-                  }
-                  className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-                >
-                  + Add band
-                </button>
-              </div>
-              <p className="mb-2 text-xs text-neutral-500">
-                Each band names a category (e.g. Infant, Child) with an age range and its price. When set, a traveller's
-                age picks the matching band for both their category and price — overriding the adult/child/infant prices
-                above. The first matching band wins.
-              </p>
-              {((form.ageBands as AgeBand[]) ?? []).map((band, i) => (
-                <div key={i} className="mb-2 flex flex-wrap items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Label (e.g. Child)"
-                    className="input w-32"
-                    value={band.label}
-                    onChange={(e) => {
-                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
-                      bands[i] = { ...bands[i], label: e.target.value };
-                      set("ageBands", bands);
-                    }}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Min age"
-                    className="input w-24"
-                    value={band.minAge}
-                    onChange={(e) => {
-                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
-                      bands[i] = { ...bands[i], minAge: Number(e.target.value) };
-                      set("ageBands", bands);
-                    }}
-                  />
-                  <span className="text-neutral-400">to</span>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Max age"
-                    className="input w-24"
-                    value={band.maxAge}
-                    onChange={(e) => {
-                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
-                      bands[i] = { ...bands[i], maxAge: Number(e.target.value) };
-                      set("ageBands", bands);
-                    }}
-                  />
-                  <span className="text-neutral-400">yrs @ ₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Price"
-                    className="input w-28"
-                    value={band.price}
-                    onChange={(e) => {
-                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
-                      bands[i] = { ...bands[i], price: Number(e.target.value) };
-                      set("ageBands", bands);
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const bands = [...((form.ageBands as AgeBand[]) ?? [])];
-                      bands.splice(i, 1);
-                      set("ageBands", bands);
-                    }}
-                    className="shrink-0 text-red-600 hover:underline"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-
             {/* Each option is a full-width tappable row on mobile (two per row from
                 sm up): the whole label toggles, and the box is given an explicit
                 size + red accent so it's clearly visible and easy to hit. */}
@@ -698,16 +681,29 @@ export function ToursPage() {
               <button
                 type="button"
                 onClick={() => setEditing(undefined)}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50"
+                disabled={saveMutation.isPending}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saveMutation.isPending}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
               >
-                {saveMutation.isPending ? "Saving…" : "Save"}
+                {saveMutation.isPending && (
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.37 0 0 5.37 0 12h4z" />
+                  </svg>
+                )}
+                {saveMutation.isPending
+                  ? editing
+                    ? "Saving changes…"
+                    : "Uploading tour…"
+                  : editing
+                    ? "Save changes"
+                    : "Create tour"}
               </button>
             </div>
           </form>

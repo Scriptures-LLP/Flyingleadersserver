@@ -50,19 +50,6 @@ export const tourSchema = z.object({
       }),
     ))
     .optional(),
-  // Named age-band pricing, e.g. [{label:"Infant",minAge:0,maxAge:2,price:0},
-  // {label:"Child",minAge:4,maxAge:6,price:8000}]. Same JSON-string handling as
-  // childPricingTiers (the tour form posts as FormData for the cover upload).
-  ageBands: z
-    .preprocess((v) => (typeof v === "string" ? JSON.parse(v) : v), z.array(
-      z.object({
-        label: z.string().trim().min(1),
-        minAge: z.coerce.number().min(0),
-        maxAge: z.coerce.number().min(0),
-        price: z.coerce.number().min(0),
-      }),
-    ))
-    .optional(),
   tokenAmount: z.coerce.number().min(0).optional(),
   allowTokenPayment: zStrictBoolean.optional(),
 

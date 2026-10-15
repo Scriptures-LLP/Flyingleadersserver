@@ -56,7 +56,6 @@ export function serializeTourDetail(tour: TourLike, galleryUrls?: string[]) {
     priceChild: tour.priceChild ?? null,
     priceInfant: tour.priceInfant ?? null,
     childPricingTiers: tour.childPricingTiers ?? [],
-    ageBands: tour.ageBands ?? [],
     tokenAmount: tour.tokenAmount ?? 0,
     allowTokenPayment: tour.allowTokenPayment ?? false,
     seatsAvailable: tour.seatsAvailable ?? null,
