@@ -85,7 +85,7 @@ export function ReviewsPage() {
               <div>
                 <p className="font-medium text-neutral-900">{name(r.tourId)}</p>
                 <p className="text-xs text-neutral-500">
-                  {name(r.customerId)} · {new Date(r.createdAt).toLocaleDateString("en-IN")}
+                  {name(r.customerId)} · {new Date(r.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </p>
               </div>
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[r.status]}`}>

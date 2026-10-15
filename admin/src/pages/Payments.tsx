@@ -119,6 +119,7 @@ export function PaymentsPage() {
                     month: "short",
                     hour: "numeric",
                     minute: "2-digit",
+                    timeZone: "Asia/Kolkata",
                   })}
                 </td>
                 <td className="px-4 py-3 text-neutral-800">

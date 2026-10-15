@@ -61,8 +61,8 @@ function audienceLabel(a: Campaign["audience"]): string {
     case "all":
       return "Everyone";
     case "tour_booked":
-      return `Booked ${typeof a.tourId === "object" ? a.tourId.title : "a tour"}${
-        a.travelDate ? ` · ${new Date(a.travelDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""
+      return `Booked ${a.tourId && typeof a.tourId === "object" ? a.tourId.title : "a tour"}${
+        a.travelDate ? ` · ${new Date(a.travelDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}` : ""
       }`;
     case "balance_due":
       return "Balance to pay";
@@ -71,7 +71,7 @@ function audienceLabel(a: Campaign["audience"]): string {
     case "never_booked":
       return "Not booked yet";
     case "customer":
-      return typeof a.customerId === "object" ? a.customerId.name : "One customer";
+      return a.customerId && typeof a.customerId === "object" ? a.customerId.name : "One customer";
   }
 }
 
@@ -290,7 +290,7 @@ export function NotificationsPage() {
                     <option value="">Any departure date</option>
                     {departureDates.map((d) => (
                       <option key={d} value={d}>
-                        {new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
                       </option>
                     ))}
                   </select>
@@ -503,7 +503,7 @@ export function NotificationsPage() {
           <tbody>
             {(history ?? []).map((h) => (
               <tr key={h._id} className="border-b border-neutral-100 align-top last:border-0">
-                <td className="whitespace-nowrap px-4 py-2 text-neutral-600">{new Date(h.createdAt).toLocaleString("en-IN")}</td>
+                <td className="whitespace-nowrap px-4 py-2 text-neutral-600">{new Date(h.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                 <td className="px-4 py-2">
                   <p className="font-medium text-neutral-900">{h.title}</p>
                   <p className="text-xs text-neutral-500">{h.body}</p>
@@ -519,7 +519,7 @@ export function NotificationsPage() {
                     {h.stats.sent} {h.stats.sent === 1 ? "phone" : "phones"} pushed{h.stats.failed ? `, ${h.stats.failed} failed` : ""}
                   </div>
                 </td>
-                <td className="px-4 py-2 text-neutral-600">{typeof h.sentBy === "object" ? h.sentBy.name : "—"}</td>
+                <td className="px-4 py-2 text-neutral-600">{h.sentBy && typeof h.sentBy === "object" ? h.sentBy.name : "—"}</td>
               </tr>
             ))}
             {history && history.length === 0 && (

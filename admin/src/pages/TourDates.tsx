@@ -77,7 +77,7 @@ export function TourDatesPage() {
         return (
           <>
             <td className={`px-4 py-2 ${past ? "text-neutral-400" : "text-neutral-800"}`}>
-              <span className="font-medium">{new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+              <span className="font-medium">{new Date(d.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}</span>
               {past && <span className="ml-2 text-xs text-neutral-400">(past)</span>}
               {d.label && <div className="text-xs text-neutral-500">{d.label}</div>}
             </td>

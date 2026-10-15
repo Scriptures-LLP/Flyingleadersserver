@@ -501,13 +501,14 @@ export function BookingsPage() {
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-2 text-slate-500">
-                    {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    {new Date(b.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN")}</td>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-700">{new Date(b.travelDate).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                   <td className="whitespace-nowrap px-4 py-2 text-slate-700">{travellerSummary(b.travellers)}</td>
                   <td className="whitespace-nowrap px-4 py-2 text-slate-700">{inr(b.pricing?.finalAmount)}</td>
                   <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900">{inr(b.amountPaid)}</td>
                   <td className={`whitespace-nowrap px-4 py-2 ${remainingOf(b) > 0 ? "font-medium text-red-700" : "text-slate-500"}`}>
+
                     {inr(remainingOf(b))}
                   </td>
                   <td className="px-4 py-2">
@@ -583,7 +584,7 @@ export function BookingsPage() {
                     </div>
                     {detail.item.status === "cancelled" && (
                       <p className="mt-1.5 text-xs text-neutral-500">
-                        Cancelled{detail.item.cancelledAt ? ` on ${new Date(detail.item.cancelledAt).toLocaleDateString("en-IN")}` : ""}
+                        Cancelled{detail.item.cancelledAt ? ` on ${new Date(detail.item.cancelledAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : ""}
                         {detail.item.cancellationReason ? ` — ${detail.item.cancellationReason}` : ""}
                       </p>
                     )}
@@ -773,7 +774,7 @@ export function BookingsPage() {
                                 {office ? `Paid at office · ${methodLabel(office.method)}` : TXN_TYPE_LABEL[t.type]}
                               </span>
                               <span className="ml-2 text-xs text-neutral-400">
-                                {new Date(office?.receivedAt ?? t.createdAt).toLocaleString("en-IN")}
+                                {new Date(office?.receivedAt ?? t.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
                               </span>
                               <div>
                                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.className}`}>

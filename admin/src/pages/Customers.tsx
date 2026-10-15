@@ -73,7 +73,7 @@ export function CustomersPage() {
                   <td className="max-w-[16rem] truncate px-4 py-2 text-neutral-700" title={c.address ?? undefined}>
                     {c.address || "—"}
                   </td>
-                  <td className="px-4 py-2 text-neutral-700">{new Date(c.createdAt).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-2 text-neutral-700">{new Date(c.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
                   <td className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
