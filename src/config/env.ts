@@ -76,6 +76,14 @@ const envSchema = z.object({
   /** Hard ceiling on OTP SMS per day across all customers (guards against SMS-pumping abuse). */
   OTP_DAILY_LIMIT: z.coerce.number().default(300),
 
+  // WhatsApp notifications via Gupshup's WhatsApp Business API. Optional: unset,
+  // the notify endpoints answer "WhatsApp isn't set up" instead of crashing.
+  GUPSHUP_API_KEY: z.string().optional().default(""),
+  GUPSHUP_APP_NAME: z.string().optional().default(""),
+  /** The business's registered WhatsApp number (E.164, no +) — the `source` field on every send. */
+  GUPSHUP_SOURCE_NUMBER: z.string().optional().default(""),
+  GUPSHUP_TEMPLATE_URL: z.string().default("https://api.gupshup.io/wa/api/v1/template/msg"),
+
   // Module D — Firebase Phone Auth (base64-encoded service-account JSON).
   FIREBASE_SERVICE_ACCOUNT_B64: z.string().optional().default(""),
 

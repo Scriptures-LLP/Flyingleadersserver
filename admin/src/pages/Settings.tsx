@@ -20,6 +20,55 @@ function useSetting(key: string) {
   return { data, isLoading, saveMutation };
 }
 
+function WhatsAppPaymentTemplateSetting() {
+  const { data, isLoading, saveMutation } = useSetting("whatsapp_payment_template_id");
+  const [value, setValue] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (data) setValue(data.value || "");
+  }, [data]);
+
+  return (
+    <div className="mt-6">
+      <h2 className="mb-1 text-base font-semibold text-neutral-900">WhatsApp — Payment Received</h2>
+      <p className="mb-3 text-sm text-neutral-500">
+        Gupshup Template ID (a UUID, not its display name) for the automatic WhatsApp sent when a payment lands on a
+        booking. Leave blank to turn this off — nothing is sent until a real, approved template ID is set here. The
+        template's placeholders fill in order: {"{{1}}"} customer name, {"{{2}}"} tour, {"{{3}}"} amount paid,{" "}
+        {"{{4}}"} booking ref.
+      </p>
+      {isLoading ? (
+        <p className="text-neutral-500">Loading…</p>
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
+          <input
+            className="input flex-1"
+            placeholder="e.g. 6f1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <button
+            onClick={() =>
+              saveMutation.mutate(value, {
+                onSuccess: () => {
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2000);
+                },
+              })
+            }
+            disabled={saveMutation.isPending}
+            className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {saveMutation.isPending ? "Saving…" : "Save"}
+          </button>
+          {saved && <span className="text-sm text-neutral-600">Saved</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReferralRewardSetting() {
   const { data, isLoading, saveMutation } = useSetting("referral_reward_amount");
   const [value, setValue] = useState("");
@@ -284,6 +333,7 @@ export function SettingsPage() {
         </div>
       )}
 
+      <WhatsAppPaymentTemplateSetting />
       <ReferralRewardSetting />
       <AgeCategorySettings />
       <SocialLinksSettings />

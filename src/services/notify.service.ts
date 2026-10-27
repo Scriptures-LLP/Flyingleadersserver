@@ -1,7 +1,9 @@
 import { Booking } from "../models/Booking.js";
 import { Customer } from "../models/Customer.js";
+import { Setting } from "../models/Setting.js";
 
 import { deliverToCustomers } from "./push.service.js";
+import { isWhatsAppConfigured, sendWhatsAppTemplate, toGupshupDestination } from "./whatsapp.service.js";
 
 /**
  * The notifications the system sends by itself when something happens to a
@@ -23,6 +25,29 @@ const tourTitle = (b: { itinerarySnapshot?: unknown }) => (b.itinerarySnapshot a
 const remainingOf = (b: { pricing: { finalAmount: number }; amountPaid: number }) =>
   Math.max(0, Math.round((b.pricing.finalAmount - b.amountPaid) * 100) / 100);
 
+/**
+ * Sends a WhatsApp template if, and only if, the admin has set a template id
+ * for this event in Settings (key "whatsapp_<event>_template_id" — editable
+ * from the admin's existing Settings page, same mechanism as terms_html /
+ * referral_reward_amount). No template id configured = silently does nothing,
+ * so this is safe to call from every notify* function without it doing
+ * anything until the client actually has an approved Gupshup template.
+ *
+ * `params` must already be in the exact order the template's {{1}}, {{2}}…
+ * placeholders expect — that order is defined by whichever template gets
+ * configured, so it has to be matched by hand per event once a real template
+ * id is set.
+ */
+async function notifyWhatsApp(event: string, phone: string | undefined, params: string[]) {
+  if (!phone || !isWhatsAppConfigured()) return;
+  const destination = toGupshupDestination(phone);
+  if (!destination) return;
+  const setting = await Setting.findOne({ key: `whatsapp_${event}_template_id` });
+  const templateId = setting?.value?.trim();
+  if (!templateId) return;
+  await sendWhatsAppTemplate(destination, templateId, params);
+}
+
 /** A payment landed on a booking — paid in the app, or recorded by the office. */
 export function notifyPaymentReceived(bookingId: string, amount: number, via: "app" | "office") {
   return safely("payment received", async () => {
@@ -39,6 +64,9 @@ export function notifyPaymentReceived(bookingId: string, amount: number, via: "a
           : `We received ${inr(amount)} for ${tourTitle(b)} (${b.bookingRef}).${balance}`,
       data: { screen: "booking", bookingId: String(b._id) },
     });
+    // Params (once "whatsapp_payment_template_id" is set in admin Settings):
+    // {{1}} customer name, {{2}} tour, {{3}} amount paid, {{4}} booking ref.
+    await notifyWhatsApp("payment", b.contactPhone, [b.contactName, tourTitle(b), inr(amount), b.bookingRef]);
   });
 }
 
