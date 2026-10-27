@@ -32,6 +32,13 @@ export const tourSchema = z.object({
   location: z.string().trim().optional(),
   duration: z.string().trim().optional(),
   countryId: z.string().optional(),
+  // Overseas-tour TCS flag (model default false). Must be declared here or the
+  // validate middleware's zod .parse() strips it from the body before saving.
+  isDomestic: zStrictBoolean.optional(),
+  // Group vs Private tour — drives the app Home screen's tabs. Must be declared
+  // here too; otherwise an admin's "private" selection is silently dropped and
+  // every tour saves as the default "group".
+  tourType: z.enum(["group", "private"]).optional(),
   category: z.string().trim().optional(),
   category2: z.string().trim().optional(),
 

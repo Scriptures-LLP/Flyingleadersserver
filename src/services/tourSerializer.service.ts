@@ -33,6 +33,11 @@ export function serializeTourSummary(tour: TourLike) {
     image,
     gallery: [image],
     extraCount: 0,
+    // Lets the app's Explore trip-type tabs (International / Domestic) filter the
+    // catalogue for real. Defaults to international (false) to match the model.
+    isDomestic: tour.isDomestic ?? false,
+    // Drives the app Home screen's Group Tours / Private Tours tabs.
+    tourType: tour.tourType ?? "group",
     isActive: tour.isActive,
   };
 }

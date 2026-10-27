@@ -9,6 +9,7 @@ import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.
 import { computeBaseAmount, computeTcs, validatePromoCode } from "../../services/pricing.service.js";
 import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
 import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -196,7 +197,15 @@ export const listMine = asyncHandler(async (req: Request, res: Response) => {
   const bookings = await Booking.find({ customerId: req.customer!.sub })
     .populate("airportId", "code name")
     .sort({ createdAt: -1 });
-  res.json({ items: bookings });
+  // Resolve each snapshot's raw cover-image storage key to a public URL so the
+  // My Trips cards can show the destination thumbnail (same as getOne).
+  const items = bookings.map((b) => {
+    const obj = b.toObject();
+    const snap = obj.itinerarySnapshot as { image?: string } | undefined;
+    if (snap?.image) snap.image = s3Adapter.urlFor(snap.image);
+    return obj;
+  });
+  res.json({ items });
 });
 
 export const getOne = asyncHandler(async (req: Request, res: Response) => {
@@ -205,7 +214,12 @@ export const getOne = asyncHandler(async (req: Request, res: Response) => {
     "code name",
   );
   if (!booking) throw ApiError.notFound("Booking not found");
-  res.json({ item: booking });
+  // Resolve the snapshot's raw cover-image storage key to a public URL (same as
+  // the tour serializer) so the booking-detail screen can show the thumbnail.
+  const item = booking.toObject();
+  const snap = item.itinerarySnapshot as { image?: string } | undefined;
+  if (snap?.image) snap.image = s3Adapter.urlFor(snap.image);
+  res.json({ item });
 });
 
 export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) => {

@@ -8,6 +8,7 @@ import { notifyPaymentReceived } from "../../services/notify.service.js";
 import { assertCanPayWithPromo } from "../../services/promoUsage.service.js";
 import { assertWalletCreditAvailable } from "../../services/referral.service.js";
 import * as razorpay from "../../services/razorpay.service.js";
+import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -247,7 +248,18 @@ export const listMine = asyncHandler(async (req: Request, res: Response) => {
     .select("-office.note -office.recordedBy -office.voidedAt -office.voidedBy -office.voidReason")
     .populate("bookingId", "bookingRef itinerarySnapshot paymentStatus status amountPaid pricing.finalAmount")
     .sort({ createdAt: -1 });
-  res.json({ items: transactions });
+  // The booking snapshot stores the raw cover-image storage KEY (copied from
+  // tour.coverImage at booking time), not a URL — resolve it the same way the
+  // tour serializer does so the app's transaction list can show the thumbnail.
+  const items = transactions.map((tx) => {
+    const obj = tx.toObject();
+    const booking = obj.bookingId as { itinerarySnapshot?: { image?: string } } | string | undefined;
+    if (booking && typeof booking === "object" && booking.itinerarySnapshot?.image) {
+      booking.itinerarySnapshot.image = s3Adapter.urlFor(booking.itinerarySnapshot.image);
+    }
+    return obj;
+  });
+  res.json({ items });
 });
 
 export const webhook = asyncHandler(async (req: Request, res: Response) => {

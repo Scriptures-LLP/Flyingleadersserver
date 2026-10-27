@@ -20,6 +20,10 @@ const tourSchema = new Schema(
     // every existing tour keeps its current TCS behaviour; an admin ticks this
     // for domestic destinations like Goa, Manali, Kerala, etc.
     isDomestic: { type: Boolean, default: false },
+    // Group vs Private tour — drives the app Home screen's "Group Tours" /
+    // "Private Tours" tabs. Defaults to "group" so existing tours keep showing
+    // under Group Tours until an admin marks one as Private.
+    tourType: { type: String, enum: ["group", "private"], default: "group" },
     // References Category.slug rather than its ObjectId, matching the app's
     // existing TourPackage.category field (a plain string like "beach").
     category: { type: String, trim: true },

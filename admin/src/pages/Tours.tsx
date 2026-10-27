@@ -24,6 +24,7 @@ type Tour = {
   duration?: string;
   countryId?: string;
   isDomestic?: boolean;
+  tourType?: "group" | "private";
   category?: string;
   category2?: string;
   price: number;
@@ -62,6 +63,7 @@ const emptyForm: Record<string, unknown> = {
   duration: "",
   countryId: "",
   isDomestic: false,
+  tourType: "group",
   category: "",
   category2: "",
   price: "",
@@ -651,6 +653,39 @@ export function ToursPage() {
                 />
                 Domestic tour (no TCS)
               </label>
+            </div>
+
+            {/* Group vs Private — maps the tour to the app Home screen's
+                "Group Tours" / "Private Tours" tabs. */}
+            <div className="mt-3 text-sm">
+              <span className="mb-1 block font-medium text-neutral-700">Tour type</span>
+              <div className="flex gap-2">
+                {(["group", "private"] as const).map((tt) => {
+                  const selected = (form.tourType ?? "group") === tt;
+                  return (
+                    <label
+                      key={tt}
+                      className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                        selected
+                          ? "border-red-600 bg-red-50 text-red-700"
+                          : "border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="tourType"
+                        className="sr-only"
+                        checked={selected}
+                        onChange={() => set("tourType", tt)}
+                      />
+                      {tt === "group" ? "Group Tour" : "Private Tour"}
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                Controls which tab this tour appears under on the app Home screen.
+              </p>
             </div>
 
             {!!form.showFlightDetails && (
