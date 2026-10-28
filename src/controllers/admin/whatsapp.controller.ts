@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
 
-import { createWhatsAppTemplate, sendWhatsAppTemplate, toGupshupDestination } from "../../services/whatsapp.service.js";
+import {
+  createWhatsAppTemplate,
+  listWhatsAppTemplates,
+  sendWhatsAppTemplate,
+  toGupshupDestination,
+} from "../../services/whatsapp.service.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
@@ -22,4 +27,9 @@ export const createTemplate = asyncHandler(async (req: Request, res: Response) =
   };
   const result = await createWhatsAppTemplate({ elementName, category, content, sampleValues, footer });
   res.json(result);
+});
+
+export const listTemplates = asyncHandler(async (_req: Request, res: Response) => {
+  const items = await listWhatsAppTemplates();
+  res.json({ items });
 });

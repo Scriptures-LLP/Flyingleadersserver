@@ -11,6 +11,7 @@ export const adminWhatsAppRoutes = Router();
 adminWhatsAppRoutes.use(requireAdminAuth, requireRole("admin"));
 
 adminWhatsAppRoutes.post("/send", validate({ body: sendWhatsAppSchema }), whatsappController.send);
+adminWhatsAppRoutes.get("/templates", whatsappController.listTemplates);
 adminWhatsAppRoutes.post(
   "/templates",
   validate({ body: createWhatsAppTemplateSchema }),

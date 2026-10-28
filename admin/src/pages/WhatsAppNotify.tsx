@@ -1,7 +1,16 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, apiErrorMessage } from "../lib/api";
+
+type WhatsAppTemplate = {
+  id: string;
+  elementName: string;
+  content: string;
+  category: string;
+  status: string;
+  reason?: string;
+};
 
 type CreateTemplateResponse = {
   ok: boolean;
@@ -10,6 +19,88 @@ type CreateTemplateResponse = {
 };
 
 const CATEGORIES = ["UTILITY", "MARKETING", "AUTHENTICATION"] as const;
+
+const STATUS_STYLE: Record<string, string> = {
+  APPROVED: "bg-green-50 text-green-700",
+  PENDING: "bg-amber-50 text-amber-700",
+  FAILED: "bg-red-50 text-red-700",
+  REJECTED: "bg-red-50 text-red-700",
+};
+
+function useTemplates() {
+  return useQuery({
+    queryKey: ["/admin/whatsapp/templates"],
+    queryFn: async () => (await api.get("/admin/whatsapp/templates")).data.items as WhatsAppTemplate[],
+  });
+}
+
+/** Every template registered on the account, approved or not, with its exact message content — so nothing requires a trip to Gupshup's own dashboard just to see what's there. */
+function TemplatesTable() {
+  const { data: templates, isLoading, error, refetch, isFetching } = useTemplates();
+
+  return (
+    <div className="mt-8">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-neutral-900">All Templates</h2>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="text-sm font-medium text-green-700 hover:underline disabled:opacity-50"
+        >
+          {isFetching ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+      <p className="mb-3 text-sm text-neutral-500">
+        Every template on the <span className="font-medium text-neutral-700">flyingleadersupport</span> Gupshup app,
+        pulled live — only <span className="font-medium text-green-700">APPROVED</span> ones can actually be sent.
+      </p>
+
+      {isLoading && <p className="text-neutral-500">Loading…</p>}
+      {error && <p className="text-red-600">{apiErrorMessage(error)}</p>}
+
+      {templates && (
+        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Message</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100">
+              {templates.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-neutral-400">
+                    No templates yet — create one below.
+                  </td>
+                </tr>
+              )}
+              {templates.map((t) => (
+                <tr key={t.id}>
+                  <td className="px-4 py-3 align-top font-medium text-neutral-800">{t.elementName}</td>
+                  <td className="px-4 py-3 align-top text-neutral-600">
+                    {t.content}
+                    {t.reason && <p className="mt-1 text-xs text-red-600">Reason: {t.reason}</p>}
+                  </td>
+                  <td className="px-4 py-3 align-top text-neutral-600">{t.category}</td>
+                  <td className="px-4 py-3 align-top">
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[t.status] ?? "bg-neutral-100 text-neutral-600"}`}
+                    >
+                      {t.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Submits a brand-new template to Gupshup for Meta's approval, so an admin
@@ -20,6 +111,7 @@ const CATEGORIES = ["UTILITY", "MARKETING", "AUTHENTICATION"] as const;
  * right here to act on.
  */
 function CreateTemplateForm() {
+  const queryClient = useQueryClient();
   const [elementName, setElementName] = useState("");
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("UTILITY");
   const [content, setContent] = useState("");
@@ -41,6 +133,7 @@ function CreateTemplateForm() {
       });
       return res.data as CreateTemplateResponse;
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/admin/whatsapp/templates"] }),
   });
 
   const onSubmit = (e: React.FormEvent) => {
@@ -88,7 +181,8 @@ function CreateTemplateForm() {
 
         <div>
           <label className="mb-1 block text-sm font-medium text-neutral-700">
-            Message content — use {"{{1}}"}, {"{{2}}"}… for values that'll be filled in at send time
+            Message content — use {"{{1}}"}, {"{{2}}"}… for values that'll be filled in at send time (not at the
+            very start or end of the message)
           </label>
           <textarea
             className="input min-h-[80px]"
@@ -152,9 +246,12 @@ function CreateTemplateForm() {
  * console. Params fill the template's {{1}}, {{2}}… placeholders in order.
  */
 export function WhatsAppNotifyPage() {
+  const { data: templates } = useTemplates();
   const [phone, setPhone] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [paramsText, setParamsText] = useState("");
+
+  const selectedTemplate = templates?.find((t) => t.id === templateId);
 
   const send = useMutation({
     mutationFn: async () => {
@@ -179,9 +276,8 @@ export function WhatsAppNotifyPage() {
         <h1 className="text-xl font-bold tracking-tight text-neutral-900">WhatsApp Notify</h1>
       </div>
       <p className="mb-4 text-sm text-neutral-500">
-        Send a one-off WhatsApp message to a customer — booking confirmed, payment received, or anything else.
-        Needs a template already approved on Gupshup; find its Template ID (a UUID, not its display name) under the{" "}
-        <span className="font-medium text-neutral-700">flyingleadersupport</span> app's Templates list.
+        Send a one-off WhatsApp message to a customer — booking confirmed, payment received, or anything else. Only
+        an <span className="font-medium text-green-700">APPROVED</span> template can actually be sent.
       </p>
 
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
@@ -197,14 +293,21 @@ export function WhatsAppNotifyPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">Gupshup Template ID</label>
-          <input
-            className="input"
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
-            placeholder="e.g. 6f1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
-            required
-          />
+          <label className="mb-1 block text-sm font-medium text-neutral-700">Template</label>
+          <select className="input" value={templateId} onChange={(e) => setTemplateId(e.target.value)} required>
+            <option value="" disabled>
+              Select a template…
+            </option>
+            {(templates ?? []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.elementName} — {t.status}
+                {t.status !== "APPROVED" ? " (can't send yet)" : ""}
+              </option>
+            ))}
+          </select>
+          {selectedTemplate && (
+            <p className="mt-1.5 rounded-md bg-neutral-50 p-2 text-xs text-neutral-600">{selectedTemplate.content}</p>
+          )}
         </div>
 
         <div>
@@ -231,6 +334,7 @@ export function WhatsAppNotifyPage() {
         </button>
       </form>
 
+      <TemplatesTable />
       <CreateTemplateForm />
     </div>
   );

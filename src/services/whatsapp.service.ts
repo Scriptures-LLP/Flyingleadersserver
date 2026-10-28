@@ -146,3 +146,54 @@ export async function createWhatsAppTemplate(params: {
   if (!res.ok) console.error(`[whatsapp] Gupshup rejected template creation (HTTP ${res.status}):`, gupshupResponse);
   return { ok: res.ok, httpStatus: res.status, gupshupResponse };
 }
+
+export type WhatsAppTemplate = {
+  id: string;
+  elementName: string;
+  /** The body text with {{1}}, {{2}}… placeholders, as registered. */
+  content: string;
+  category: string;
+  status: string;
+  /** Only present when status is FAILED/REJECTED — Gupshup's own reason. */
+  reason?: string;
+};
+
+/** Lists every template registered on the app, approved or not, for the admin's "pick one" dropdown and reference table. */
+export async function listWhatsAppTemplates(): Promise<WhatsAppTemplate[]> {
+  if (!env.GUPSHUP_API_KEY || !env.GUPSHUP_APP_ID) {
+    throw ApiError.serviceUnavailable("WhatsApp isn't set up on this server yet");
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  let res: Response;
+  try {
+    res = await fetch(`${env.GUPSHUP_CREATE_TEMPLATE_URL_BASE}/${env.GUPSHUP_APP_ID}/template`, {
+      method: "GET",
+      signal: controller.signal,
+      headers: { apikey: env.GUPSHUP_API_KEY, accept: "application/json" },
+    });
+  } catch (err) {
+    console.error("[whatsapp] list-templates request to Gupshup failed:", err instanceof Error ? err.message : err);
+    throw ApiError.serviceUnavailable("Couldn't reach Gupshup right now. Please try again in a moment.");
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const payload = (await res.json().catch(() => ({}))) as {
+    templates?: Array<{ id: string; elementName: string; data: string; category: string; status: string; reason?: string }>;
+  };
+  if (!res.ok) {
+    console.error(`[whatsapp] Gupshup rejected listing templates (HTTP ${res.status}):`, payload);
+    throw ApiError.serviceUnavailable("Couldn't load WhatsApp templates right now. Please try again in a moment.");
+  }
+
+  return (payload.templates ?? []).map((t) => ({
+    id: t.id,
+    elementName: t.elementName,
+    content: t.data,
+    category: t.category,
+    status: t.status,
+    reason: t.reason,
+  }));
+}
