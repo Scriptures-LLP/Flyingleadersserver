@@ -83,6 +83,9 @@ const envSchema = z.object({
   /** The business's registered WhatsApp number (E.164, no +) — the `source` field on every send. */
   GUPSHUP_SOURCE_NUMBER: z.string().optional().default(""),
   GUPSHUP_TEMPLATE_URL: z.string().default("https://api.gupshup.io/wa/api/v1/template/msg"),
+  /** The Gupshup app's own UUID (not the apikey) -- path param for the template-creation endpoint. */
+  GUPSHUP_APP_ID: z.string().optional().default(""),
+  GUPSHUP_CREATE_TEMPLATE_URL_BASE: z.string().default("https://api.gupshup.io/wa/app"),
 
   // Module D — Firebase Phone Auth (base64-encoded service-account JSON).
   FIREBASE_SERVICE_ACCOUNT_B64: z.string().optional().default(""),

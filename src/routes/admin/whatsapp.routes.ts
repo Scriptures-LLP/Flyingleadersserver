@@ -4,10 +4,15 @@ import * as whatsappController from "../../controllers/admin/whatsapp.controller
 import { requireAdminAuth } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
-import { sendWhatsAppSchema } from "../../validators/whatsapp.validators.js";
+import { createWhatsAppTemplateSchema, sendWhatsAppSchema } from "../../validators/whatsapp.validators.js";
 
 export const adminWhatsAppRoutes = Router();
 
 adminWhatsAppRoutes.use(requireAdminAuth, requireRole("admin"));
 
 adminWhatsAppRoutes.post("/send", validate({ body: sendWhatsAppSchema }), whatsappController.send);
+adminWhatsAppRoutes.post(
+  "/templates",
+  validate({ body: createWhatsAppTemplateSchema }),
+  whatsappController.createTemplate,
+);

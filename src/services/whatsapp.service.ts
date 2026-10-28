@@ -77,3 +77,72 @@ export async function sendWhatsAppTemplate(
     throw unavailable();
   }
 }
+
+export type CreateTemplateResult = { ok: boolean; httpStatus: number; gupshupResponse: unknown };
+
+/**
+ * Submits a new WhatsApp template for Meta's approval through Gupshup, so an
+ * admin can create one without leaving our own panel. EXPERIMENTAL: built
+ * against a Gupshup endpoint shape found in docs that weren't dated as
+ * current, so the exact field set may have drifted -- `gupshupResponse` is
+ * always returned as-is (not swallowed into a generic error like the send
+ * function above) specifically so a rejection's real reason is visible and
+ * this can be adjusted quickly rather than guessed at blindly.
+ *
+ * `elementName` must be lowercase letters, numbers and underscores only, and
+ * unique. `content` is the body text using `{{1}}`, `{{2}}`… placeholders;
+ * `sampleValues` fills them in the same order to build the "how it'll look"
+ * example Meta's reviewers see.
+ */
+export async function createWhatsAppTemplate(params: {
+  elementName: string;
+  category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
+  content: string;
+  sampleValues: string[];
+  footer?: string;
+}): Promise<CreateTemplateResult> {
+  if (!env.GUPSHUP_API_KEY || !env.GUPSHUP_APP_ID) {
+    throw ApiError.serviceUnavailable("WhatsApp template creation isn't set up on this server yet");
+  }
+
+  let example = params.content;
+  params.sampleValues.forEach((value, i) => {
+    example = example.replace(`{{${i + 1}}}`, value);
+  });
+
+  const body = new URLSearchParams({
+    elementName: params.elementName,
+    languageCode: "en",
+    category: params.category,
+    templateType: "TEXT",
+    vertical: params.elementName,
+    content: params.content,
+    example,
+    ...(params.footer ? { footer: params.footer } : {}),
+  });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  let res: Response;
+  try {
+    res = await fetch(`${env.GUPSHUP_CREATE_TEMPLATE_URL_BASE}/${env.GUPSHUP_APP_ID}/template`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        apikey: env.GUPSHUP_API_KEY,
+        "content-type": "application/x-www-form-urlencoded",
+        accept: "application/json",
+      },
+      body,
+    });
+  } catch (err) {
+    console.error("[whatsapp] create-template request to Gupshup failed:", err instanceof Error ? err.message : err);
+    throw ApiError.serviceUnavailable("Couldn't reach Gupshup right now. Please try again in a moment.");
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const gupshupResponse = await res.json().catch(() => ({}));
+  if (!res.ok) console.error(`[whatsapp] Gupshup rejected template creation (HTTP ${res.status}):`, gupshupResponse);
+  return { ok: res.ok, httpStatus: res.status, gupshupResponse };
+}
