@@ -86,6 +86,9 @@ const envSchema = z.object({
   /** The Gupshup app's own UUID (not the apikey) -- path param for the template-creation endpoint. */
   GUPSHUP_APP_ID: z.string().optional().default(""),
   GUPSHUP_CREATE_TEMPLATE_URL_BASE: z.string().default("https://api.gupshup.io/wa/app"),
+  GUPSHUP_SESSION_MSG_URL: z.string().default("https://api.gupshup.io/wa/api/v1/msg"),
+  /** Shared secret Gupshup's webhook config must echo back as a ?token= query param — stops randoms from hitting the inbound-message webhook and burning OpenAI/Gupshup calls. */
+  GUPSHUP_WEBHOOK_SECRET: z.string().optional().default(""),
 
   // Module D — Firebase Phone Auth (base64-encoded service-account JSON).
   FIREBASE_SERVICE_ACCOUNT_B64: z.string().optional().default(""),
