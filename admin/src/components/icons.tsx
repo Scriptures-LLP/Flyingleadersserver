@@ -15,6 +15,7 @@ export type IconName =
   | "referrals"
   | "notifications"
   | "contactMessages"
+  | "whatsapp"
   | "payments"
   | "pastTrips"
   | "homeCovers"
@@ -94,6 +95,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="m3 7 9 6 9-6" />
+    </>
+  ),
+  whatsapp: (
+    <>
+      <path d="M3 21l1.65-4.95A8.5 8.5 0 1 1 8.6 19.3L3 21z" />
+      <path d="M8.5 9.5c.3 2 2 3.7 4 4" />
     </>
   ),
   payments: (

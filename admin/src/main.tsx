@@ -26,6 +26,7 @@ import { TourAirportPricesPage } from "./pages/TourAirportPrices";
 import { TourDatesPage } from "./pages/TourDates";
 import { ToursPage } from "./pages/Tours";
 import { WebsiteBookingsPage } from "./pages/WebsiteBookings";
+import { WhatsAppNotifyPage } from "./pages/WhatsAppNotify";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
           { path: "/categories", element: <CategoriesPage /> },
           { path: "/promo-codes", element: <PromoCodesPage /> },
           { path: "/notifications", element: <NotificationsPage /> },
+          { path: "/whatsapp", element: <WhatsAppNotifyPage /> },
           { path: "/reviews", element: <ReviewsPage /> },
           { path: "/contact-messages", element: <ContactMessagesPage /> },
           { path: "/website-bookings", element: <WebsiteBookingsPage /> },

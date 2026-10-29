@@ -20,6 +20,7 @@ import { adminTourDatesRoutes } from "./tourDates.routes.js";
 import { adminTourMediaRoutes } from "./tourMedia.routes.js";
 import { adminToursRoutes } from "./tours.routes.js";
 import { adminWebsiteBookingsRoutes } from "./websiteBookings.routes.js";
+import { adminWhatsAppRoutes } from "./whatsapp.routes.js";
 
 export const adminRoutes = Router();
 
@@ -43,3 +44,4 @@ adminRoutes.use("/notifications", adminNotificationsRoutes);
 adminRoutes.use("/contact-messages", adminContactMessagesRoutes);
 adminRoutes.use("/website-bookings", adminWebsiteBookingsRoutes);
 adminRoutes.use("/payments", adminPaymentsRoutes);
+adminRoutes.use("/whatsapp", adminWhatsAppRoutes);
