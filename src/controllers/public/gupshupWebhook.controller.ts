@@ -2,13 +2,10 @@ import type { Request, Response } from "express";
 
 import { env } from "../../config/env.js";
 import { Customer } from "../../models/Customer.js";
-import { sendMessage } from "../../services/chatbot.service.js";
+import { sendGuestMessage, sendMessage } from "../../services/chatbot.service.js";
 import { sendWhatsAppSessionMessage, toGupshupDestination } from "../../services/whatsapp.service.js";
 import { phoneVariants } from "../../utils/phone.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-
-const FALLBACK_REPLY =
-  "Hi! Thanks for messaging Flying Leader. I couldn't find an account for this number — please reach out from inside the Flying Leader app so I can help with your bookings, or our team will get back to you here shortly.";
 
 /**
  * Pieced together from Gupshup's own (inconsistently-dated) docs, not
@@ -54,11 +51,7 @@ export const gupshupWebhook = asyncHandler(async (req: Request, res: Response) =
 
   try {
     const customer = await Customer.findOne({ phone: { $in: phoneVariants(inbound.from) }, isActive: true });
-    if (!customer) {
-      await sendWhatsAppSessionMessage(destination, FALLBACK_REPLY);
-      return;
-    }
-    const { reply } = await sendMessage(String(customer._id), inbound.text);
+    const { reply } = customer ? await sendMessage(String(customer._id), inbound.text) : await sendGuestMessage(inbound.text);
     await sendWhatsAppSessionMessage(destination, reply);
   } catch (err) {
     console.error("[whatsapp-webhook] failed to auto-reply:", err);
