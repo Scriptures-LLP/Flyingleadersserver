@@ -133,7 +133,13 @@ const dayLabel = (key: string) =>
     timeZone: "UTC",
   });
 
-type Departure = { day: string; airports: { id: string; code: string; name: string }[]; rowByAirport: Map<string, string>; anyRowId?: string };
+type Departure = {
+  day: string;
+  airports: { id: string; code: string; name: string; seatsAvailable: number | null }[];
+  rowByAirport: Map<string, string>;
+  anyRowId?: string;
+  anySeats?: number | null;
+};
 
 async function loadDepartures(tourId: unknown): Promise<{ departures: Departure[]; tourAirports: TourAirportOption[] }> {
   const tourAirports = await listTourAirports(tourId as never);
@@ -145,18 +151,20 @@ async function loadDepartures(tourId: unknown): Promise<{ departures: Departure[
     if (d.airport) {
       if (!dep.rowByAirport.has(d.airport._id)) {
         dep.rowByAirport.set(d.airport._id, d.id);
-        dep.airports.push({ id: d.airport._id, code: d.airport.code, name: d.airport.name });
+        dep.airports.push({ id: d.airport._id, code: d.airport.code, name: d.airport.name, seatsAvailable: d.seatsAvailable });
       }
     } else if (!dep.anyRowId) {
       dep.anyRowId = d.id;
+      dep.anySeats = d.seatsAvailable;
     }
     byDay.set(key, dep);
   }
-  // A date that isn't tied to an airport works from every airport the tour flies from.
+  // A date that isn't tied to an airport works from every airport the tour flies from,
+  // all sharing that one row's seat count (there's no per-airport split for it).
   for (const dep of byDay.values()) {
     if (dep.anyRowId) {
       for (const a of tourAirports) {
-        if (!dep.airports.some((x) => x.id === a.id)) dep.airports.push({ id: a.id, code: a.code, name: a.name });
+        if (!dep.airports.some((x) => x.id === a.id)) dep.airports.push({ id: a.id, code: a.code, name: a.name, seatsAvailable: dep.anySeats ?? null });
       }
     }
   }
@@ -282,7 +290,10 @@ async function getDepartures(args: ToolArgs) {
     upcomingDepartures: departures.slice(0, 20).map((d) => ({
       date: d.day,
       display: dayLabel(d.day),
-      departureAirports: d.airports.map((a) => `${a.code} – ${a.name}`),
+      departureAirports: d.airports.map((a) => ({
+        airport: `${a.code} – ${a.name}`,
+        seatsLeft: a.seatsAvailable,
+      })),
     })),
   };
 }
@@ -355,7 +366,12 @@ async function getPriceQuote(args: ToolArgs) {
     })),
     total: inr(baseAmount),
     tokenPayment: tour.allowTokenPayment && (tour.tokenAmount ?? 0) > 0 ? `Can book now with just ${inr(Math.min(tour.tokenAmount ?? 0, baseAmount))}` : undefined,
-    seatWarning: tour.seatsAvailable != null && tour.seatsAvailable < travellers.length ? `Only ${tour.seatsAvailable} seats are left` : undefined,
+    // A specific departure's own seat count, when one was picked — each date tracks
+    // seats separately from the tour-wide figure (which only applies to tours with no fixed dates).
+    seatWarning: (() => {
+      const seatsLeft = dep ? (tourDate?.seatsAvailable ?? null) : tour.seatsAvailable;
+      return seatsLeft != null && seatsLeft < travellers.length ? `Only ${seatsLeft} seats are left on this departure` : undefined;
+    })(),
     note: "Total before 2% TCS, and before any promo code or wallet credit — all applied at checkout.",
   };
 }

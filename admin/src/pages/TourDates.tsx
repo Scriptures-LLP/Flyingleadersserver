@@ -12,6 +12,7 @@ type TourDate = {
   airportId?: string | null;
   date: string;
   price: number;
+  seatsAvailable?: number | null;
   appliesToAdult: boolean;
   appliesToChild: boolean;
   appliesToInfant: boolean;
@@ -64,7 +65,7 @@ export function TourDatesPage() {
       title="Tour Dates"
       resourcePath="/admin/tour-dates"
       tourField="tourId"
-      rowColumns={["Date", "Departure Airport", "Travel Charge", "Status", "Website"]}
+      rowColumns={["Date", "Departure Airport", "Travel Charge", "Seats Left", "Status", "Website"]}
       emptyRowLabel="No dates for this tour yet — click “Add here” to create one."
       sortRows={(a, b) => {
         const byDate = a.date.localeCompare(b.date);
@@ -107,6 +108,15 @@ export function TourDatesPage() {
               />
             </td>
             <td className="px-4 py-2">
+              {d.seatsAvailable == null ? (
+                <span className="text-neutral-400">No limit</span>
+              ) : d.seatsAvailable === 0 ? (
+                <span className="font-medium text-red-600">Sold out</span>
+              ) : (
+                <span className="text-neutral-700">{d.seatsAvailable}</span>
+              )}
+            </td>
+            <td className="px-4 py-2">
               <StatusBadge active={d.isActive} />
             </td>
             <td className="px-4 py-2">
@@ -144,6 +154,7 @@ export function TourDatesPage() {
           label: "Travel charge (₹) — added automatically to the prices ticked below; leave blank for none",
           type: "number",
         },
+        { name: "seatsAvailable", label: "Seats available for this date (leave blank for no limit)", type: "number" },
         { name: "appliesToAdult", label: "Add to the Adult price", type: "checkbox" },
         { name: "appliesToChild", label: "Add to the Child price", type: "checkbox" },
         { name: "appliesToInfant", label: "Add to the Infant price", type: "checkbox" },

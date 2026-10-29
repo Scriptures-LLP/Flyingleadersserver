@@ -79,6 +79,8 @@ export type TourDateItem = {
   date: Date;
   label: string | null;
   airport: { _id: string; code: string; name: string } | null;
+  /** Remaining seats for this specific departure — null/undefined means no limit set. */
+  seatsAvailable: number | null;
 };
 
 /**
@@ -105,7 +107,7 @@ export async function listTourDates(
 
   const items: TourDateItem[] = [];
   for (const d of dates) {
-    const base = { id: String(d._id), date: d.date, label: d.label ?? null };
+    const base = { id: String(d._id), date: d.date, label: d.label ?? null, seatsAvailable: d.seatsAvailable ?? null };
     if (!d.airportId) {
       items.push({ ...base, airport: null });
       continue;

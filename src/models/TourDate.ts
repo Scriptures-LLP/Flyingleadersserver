@@ -24,6 +24,9 @@ const tourDateSchema = new Schema(
       infant: { type: Boolean, default: true },
     },
     label: { type: String, trim: true },
+    // Per-departure seat count — independent of the tour-wide Tour.seatsAvailable,
+    // which is only used for tours with no fixed dates. Unset = no limit shown.
+    seatsAvailable: { type: Number, min: 0, default: null },
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
     legacySourceTable: {

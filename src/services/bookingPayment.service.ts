@@ -1,5 +1,6 @@
 import { Booking } from "../models/Booking.js";
 import { Tour } from "../models/Tour.js";
+import { TourDate } from "../models/TourDate.js";
 import { Transaction, type OFFICE_PAYMENT_METHODS } from "../models/Transaction.js";
 import { ApiError } from "../utils/ApiError.js";
 import { notifyPaymentReceived } from "./notify.service.js";
@@ -35,7 +36,15 @@ export async function finalizePaidBooking(updated: BookingDoc): Promise<BookingD
     const claim = await Booking.updateOne({ _id: updated._id, status: "pending_payment" }, { $set: { status: "confirmed" } });
     if (claim.modifiedCount === 1) {
       updated.status = "confirmed";
-      if (updated.tourId) {
+      // A booking on a specific departure takes seats from that date's own
+      // count; only a booking with no fixed date (tourDateId unset) touches
+      // the tour-wide count — the two are independent seat pools, never both.
+      if (updated.tourDateId) {
+        await TourDate.updateOne(
+          { _id: updated.tourDateId, seatsAvailable: { $gte: updated.travellers.length } },
+          { $inc: { seatsAvailable: -updated.travellers.length } },
+        );
+      } else if (updated.tourId) {
         await Tour.updateOne(
           { _id: updated.tourId, seatsAvailable: { $gte: updated.travellers.length } },
           { $inc: { seatsAvailable: -updated.travellers.length } },
@@ -75,13 +84,20 @@ export async function cancelBooking(bookingId: string, reason?: string) {
   if (!before) return { booking, changed: false };
 
   // Seats are taken when a booking is first confirmed (finalizePaidBooking), so
-  // only a booking that got that far has any to give back. Tours with no seat
-  // limit (seatsAvailable unset) have nothing to restore.
-  if ((before.status === "confirmed" || before.status === "completed") && before.tourId) {
-    await Tour.updateOne(
-      { _id: before.tourId, seatsAvailable: { $type: "number" } },
-      { $inc: { seatsAvailable: before.travellers.length } },
-    );
+  // only a booking that got that far has any to give back. A date/tour with no
+  // seat limit (seatsAvailable unset) has nothing to restore.
+  if (before.status === "confirmed" || before.status === "completed") {
+    if (before.tourDateId) {
+      await TourDate.updateOne(
+        { _id: before.tourDateId, seatsAvailable: { $type: "number" } },
+        { $inc: { seatsAvailable: before.travellers.length } },
+      );
+    } else if (before.tourId) {
+      await Tour.updateOne(
+        { _id: before.tourId, seatsAvailable: { $type: "number" } },
+        { $inc: { seatsAvailable: before.travellers.length } },
+      );
+    }
   }
   return { booking, changed: true };
 }

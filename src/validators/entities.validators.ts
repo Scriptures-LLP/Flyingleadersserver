@@ -31,6 +31,9 @@ const tourDateBaseSchema = z.object({
   appliesToChild: zStrictBoolean.optional(),
   appliesToInfant: zStrictBoolean.optional(),
   label: z.string().trim().optional(),
+  // Blank = no limit shown for this departure. Independent of the tour's own
+  // seatsAvailable, which only applies to tours with no fixed dates.
+  seatsAvailable: z.coerce.number().min(0).optional().nullable(),
   isActive: zStrictBoolean.optional(),
   sortOrder: z.coerce.number().min(0).optional(),
 });
