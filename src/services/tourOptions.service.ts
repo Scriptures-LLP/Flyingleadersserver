@@ -79,6 +79,8 @@ export type TourDateItem = {
   date: Date;
   label: string | null;
   airport: { _id: string; code: string; name: string } | null;
+  /** Seats remaining for this date; null when the admin hasn't set a count. */
+  seatsAvailable: number | null;
 };
 
 /**
@@ -105,7 +107,12 @@ export async function listTourDates(
 
   const items: TourDateItem[] = [];
   for (const d of dates) {
-    const base = { id: String(d._id), date: d.date, label: d.label ?? null };
+    const base = {
+      id: String(d._id),
+      date: d.date,
+      label: d.label ?? null,
+      seatsAvailable: typeof d.seatsAvailable === "number" ? d.seatsAvailable : null,
+    };
     if (!d.airportId) {
       items.push({ ...base, airport: null });
       continue;

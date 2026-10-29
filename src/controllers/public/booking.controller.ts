@@ -73,6 +73,19 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     }
     const tourDate = await TourDate.findOne({ _id: body.tourDateId, tourId: tour._id, isActive: true });
     if (!tourDate) throw ApiError.badRequest("Selected travel date is not available");
+    // Per-date seat inventory: when the admin has set a count, a sold-out date
+    // (0) is refused and a date with fewer seats than the party size can't be
+    // booked. A null count means seats aren't tracked for this date.
+    if (typeof tourDate.seatsAvailable === "number") {
+      if (tourDate.seatsAvailable <= 0) {
+        throw ApiError.badRequest("This travel date is sold out");
+      }
+      if (tourDate.seatsAvailable < body.travellers.length) {
+        throw ApiError.badRequest(
+          `Only ${tourDate.seatsAvailable} seat(s) left on this travel date`,
+        );
+      }
+    }
     tourDateDoc = tourDate;
     tourDateId = String(tourDate._id);
   }
@@ -175,6 +188,9 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
       inclusions: tour.inclusions,
       exclusions: tour.exclusions,
       itinerary: tour.itinerary,
+      // Captured so the downloadable Trip Summary can show flight & hotel info.
+      flightDetails: tour.flightDetails,
+      hotelDetails: tour.hotelDetails,
     },
   });
 
@@ -229,6 +245,25 @@ export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) =
   // cancelled booking has nothing confirmed to summarize.
   if (booking.paymentStatus === "unpaid" || booking.status === "cancelled") {
     throw ApiError.badRequest("Trip summary is available once at least the token/partial payment is made");
+  }
+
+  // Bookings created before flight/hotel info was captured in the snapshot don't
+  // carry it — backfill (in memory only) from the live tour so their summary can
+  // still include it. Never invents data: if the tour has none, neither will the
+  // PDF.
+  const snap = booking.itinerarySnapshot as {
+    slug?: string;
+    flightDetails?: string;
+    hotelDetails?: string;
+  };
+  if (!snap.flightDetails && !snap.hotelDetails && snap.slug) {
+    const tour = await Tour.findOne({ slug: snap.slug })
+      .select("flightDetails hotelDetails")
+      .lean();
+    if (tour) {
+      snap.flightDetails = tour.flightDetails ?? undefined;
+      snap.hotelDetails = tour.hotelDetails ?? undefined;
+    }
   }
 
   const { renderTripSummaryPdf } = await import("../../services/tripSummaryPdf.service.js");

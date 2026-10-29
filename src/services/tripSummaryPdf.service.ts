@@ -11,7 +11,19 @@ type BookingLike = {
   travellers: { name: string; type: string; age?: number }[];
   pricing: { baseAmount: number; discountAmount: number; tcsAmount?: number; finalAmount: number; promoCode?: string };
   amountPaid: number;
-  itinerarySnapshot: { title: string; duration?: string; inclusions?: string; exclusions?: string; itinerary?: string };
+  itinerarySnapshot: {
+    title: string;
+    duration?: string;
+    inclusions?: string;
+    exclusions?: string;
+    itinerary?: string;
+    // Admin free-text (HTML) flight & hotel info, copied from the tour. These are
+    // rich-text blocks, not structured fields — there is no separate airline /
+    // flight-number / confirmation-number model, so the PDF renders exactly what
+    // the admin wrote and never fabricates booking references.
+    flightDetails?: string;
+    hotelDetails?: string;
+  };
 };
 
 const inr = (n: number) => `Rs. ${n.toLocaleString("en-IN")}`;
@@ -197,6 +209,22 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
   text(`Amount Paid: ${inr(booking.amountPaid)}`, { bold: true });
   const balance = Math.max(0, booking.pricing.finalAmount - booking.amountPaid);
   text(`Remaining Balance: ${inr(balance)}`, { bold: true, color: balance > 0 ? [0.7, 0.35, 0] : [0.1, 0.5, 0.2] });
+
+  if (booking.itinerarySnapshot.flightDetails) {
+    divider();
+    text("Flights", { size: 13, bold: true, gap: 20 });
+    for (const line of htmlToLines(booking.itinerarySnapshot.flightDetails)) {
+      text(line, { size: 10 });
+    }
+  }
+
+  if (booking.itinerarySnapshot.hotelDetails) {
+    divider();
+    text("Hotels", { size: 13, bold: true, gap: 20 });
+    for (const line of htmlToLines(booking.itinerarySnapshot.hotelDetails)) {
+      text(line, { size: 10 });
+    }
+  }
 
   if (booking.itinerarySnapshot.itinerary) {
     divider();

@@ -24,6 +24,10 @@ const tourDateSchema = new Schema(
       infant: { type: Boolean, default: true },
     },
     label: { type: String, trim: true },
+    // Seats remaining for THIS departure date. null = not tracked (the app then
+    // shows no seat count); 0 = sold out (not bookable). A real number is shown
+    // to the customer and the booking is refused if fewer than the party size.
+    seatsAvailable: { type: Number, min: 0, default: null },
     isActive: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
     legacySourceTable: {

@@ -16,6 +16,7 @@ type TourDate = {
   appliesToChild: boolean;
   appliesToInfant: boolean;
   label?: string;
+  seatsAvailable?: number | null;
   isActive: boolean;
   mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
@@ -64,7 +65,7 @@ export function TourDatesPage() {
       title="Tour Dates"
       resourcePath="/admin/tour-dates"
       tourField="tourId"
-      rowColumns={["Date", "Departure Airport", "Travel Charge", "Status", "Website"]}
+      rowColumns={["Date", "Departure Airport", "Travel Charge", "Seats Left", "Status", "Website"]}
       emptyRowLabel="No dates for this tour yet — click “Add here” to create one."
       sortRows={(a, b) => {
         const byDate = a.date.localeCompare(b.date);
@@ -105,6 +106,23 @@ export function TourDatesPage() {
                 child={d.appliesToChild}
                 infant={d.appliesToInfant}
               />
+            </td>
+            <td className="px-4 py-2">
+              {d.seatsAvailable == null ? (
+                <span className="text-neutral-400">—</span>
+              ) : d.seatsAvailable <= 0 ? (
+                <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-xs font-semibold text-neutral-500">
+                  Sold out
+                </span>
+              ) : (
+                <span
+                  className={`rounded-md px-2 py-0.5 text-xs font-semibold ${
+                    d.seatsAvailable <= 5 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"
+                  }`}
+                >
+                  {d.seatsAvailable} left
+                </span>
+              )}
             </td>
             <td className="px-4 py-2">
               <StatusBadge active={d.isActive} />
@@ -148,6 +166,11 @@ export function TourDatesPage() {
         { name: "appliesToChild", label: "Add to the Child price", type: "checkbox" },
         { name: "appliesToInfant", label: "Add to the Infant price", type: "checkbox" },
         { name: "label", label: "Label (optional)", type: "text" },
+        {
+          name: "seatsAvailable",
+          label: "Seats left (optional) — leave blank if not tracking; 0 = sold out",
+          type: "number",
+        },
         { name: "isActive", label: "Active", type: "checkbox" },
       ]}
     />

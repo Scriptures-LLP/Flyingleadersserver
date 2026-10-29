@@ -31,6 +31,8 @@ const tourDateBaseSchema = z.object({
   appliesToChild: zStrictBoolean.optional(),
   appliesToInfant: zStrictBoolean.optional(),
   label: z.string().trim().optional(),
+  // Seats remaining for this date. Blank clears it (null = untracked).
+  seatsAvailable: z.coerce.number().int().min(0).optional().nullable(),
   isActive: zStrictBoolean.optional(),
   sortOrder: z.coerce.number().min(0).optional(),
 });

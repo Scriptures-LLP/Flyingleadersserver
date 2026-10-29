@@ -52,6 +52,7 @@ type Tour = {
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
 type Category = { _id: string; label: string; slug: string };
 type Country = { _id: string; name: string };
+type SortKey = "title" | "category" | "price" | "active";
 
 const SEATS_REMARKS = ["Available", "Fast Selling", "Almost Sold Out", "Hot Selling", "Sold Out"];
 
@@ -105,7 +106,41 @@ export function ToursPage() {
 
   const catLabel = (slug?: string) => categories?.find((c) => c.slug === slug)?.label ?? slug ?? "";
 
-  const pager = usePagination(tours, 6);
+  // Click-to-sort the tours table. Sorts the full list (before pagination) so
+  // the order is consistent across pages. Defaults to title A→Z.
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "title", dir: "asc" });
+  const sortedTours = useMemo(() => {
+    if (!tours) return tours;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    const valueOf = (t: Tour): string | number => {
+      switch (sort.key) {
+        case "price":
+          return t.price ?? 0;
+        case "active":
+          return t.isActive ? 1 : 0;
+        case "category":
+          return catLabel(t.category).toLowerCase();
+        case "title":
+        default:
+          return (t.title ?? "").toLowerCase();
+      }
+    };
+    return [...tours].sort((a, b) => {
+      const av = valueOf(a);
+      const bv = valueOf(b);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tours, sort, categories]);
+
+  const pager = usePagination(sortedTours, 6);
+
+  const toggleSort = (key: SortKey) => {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+    pager.setPage(1); // a reorder can shrink the current page out from under you
+  };
 
   const [editing, setEditing] = useState<Tour | null | undefined>(undefined);
   const [form, setForm] = useState<Record<string, unknown>>(emptyForm);
@@ -310,10 +345,10 @@ export function ToursPage() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-neutral-200 bg-neutral-50 text-neutral-600">
               <tr>
-                <th className="px-4 py-2 font-medium">Title</th>
-                <th className="px-4 py-2 font-medium">Category</th>
-                <th className="px-4 py-2 font-medium">Price</th>
-                <th className="px-4 py-2 font-medium">Active</th>
+                <SortTh label="Title" k="title" sort={sort} onSort={toggleSort} />
+                <SortTh label="Category" k="category" sort={sort} onSort={toggleSort} />
+                <SortTh label="Price" k="price" sort={sort} onSort={toggleSort} />
+                <SortTh label="Active" k="active" sort={sort} onSort={toggleSort} />
                 <th className="px-4 py-2 font-medium">Website</th>
                 <th className="px-4 py-2" />
               </tr>
@@ -759,6 +794,37 @@ export function ToursPage() {
         />
       )}
     </div>
+  );
+}
+
+// A clickable table header that sorts the tours list by its column. Shows a red
+// ▲/▼ for the active column and a faint ↕ on the others to signal sortability.
+function SortTh({
+  label,
+  k,
+  sort,
+  onSort,
+}: {
+  label: string;
+  k: SortKey;
+  sort: { key: SortKey; dir: "asc" | "desc" };
+  onSort: (k: SortKey) => void;
+}) {
+  const active = sort.key === k;
+  return (
+    <th className="px-4 py-2 font-medium">
+      <button
+        type="button"
+        onClick={() => onSort(k)}
+        aria-label={`Sort by ${label}${active ? (sort.dir === "asc" ? " (ascending)" : " (descending)") : ""}`}
+        className="inline-flex items-center gap-1 font-medium transition-colors hover:text-neutral-900"
+      >
+        {label}
+        <span className={`text-[10px] leading-none ${active ? "text-red-600" : "text-neutral-300"}`} aria-hidden="true">
+          {active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}
+        </span>
+      </button>
+    </th>
   );
 }
 
