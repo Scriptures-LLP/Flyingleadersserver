@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
 import { TourMedia } from "../../models/TourMedia.js";
-import { listTourAirports, listTourDates } from "../../services/tourOptions.service.js";
+import { listTourAirports, listTourDates, nearestDateSeatsByTour } from "../../services/tourOptions.service.js";
 import { serializeTourDetail, serializeTourSummary } from "../../services/tourSerializer.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -41,7 +41,16 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
     Tour.countDocuments(filter),
   ]);
 
-  res.json({ items: items.map(serializeTourSummary), total, page, limit });
+  // Enrich each card with the seats on its next departure date (one batched
+  // query for the whole page) so the list shows the same figure the booking
+  // flow does, colour-coded by urgency on the client.
+  const seatsByTour = await nearestDateSeatsByTour(items.map((t) => t.id as string));
+  res.json({
+    items: items.map((t) => serializeTourSummary(t, { seatsAvailable: seatsByTour.get(t.id as string) ?? null })),
+    total,
+    page,
+    limit,
+  });
 });
 
 export const getBySlug = asyncHandler(async (req: Request, res: Response) => {

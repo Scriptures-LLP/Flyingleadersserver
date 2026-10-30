@@ -13,7 +13,15 @@ type TourLike = HydratedDocument<any>;
  * only carries the cover image; the real per-tour gallery (TourMedia) is
  * attached by serializeTourDetail, which the app prefers once it loads.
  */
-export function serializeTourSummary(tour: TourLike) {
+export function serializeTourSummary(
+  tour: TourLike,
+  // `seatsAvailable` lets a caller override the card's seat count with the seats
+  // on the tour's NEXT departure date (the per-date figure the booking flow uses),
+  // which is what the admin actually maintains. When omitted (or null) the card
+  // falls back to the package-level count. Passed explicitly — never via `.map`'s
+  // index arg.
+  opts?: { seatsAvailable?: number | null },
+) {
   const image = tour.coverImage ? s3Adapter.urlFor(tour.coverImage) : placeholderImage(tour.slug, 900, 1200);
   return {
     id: tour.id,
@@ -38,6 +46,12 @@ export function serializeTourSummary(tour: TourLike) {
     isDomestic: tour.isDomestic ?? false,
     // Drives the app Home screen's Group Tours / Private Tours tabs.
     tourType: tour.tourType ?? "group",
+    // Seats carried on the summary too so the package cards (Home/Explore list)
+    // can surface a colour-coded "seats left" label without a per-tour detail
+    // fetch. Prefer the next departure date's seats (what the admin maintains and
+    // the booking page shows); fall back to the package-level count.
+    seatsAvailable: opts?.seatsAvailable != null ? opts.seatsAvailable : tour.seatsAvailable ?? null,
+    seatsRemark: tour.seatsRemark ?? "Available",
     isActive: tour.isActive,
   };
 }

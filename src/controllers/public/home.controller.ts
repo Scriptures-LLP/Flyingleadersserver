@@ -8,6 +8,7 @@ import { Tour } from "../../models/Tour.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { serializeTourSummary } from "../../services/tourSerializer.service.js";
+import { nearestDateSeatsByTour } from "../../services/tourOptions.service.js";
 import { serializeCategory } from "./category.controller.js";
 import { serializeCountry } from "./country.controller.js";
 
@@ -30,7 +31,10 @@ const GALLERY_LIMIT = 9;
 // the URLs are public + immutable (see s3Adapter), so a cached copy never goes
 // stale in a way the client would notice beyond new/edited content, which
 // appears on the next refresh — at most TTL seconds behind the admin.
-const HOME_TTL_MS = 60_000;
+// Short TTL so admin edits to Home content (covers, featured tours, gallery)
+// surface quickly in the app — the payload is still served stale-while-
+// revalidate, so a burst of opens never stampedes the DB.
+const HOME_TTL_MS = 15_000;
 type HomePayload = Record<string, unknown>;
 let homeCache: { data: HomePayload; at: number } | null = null;
 let refreshing: Promise<HomePayload> | null = null;
@@ -44,10 +48,16 @@ async function computeHome(): Promise<HomePayload> {
     GalleryImage.find({ isActive: true }).sort({ sortOrder: 1, createdAt: -1 }).limit(GALLERY_LIMIT),
   ]);
 
+  // Next-departure seats for the featured cards, batched into one query (this
+  // payload is cached, so the cost is paid at most once per TTL window).
+  const seatsByTour = await nearestDateSeatsByTour(featuredTours.map((t) => t.id as string));
+
   return {
     categories: categories.map(serializeCategory),
     topCountries: countries.map(serializeCountry),
-    featuredTours: featuredTours.map(serializeTourSummary),
+    featuredTours: featuredTours.map((t) =>
+      serializeTourSummary(t, { seatsAvailable: seatsByTour.get(t.id as string) ?? null }),
+    ),
     homeCovers: homeCovers.map((c) => ({
       id: c.id,
       title: c.title ?? "",

@@ -93,6 +93,55 @@ export type TourDateItem = {
  * The one definition of "bookable date": the public dates list and booking
  * validation both use it, so they can never disagree.
  */
+// India-time day key for a stored date — matches the app's own `dayKey`, so a
+// UTC-midnight and an IST-midnight instant land on the same calendar day.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const istDayKey = (d: Date) => new Date(d.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+
+/**
+ * The seats remaining on each tour's NEXT upcoming departure day, for a batch of
+ * tours at once (so the package-card list doesn't fire one query per card).
+ *
+ * The figure mirrors the app's `daySeats`: a day can hold several (date, airport)
+ * rows, and the day is bookable while any row still has room, so we take the max
+ * of the tracked rows on that earliest day. `null` = that date tracks no seats
+ * (nothing to show); `0` = sold out.
+ */
+export async function nearestDateSeatsByTour(
+  tourIds: (Types.ObjectId | string)[],
+): Promise<Map<string, number | null>> {
+  const result = new Map<string, number | null>();
+  if (tourIds.length === 0) return result;
+
+  const dates = await TourDate.find({
+    tourId: { $in: tourIds },
+    isActive: true,
+    date: { $gte: new Date() },
+  })
+    .sort({ date: 1, sortOrder: 1 })
+    .lean();
+
+  // Dates arrive ascending, so the first row seen per tour fixes its earliest
+  // day; later rows only count while they're still on that same day.
+  const earliestDayByTour = new Map<string, string>();
+  const tracked = new Map<string, number[]>();
+  for (const d of dates) {
+    const tid = String(d.tourId);
+    const day = istDayKey(d.date);
+    const earliest = earliestDayByTour.get(tid);
+    if (earliest === undefined) earliestDayByTour.set(tid, day);
+    else if (day !== earliest) continue;
+    if (typeof d.seatsAvailable === "number") {
+      tracked.set(tid, [...(tracked.get(tid) ?? []), d.seatsAvailable]);
+    }
+  }
+  for (const tid of earliestDayByTour.keys()) {
+    const seats = tracked.get(tid);
+    result.set(tid, seats && seats.length > 0 ? Math.max(...seats) : null);
+  }
+  return result;
+}
+
 export async function listTourDates(
   tourId: Types.ObjectId | string,
   airports?: TourAirportOption[],
