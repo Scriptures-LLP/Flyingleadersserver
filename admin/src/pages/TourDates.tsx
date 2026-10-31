@@ -67,7 +67,6 @@ export function TourDatesPage() {
       resourcePath="/admin/tour-dates"
       tourField="tourId"
       rowColumns={["Date", "Departure Airport", "Travel Charge", "Seats Left", "Status", "Website"]}
-      rowColumns={["Date", "Departure Airport", "Travel Charge", "Seats Left", "Status", "Website"]}
       emptyRowLabel="No dates for this tour yet — click “Add here” to create one."
       sortRows={(a, b) => {
         const byDate = a.date.localeCompare(b.date);
