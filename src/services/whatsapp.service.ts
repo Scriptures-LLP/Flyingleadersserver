@@ -79,6 +79,66 @@ export async function sendWhatsAppTemplate(
 }
 
 /**
+ * Sends an approved template whose HEADER is a document (e.g. a PDF invoice/
+ * trip summary) — same 24h-window rule as sendWhatsAppTemplate, so this is for
+ * a Meta-approved template with a Document header component, not a plain-text
+ * one. EXPERIMENTAL, like createWhatsAppTemplate below: Gupshup's exact field
+ * for a per-send (dynamic) header media URL isn't confirmed from a real send
+ * yet. Current best guess, based on the most common BSP convention: the
+ * header's URL goes first in `params`, before the body's {{1}}, {{2}}… values
+ * — verify with a live test send before relying on this, the same way the
+ * plain-text template send and template creation were worked out earlier.
+ *
+ * `documentUrl` must be a public URL (no login) — see bookingPdfPublicUrl.
+ */
+export async function sendWhatsAppDocumentTemplate(
+  destination: string,
+  templateId: string,
+  documentUrl: string,
+  bodyParams: string[],
+): Promise<void> {
+  if (!isWhatsAppConfigured()) throw ApiError.serviceUnavailable("WhatsApp isn't set up on this server yet");
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  const unavailable = () =>
+    ApiError.serviceUnavailable("Couldn't send the WhatsApp document right now. Please try again in a moment.");
+
+  const body = new URLSearchParams({
+    channel: "whatsapp",
+    source: env.GUPSHUP_SOURCE_NUMBER,
+    destination,
+    "src.name": env.GUPSHUP_APP_NAME,
+    template: JSON.stringify({ id: templateId, params: [documentUrl, ...bodyParams] }),
+  });
+
+  let res: Response;
+  try {
+    res = await fetch(env.GUPSHUP_TEMPLATE_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        apikey: env.GUPSHUP_API_KEY,
+        "content-type": "application/x-www-form-urlencoded",
+        accept: "application/json",
+      },
+      body,
+    });
+  } catch (err) {
+    console.error("[whatsapp] document-template request to Gupshup failed:", err instanceof Error ? err.message : err);
+    throw unavailable();
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const payload = (await res.json().catch(() => ({}))) as { status?: string; message?: string };
+  if (!res.ok || payload.status !== "submitted") {
+    console.error(`[whatsapp] Gupshup rejected the document send (HTTP ${res.status}): ${JSON.stringify(payload)}`);
+    throw unavailable();
+  }
+}
+
+/**
  * Sends free-form text — no template needed, but only deliverable inside
  * WhatsApp's 24h customer-service window (the session starts from the
  * customer's own last inbound message; outside that window this fails and a

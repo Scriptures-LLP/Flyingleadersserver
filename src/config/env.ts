@@ -20,6 +20,10 @@ const envSchema = z.object({
 
   UPLOAD_ROOT: z.string().default("./uploads"),
   PUBLIC_UPLOAD_BASE_URL: z.string().default("http://localhost:4000/uploads"),
+  // This server's own public base URL (e.g. https://flyingleadersserver.onrender.com/api/v1).
+  // Only needed for links an OUTSIDE service must fetch without a login — currently just
+  // the WhatsApp trip-summary PDF (see bookingPdfPublicUrl). Empty = that feature no-ops.
+  PUBLIC_API_BASE_URL: z.string().optional().default(""),
 
   // AWS S3 — used for profile avatars (see storage/s3Adapter.ts).
   AWS_ACCESS_KEY_ID: z.string().optional().default(""),

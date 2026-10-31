@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { addressesRoutes } from "./addresses.routes.js";
 import { authRoutes } from "./auth.routes.js";
+import { bookingDocsRoutes } from "./bookingDocs.routes.js";
 import { bookingsRoutes } from "./bookings.routes.js";
 import { categoriesRoutes } from "./categories.routes.js";
 import { chatRoutes } from "./chat.routes.js";
@@ -25,6 +26,7 @@ publicRoutes.use("/categories", categoriesRoutes);
 publicRoutes.use("/countries", countriesRoutes);
 publicRoutes.use("/tours", toursRoutes);
 publicRoutes.use("/bookings", bookingsRoutes);
+publicRoutes.use("/booking-docs", bookingDocsRoutes);
 publicRoutes.use("/payments", paymentsRoutes);
 publicRoutes.use("/addresses", addressesRoutes);
 publicRoutes.use("/chat", chatRoutes);

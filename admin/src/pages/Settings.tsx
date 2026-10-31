@@ -69,6 +69,55 @@ function WhatsAppPaymentTemplateSetting() {
   );
 }
 
+function WhatsAppPaymentInvoiceTemplateSetting() {
+  const { data, isLoading, saveMutation } = useSetting("whatsapp_payment_invoice_template_id");
+  const [value, setValue] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (data) setValue(data.value || "");
+  }, [data]);
+
+  return (
+    <div className="mt-6">
+      <h2 className="mb-1 text-base font-semibold text-neutral-900">WhatsApp — Trip Summary PDF on Payment</h2>
+      <p className="mb-3 text-sm text-neutral-500">
+        Gupshup Template ID for a template with a <strong>Document header</strong> (not plain text) — sends the
+        booking's trip-summary PDF as an attachment when a payment lands. Leave blank to turn this off. Also needs the
+        server's <code>PUBLIC_API_BASE_URL</code> environment variable set, or nothing is sent. Body placeholders fill
+        in order: {"{{1}}"} customer name, {"{{2}}"} tour.
+      </p>
+      {isLoading ? (
+        <p className="text-neutral-500">Loading…</p>
+      ) : (
+        <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white shadow-sm p-4">
+          <input
+            className="input flex-1"
+            placeholder="e.g. 6f1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <button
+            onClick={() =>
+              saveMutation.mutate(value, {
+                onSuccess: () => {
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2000);
+                },
+              })
+            }
+            disabled={saveMutation.isPending}
+            className="rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {saveMutation.isPending ? "Saving…" : "Save"}
+          </button>
+          {saved && <span className="text-sm text-neutral-600">Saved</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReferralRewardSetting() {
   const { data, isLoading, saveMutation } = useSetting("referral_reward_amount");
   const [value, setValue] = useState("");
@@ -334,6 +383,7 @@ export function SettingsPage() {
       )}
 
       <WhatsAppPaymentTemplateSetting />
+      <WhatsAppPaymentInvoiceTemplateSetting />
       <ReferralRewardSetting />
       <AgeCategorySettings />
       <SocialLinksSettings />

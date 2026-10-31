@@ -2,8 +2,10 @@ import { Booking } from "../models/Booking.js";
 import { Customer } from "../models/Customer.js";
 import { Setting } from "../models/Setting.js";
 
+import { bookingPdfPublicUrl } from "../utils/bookingPdfLink.js";
+
 import { deliverToCustomers } from "./push.service.js";
-import { isWhatsAppConfigured, sendWhatsAppTemplate, toGupshupDestination } from "./whatsapp.service.js";
+import { isWhatsAppConfigured, sendWhatsAppDocumentTemplate, sendWhatsAppTemplate, toGupshupDestination } from "./whatsapp.service.js";
 
 /**
  * The notifications the system sends by itself when something happens to a
@@ -48,6 +50,24 @@ async function notifyWhatsApp(event: string, phone: string | undefined, params: 
   await sendWhatsAppTemplate(destination, templateId, params);
 }
 
+/**
+ * Same idea as notifyWhatsApp, but for a template with a document header (the
+ * trip-summary PDF) — setting key "whatsapp_<event>_invoice_template_id". No
+ * template id configured, or PUBLIC_API_BASE_URL unset (so there's no URL to
+ * hand WhatsApp), both silently no-op, same as notifyWhatsApp.
+ */
+async function notifyWhatsAppDocument(event: string, phone: string | undefined, bookingId: string, bodyParams: string[]) {
+  if (!phone || !isWhatsAppConfigured()) return;
+  const destination = toGupshupDestination(phone);
+  if (!destination) return;
+  const setting = await Setting.findOne({ key: `whatsapp_${event}_invoice_template_id` });
+  const templateId = setting?.value?.trim();
+  if (!templateId) return;
+  const documentUrl = bookingPdfPublicUrl(bookingId);
+  if (!documentUrl) return;
+  await sendWhatsAppDocumentTemplate(destination, templateId, documentUrl, bodyParams);
+}
+
 /** A payment landed on a booking — paid in the app, or recorded by the office. */
 export function notifyPaymentReceived(bookingId: string, amount: number, via: "app" | "office") {
   return safely("payment received", async () => {
@@ -67,6 +87,9 @@ export function notifyPaymentReceived(bookingId: string, amount: number, via: "a
     // Params (once "whatsapp_payment_template_id" is set in admin Settings):
     // {{1}} customer name, {{2}} tour, {{3}} amount paid, {{4}} booking ref.
     await notifyWhatsApp("payment", b.contactPhone, [b.contactName, tourTitle(b), inr(amount), b.bookingRef]);
+    // Separately configured (once "whatsapp_payment_invoice_template_id" is set):
+    // the trip-summary PDF as a document, body params {{1}} customer name, {{2}} tour.
+    await notifyWhatsAppDocument("payment", b.contactPhone, String(b._id), [b.contactName, tourTitle(b)]);
   });
 }
 

@@ -12,6 +12,7 @@ import { listTourAirports, listTourDates } from "../../services/tourOptions.serv
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import { bookingPdfToken } from "../../utils/bookingPdfLink.js";
 
 function generateBookingRef(): string {
   return `FL${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
@@ -238,11 +239,14 @@ export const getOne = asyncHandler(async (req: Request, res: Response) => {
   res.json({ item });
 });
 
-export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) => {
-  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
-  if (!booking) throw ApiError.notFound("Booking not found");
-  // Only worth having once money has actually changed hands — an unpaid or
-  // cancelled booking has nothing confirmed to summarize.
+/**
+ * Builds the trip summary PDF bytes for a booking, shared by both the
+ * logged-in download route and the token-authorised one WhatsApp's document
+ * delivery fetches from (see tripSummaryPdfByToken). Only worth having once
+ * money has actually changed hands — an unpaid or cancelled booking has
+ * nothing confirmed to summarize.
+ */
+async function buildTripSummaryPdf(booking: InstanceType<typeof Booking>): Promise<Uint8Array> {
   if (booking.paymentStatus === "unpaid" || booking.status === "cancelled") {
     throw ApiError.badRequest("Trip summary is available once at least the token/partial payment is made");
   }
@@ -267,7 +271,33 @@ export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) =
   }
 
   const { renderTripSummaryPdf } = await import("../../services/tripSummaryPdf.service.js");
-  const pdfBytes = await renderTripSummaryPdf(booking as any);
+  return renderTripSummaryPdf(booking as any);
+}
+
+export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) => {
+  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
+  if (!booking) throw ApiError.notFound("Booking not found");
+  const pdfBytes = await buildTripSummaryPdf(booking);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-trip-summary.pdf"`);
+  res.send(Buffer.from(pdfBytes));
+});
+
+/**
+ * No login required — authorised instead by a token only someone who already
+ * has the booking id and JWT_SECRET could produce (see bookingPdfToken).
+ * Exists so an outside service (WhatsApp, via Gupshup) can fetch and attach
+ * the PDF as a document; never linked from the app itself, which always uses
+ * the authenticated tripSummaryPdf route above.
+ */
+export const tripSummaryPdfByToken = asyncHandler(async (req: Request, res: Response) => {
+  const booking = await Booking.findById(req.params.id);
+  // Same "not found" for a bad id and a bad token — never reveals which one was wrong.
+  if (!booking || req.query.token !== bookingPdfToken(String(booking._id))) {
+    throw ApiError.notFound("Booking not found");
+  }
+  const pdfBytes = await buildTripSummaryPdf(booking);
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-trip-summary.pdf"`);
