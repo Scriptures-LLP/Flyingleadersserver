@@ -34,14 +34,27 @@ export const tourMediaController = {
     if (files.length === 0) throw ApiError.badRequest("At least one image file is required");
 
     const last = await TourMedia.findOne({ tourId }).sort({ sortOrder: -1 });
-    let nextOrder = (last?.sortOrder ?? -1) + 1;
+    const baseOrder = (last?.sortOrder ?? -1) + 1;
 
-    const created = [];
-    for (const file of files) {
-      const stored = await s3Adapter.save("tourMedia", file.path, file.originalname);
-      const item = await TourMedia.create({ tourId, file: stored.key, sortOrder: nextOrder });
-      nextOrder += 1;
-      created.push(serializeForAdmin(item));
+    // Upload the images concurrently instead of one-after-another. Each file
+    // does an S3 PUT (network) + a sharp re-encode (CPU) + a Mongo write; doing
+    // them sequentially made creating a tour with several photos take minutes on
+    // the constrained production instance. Bounded concurrency overlaps the
+    // network waits without loading every original into memory at once (OOM
+    // risk on a 512MB box). `sortOrder = baseOrder + index` keeps the gallery in
+    // the order the files were submitted, regardless of which finishes first.
+    const CONCURRENCY = 4;
+    const created: ReturnType<typeof serializeForAdmin>[] = new Array(files.length);
+    for (let start = 0; start < files.length; start += CONCURRENCY) {
+      const batch = files.slice(start, start + CONCURRENCY);
+      await Promise.all(
+        batch.map(async (file, j) => {
+          const index = start + j;
+          const stored = await s3Adapter.save("tourMedia", file.path, file.originalname);
+          const item = await TourMedia.create({ tourId, file: stored.key, sortOrder: baseOrder + index });
+          created[index] = serializeForAdmin(item);
+        }),
+      );
     }
 
     res.status(201).json({ items: created });

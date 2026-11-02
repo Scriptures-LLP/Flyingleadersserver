@@ -28,7 +28,20 @@ import { ToursPage } from "./pages/Tours";
 import { WebsiteBookingsPage } from "./pages/WebsiteBookings";
 import { WhatsAppNotifyPage } from "./pages/WhatsAppNotify";
 
-const queryClient = new QueryClient();
+// Tuned defaults: the out-of-the-box React Query config refetches EVERY active
+// query on each window focus (staleTime 0) and retries a failed/slow request 3×
+// with backoff — both of which pile redundant load onto the admin's slow
+// endpoints and make the panel feel frozen. Cache briefly, don't refetch on
+// focus, and fail fast instead of retrying a slow call three times.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
