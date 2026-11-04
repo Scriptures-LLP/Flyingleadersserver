@@ -2,6 +2,7 @@ import type { HydratedDocument } from "mongoose";
 
 import { s3Adapter } from "../storage/s3Adapter.js";
 import { placeholderImage } from "../utils/placeholderImage.js";
+import type { TourAvailabilityStatus } from "./tourOptions.service.js";
 
 type TourLike = HydratedDocument<any>;
 
@@ -20,7 +21,11 @@ export function serializeTourSummary(
   // which is what the admin actually maintains. When omitted (or null) the card
   // falls back to the package-level count. Passed explicitly — never via `.map`'s
   // index arg.
-  opts?: { seatsAvailable?: number | null },
+  // `availability` is the result of a departure-city (+ optional date) search —
+  // set only when the list endpoint was actually asked that question; omitted
+  // (not even `null`) otherwise, so the app only shows a badge when there's a
+  // real answer to show.
+  opts?: { seatsAvailable?: number | null; availability?: TourAvailabilityStatus },
 ) {
   const image = tour.coverImage ? s3Adapter.urlFor(tour.coverImage) : placeholderImage(tour.slug, 900, 1200);
   return {
@@ -53,6 +58,7 @@ export function serializeTourSummary(
     seatsAvailable: opts?.seatsAvailable != null ? opts.seatsAvailable : tour.seatsAvailable ?? null,
     seatsRemark: tour.seatsRemark ?? "Available",
     isActive: tour.isActive,
+    ...(opts?.availability ? { availability: opts.availability } : {}),
   };
 }
 

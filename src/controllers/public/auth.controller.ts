@@ -4,7 +4,7 @@ import { Customer } from "../../models/Customer.js";
 import { serializeCustomer } from "../../serializers/customer.serializer.js";
 import * as authService from "../../services/auth.service.js";
 import { requestPasswordResetCode } from "../../services/passwordReset.service.js";
-import { requestPhoneOtp, type OtpPurpose } from "../../services/phoneOtp.service.js";
+import { nationalNumber, requestPhoneOtp, type OtpPurpose } from "../../services/phoneOtp.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { phoneVariants } from "../../utils/phone.js";
@@ -46,8 +46,11 @@ export const resetPasswordEmail = asyncHandler(async (req: Request, res: Respons
 
 export const otpSend = asyncHandler(async (req: Request, res: Response) => {
   const { phone, purpose } = req.body as { phone: string; purpose: OtpPurpose };
+  // For a "reset" request on an unmatched number, requestPhoneOtp throws
+  // (asyncHandler turns that into a 404) rather than landing here — see its
+  // own comment for why that's a deliberate exception to the usual
+  // don't-confirm-the-account-exists pattern.
   const { resendAfterSeconds } = await requestPhoneOtp(phone, purpose);
-  // Same answer whether or not a code actually went out (see requestPhoneOtp).
   res.json({ ok: true, resendAfterSeconds });
 });
 
@@ -95,7 +98,14 @@ export const updateMe = asyncHandler(async (req: Request, res: Response) => {
   // index, and storing "" for one customer would make every later customer
   // who saves their profile without a number collide with it.
   if (phone !== undefined) {
-    const nextPhone = phone.trim() || undefined;
+    const trimmed = phone.trim();
+    // Canonicalised to "+91XXXXXXXXXX" — the same form phone-OTP login/reset
+    // match against (see phoneVariants). Saved any other way (a typed dash,
+    // bare 10 digits, spaces) and this customer's own number would stop
+    // matching their own future OTP lookups.
+    const national = trimmed ? nationalNumber(trimmed) : null;
+    if (trimmed && !national) throw ApiError.badRequest("Enter a valid 10-digit mobile number.");
+    const nextPhone = national ? `+91${national}` : undefined;
     if (nextPhone && nextPhone !== customer.phone) {
       const taken = await Customer.findOne({ phone: { $in: phoneVariants(nextPhone) }, _id: { $ne: customer._id } });
       if (taken) throw ApiError.conflict("An account with this mobile number already exists");

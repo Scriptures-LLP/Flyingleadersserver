@@ -3,17 +3,22 @@ import type { Request, Response } from "express";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
 import { TourMedia } from "../../models/TourMedia.js";
-import { listTourAirports, listTourDates, nearestDateSeatsByTour } from "../../services/tourOptions.service.js";
+import { availabilityByTour, listTourAirports, listTourDates, nearestDateSeatsByTour } from "../../services/tourOptions.service.js";
 import { serializeTourDetail, serializeTourSummary } from "../../services/tourSerializer.service.js";
 import { s3Adapter } from "../../storage/s3Adapter.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const list = asyncHandler(async (req: Request, res: Response) => {
-  const { category, countryId, search, page, limit } = req.query as unknown as {
+  const { category, countryId, search, originCity, date, page, limit } = req.query as unknown as {
     category?: string;
     countryId?: string;
     search?: string;
+    // A free-text departure city and, optionally, a specific travel date
+    // (YYYY-MM-DD) — turns the result list into a real "is this bookable from
+    // here, on this day" answer instead of a plain destination-text search.
+    originCity?: string;
+    date?: string;
     page: number;
     limit: number;
   };
@@ -44,9 +49,18 @@ export const list = asyncHandler(async (req: Request, res: Response) => {
   // Enrich each card with the seats on its next departure date (one batched
   // query for the whole page) so the list shows the same figure the booking
   // flow does, colour-coded by urgency on the client.
-  const seatsByTour = await nearestDateSeatsByTour(items.map((t) => t.id as string));
+  const ids = items.map((t) => t.id as string);
+  const [seatsByTour, availabilityByTourId] = await Promise.all([
+    nearestDateSeatsByTour(ids),
+    originCity ? availabilityByTour(ids, originCity, date) : Promise.resolve(new Map()),
+  ]);
   res.json({
-    items: items.map((t) => serializeTourSummary(t, { seatsAvailable: seatsByTour.get(t.id as string) ?? null })),
+    items: items.map((t) =>
+      serializeTourSummary(t, {
+        seatsAvailable: seatsByTour.get(t.id as string) ?? null,
+        availability: availabilityByTourId.get(t.id as string),
+      }),
+    ),
     total,
     page,
     limit,

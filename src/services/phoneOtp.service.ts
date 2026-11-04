@@ -68,9 +68,12 @@ async function reserveDailySlot() {
 /**
  * Sends a login / password-reset code to a mobile number.
  *
- * For "reset" nothing is sent when the number has no account, and the caller
- * can't tell — that saves the SMS and doesn't confirm who is registered.
- * A resend inside the cooldown or past the hourly cap also returns quietly.
+ * For "reset", an unmatched number is reported as such (see otpSend in
+ * auth.controller) rather than silently pretending a code went out — a
+ * deliberate choice over the usual anti-enumeration pattern, so a customer
+ * isn't left waiting on an OTP that was never going to arrive. A resend
+ * inside the cooldown or past the hourly cap still returns quietly, though —
+ * those aren't about whether the account exists.
  */
 export async function requestPhoneOtp(input: string, purpose: OtpPurpose): Promise<{ resendAfterSeconds: number }> {
   const { national, phone, testCode } = resolvePhone(input);
@@ -79,7 +82,7 @@ export async function requestPhoneOtp(input: string, purpose: OtpPurpose): Promi
 
   if (purpose === "reset") {
     const exists = await Customer.exists({ phone: { $in: phoneVariants(phone) }, isActive: true });
-    if (!exists) return result;
+    if (!exists) throw ApiError.notFound("No account is registered with this mobile number");
   }
 
   const now = new Date();

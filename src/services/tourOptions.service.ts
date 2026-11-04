@@ -142,6 +142,80 @@ export async function nearestDateSeatsByTour(
   return result;
 }
 
+export type TourAvailabilityStatus = "available" | "noMatchingAirport" | "noMatchingDate";
+
+/**
+ * Availability of each tour in `tourIds` from a free-text departure city, and
+ * optionally a specific travel date (YYYY-MM-DD, India calendar day) — the
+ * same question a customer is really asking when they search "from
+ * Chandigarh" for a date. Batched (not per-tour) so a full search-results
+ * page costs a handful of queries, not one per card — same reasoning as
+ * nearestDateSeatsByTour above.
+ *
+ * City matching mirrors the chatbot's airport resolution (chatbotTools.service):
+ * an exact airport code, or the city text appearing anywhere in the airport name.
+ * "Served from this city" mirrors listTourAirports' own notion of "offered":
+ * an active Tour Airport Price row, or an active future Tour Date tied to that
+ * airport — switched-off price rows need no special handling here since they're
+ * excluded from both sources already.
+ */
+export async function availabilityByTour(
+  tourIds: (Types.ObjectId | string)[],
+  originCity: string,
+  dateISO?: string,
+): Promise<Map<string, TourAvailabilityStatus>> {
+  const result = new Map<string, TourAvailabilityStatus>();
+  const needle = originCity.trim();
+  if (tourIds.length === 0 || !needle) return result;
+
+  const matchedAirportIds = await Airport.distinct("_id", {
+    isActive: true,
+    $or: [{ code: new RegExp(`^${needle}$`, "i") }, { name: new RegExp(needle, "i") }],
+  });
+  if (matchedAirportIds.length === 0) {
+    for (const id of tourIds) result.set(String(id), "noMatchingAirport");
+    return result;
+  }
+
+  const [priceServed, dateServed, usesDateSystemIds] = await Promise.all([
+    TourAirportPrice.distinct("tourId", {
+      tourId: { $in: tourIds },
+      airportId: { $in: matchedAirportIds },
+      isActive: true,
+    }),
+    TourDate.distinct("tourId", {
+      tourId: { $in: tourIds },
+      airportId: { $in: matchedAirportIds },
+      isActive: true,
+      date: { $gte: new Date() },
+    }),
+    TourDate.distinct("tourId", { tourId: { $in: tourIds } }),
+  ]);
+  const servedIds = new Set([...priceServed, ...dateServed].map(String));
+  const dateSystemIds = new Set(usesDateSystemIds.map(String));
+
+  let dateMatchIds: Set<string> | null = null;
+  if (dateISO) {
+    const dayStart = new Date(new Date(`${dateISO}T00:00:00.000Z`).getTime() - IST_OFFSET_MS);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+    const rows = await TourDate.distinct("tourId", {
+      tourId: { $in: [...servedIds] },
+      isActive: true,
+      date: { $gte: dayStart, $lt: dayEnd },
+      $or: [{ airportId: null }, { airportId: { $in: matchedAirportIds } }],
+    });
+    dateMatchIds = new Set(rows.map(String));
+  }
+
+  for (const id of tourIds) {
+    const key = String(id);
+    if (!servedIds.has(key)) result.set(key, "noMatchingAirport");
+    else if (!dateISO || !dateSystemIds.has(key)) result.set(key, "available");
+    else result.set(key, dateMatchIds!.has(key) ? "available" : "noMatchingDate");
+  }
+  return result;
+}
+
 export async function listTourDates(
   tourId: Types.ObjectId | string,
   airports?: TourAirportOption[],

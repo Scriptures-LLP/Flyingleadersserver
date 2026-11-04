@@ -7,7 +7,7 @@ import { signAdminToken, signCustomerToken, signPasswordResetToken, verifyPasswo
 import { phoneVariants } from "../utils/phone.js";
 
 import { consumePasswordResetCode } from "./passwordReset.service.js";
-import { consumePhoneOtp } from "./phoneOtp.service.js";
+import { consumePhoneOtp, nationalNumber } from "./phoneOtp.service.js";
 
 // How recently the phone must have been verified for a password reset. The
 // Firebase ID token itself lives an hour; a reset must follow the OTP closely
@@ -24,7 +24,14 @@ export async function signupCustomer(input: {
   referralCode?: string;
 }) {
   const email = input.email?.toLowerCase();
-  const phone = input.phone?.trim();
+  // Canonicalised to the same "+91XXXXXXXXXX" form phone-OTP login/reset use
+  // (see phoneVariants) — stored any other way (a dash, a space, a bare 10
+  // digits with no +91) and this account's own number would never match its
+  // own future OTP lookups.
+  const phoneInput = input.phone?.trim();
+  const phoneNational = phoneInput ? nationalNumber(phoneInput) : null;
+  if (phoneInput && !phoneNational) throw ApiError.badRequest("Enter a valid 10-digit mobile number.");
+  const phone = phoneNational ? `+91${phoneNational}` : undefined;
   if (!email && !phone) throw ApiError.badRequest("Provide an email address or mobile number");
 
   const existing = await Customer.findOne({
