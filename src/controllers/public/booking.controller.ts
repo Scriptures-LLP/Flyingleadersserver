@@ -5,6 +5,7 @@ import type { Request, Response } from "express";
 import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
+import { Transaction } from "../../models/Transaction.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
 import { computeBaseAmount, computeTcs, validatePromoCode } from "../../services/pricing.service.js";
 import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
@@ -270,8 +271,22 @@ async function buildTripSummaryPdf(booking: InstanceType<typeof Booking>): Promi
     }
   }
 
+  // Every captured payment on this booking (partial token + later balance, if
+  // that's how it was paid) — the invoice lists each one with its own
+  // reference rather than just a single lump "amount paid".
+  const paidTxns = await Transaction.find({ bookingId: booking._id, status: "paid", type: { $ne: "refund" } })
+    .sort({ createdAt: 1 })
+    .lean();
+
   const { renderTripSummaryPdf } = await import("../../services/tripSummaryPdf.service.js");
-  return renderTripSummaryPdf(booking as any);
+  return renderTripSummaryPdf({
+    ...(booking.toObject() as any),
+    payments: paidTxns.map((p) => ({
+      date: p.channel === "office" ? p.office?.receivedAt ?? p.createdAt : p.createdAt,
+      reference: p.channel === "office" ? p.office?.reference?.trim() || "Office payment" : p.razorpayPaymentId ?? "—",
+      amount: p.amount,
+    })),
+  });
 }
 
 export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) => {

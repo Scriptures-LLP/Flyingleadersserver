@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 type BookingLike = {
@@ -9,8 +13,19 @@ type BookingLike = {
   contactEmail: string;
   contactPhone: string;
   travellers: { name: string; type: string; age?: number }[];
-  pricing: { baseAmount: number; discountAmount: number; tcsAmount?: number; finalAmount: number; promoCode?: string };
+  pricing: {
+    baseAmount: number;
+    discountAmount: number;
+    tcsAmount?: number;
+    finalAmount: number;
+    promoCode?: string;
+    breakdown?: { type: string; categoryLabel?: string; count: number; unitPrice: number; subtotal: number }[];
+  };
   amountPaid: number;
+  // Every captured payment, oldest first — each gets its own line on the
+  // invoice (reference = Razorpay payment id, or the office's own reference
+  // for an in-person payment) rather than just a single total.
+  payments?: { date: Date; reference: string; amount: number }[];
   itinerarySnapshot: {
     title: string;
     duration?: string;
@@ -27,6 +42,21 @@ type BookingLike = {
 };
 
 const inr = (n: number) => `Rs. ${n.toLocaleString("en-IN")}`;
+
+// Read once at module load (not per-PDF) — the file never changes at runtime.
+// Missing asset degrades to a text-only header rather than failing the download.
+// Resolved via the repo root (not just "../assets") because tsc's build output
+// (dist/services/...) never gets this PNG copied alongside it — only src/ does
+// — so the path has to walk back out to the root and into src/ either way,
+// whether this file is running compiled (dist/services) or directly via tsx (src/services).
+const LOGO_BYTES = (() => {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    return readFileSync(join(here, "../../src/assets/flying-leader-logo.png"));
+  } catch {
+    return null;
+  }
+})();
 
 const HTML_ENTITIES: Record<string, string> = {
   amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'", nbsp: " ",
@@ -98,6 +128,7 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const supported = new Set(font.getCharacterSet());
+  const logoImage = LOGO_BYTES ? await doc.embedPng(LOGO_BYTES).catch(() => null) : null;
 
   let page = doc.addPage([595.28, 841.89]); // A4
   const margin = 50;
@@ -175,9 +206,38 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
     y -= 14;
   }
 
-  text("Flying Leader — Trip Summary", { size: 20, bold: true, gap: 26 });
+  // Logo top-left and invoice no/date top-right share a band above the title,
+  // so neither the text() helper's left-margin flow nor its single-column
+  // advance fits — both are placed with direct coordinates first, then `y`
+  // drops clear of whichever is taller before the normal flow resumes.
+  const logoWidth = 84;
+  const logoHeight = logoImage ? (logoImage.height / logoImage.width) * logoWidth : 0;
+  if (logoImage) {
+    page.drawImage(logoImage, { x: margin, y: y - logoHeight, width: logoWidth, height: logoHeight });
+  }
+
+  const invoiceId = `INV-${booking.bookingRef}`;
+  const invoiceDate = new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" });
+  [`Invoice No: ${invoiceId}`, `Invoice Date: ${invoiceDate}`].forEach((line, i) => {
+    const safe = toPdfSafeText(line, supported);
+    const w = font.widthOfTextAtSize(safe, 10);
+    page.drawText(safe, { x: page.getWidth() - margin - w, y: y - 10 - i * 14, size: 10, font, color: rgb(0.4, 0.4, 0.45) });
+  });
+
+  y -= Math.max(logoHeight, 28) + 12;
+
+  text("Flying Leader — Trip Invoice", { size: 20, bold: true, gap: 26 });
   text(`Booking Ref: ${booking.bookingRef}`, { bold: true });
-  text(`Status: ${booking.status.replace("_", " ")}  ·  Payment: ${booking.paymentStatus.replace("_", " ")}`);
+  text(`Status: ${booking.status.replace("_", " ")}`);
+  const paymentColor: [number, number, number] =
+    booking.paymentStatus === "paid"
+      ? [0.1, 0.5, 0.2]
+      : booking.paymentStatus === "partial"
+        ? [0.7, 0.45, 0]
+        : booking.paymentStatus === "refunded" || booking.paymentStatus === "refund_initiated"
+          ? [0.7, 0.2, 0.2]
+          : [0.5, 0.5, 0.5];
+  text(`Payment: ${booking.paymentStatus.replace("_", " ").toUpperCase()}`, { bold: true, color: paymentColor });
   divider();
 
   text(booking.itinerarySnapshot.title, { size: 15, bold: true, gap: 22 });
@@ -198,7 +258,14 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
   divider();
 
   text("Payment", { size: 13, bold: true, gap: 20 });
-  text(`Package amount: ${inr(booking.pricing.baseAmount)}`);
+  if (booking.pricing.breakdown && booking.pricing.breakdown.length > 0) {
+    for (const line of booking.pricing.breakdown) {
+      const label = line.categoryLabel || line.type.charAt(0).toUpperCase() + line.type.slice(1);
+      text(`${line.count} x ${label} @ ${inr(line.unitPrice)} = ${inr(line.subtotal)}`, { size: 10 });
+    }
+  } else {
+    text(`Package amount: ${inr(booking.pricing.baseAmount)}`);
+  }
   if (booking.pricing.discountAmount > 0) {
     text(`Discount${booking.pricing.promoCode ? ` (${booking.pricing.promoCode})` : ""}: -${inr(booking.pricing.discountAmount)}`);
   }
@@ -206,6 +273,15 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
     text(`TCS (2%): ${inr(booking.pricing.tcsAmount)}`);
   }
   text(`Total Package Amount: ${inr(booking.pricing.finalAmount)}`, { bold: true });
+
+  if (booking.payments && booking.payments.length > 0) {
+    text("Payments Received", { size: 11, bold: true, gap: 16 });
+    for (const p of booking.payments) {
+      const when = new Date(p.date).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
+      text(`${when} — ${inr(p.amount)} — Payment ID: ${p.reference}`, { size: 10 });
+    }
+  }
+
   text(`Amount Paid: ${inr(booking.amountPaid)}`, { bold: true });
   const balance = Math.max(0, booking.pricing.finalAmount - booking.amountPaid);
   text(`Remaining Balance: ${inr(balance)}`, { bold: true, color: balance > 0 ? [0.7, 0.35, 0] : [0.1, 0.5, 0.2] });
