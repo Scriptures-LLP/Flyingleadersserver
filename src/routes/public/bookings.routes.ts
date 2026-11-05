@@ -17,3 +17,8 @@ bookingsRoutes.get(
   validate({ params: idParamSchema }),
   bookingController.tripSummaryPdf,
 );
+bookingsRoutes.get(
+  "/:id/invoice.pdf",
+  validate({ params: idParamSchema }),
+  bookingController.invoicePdf,
+);
