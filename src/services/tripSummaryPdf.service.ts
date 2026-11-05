@@ -43,6 +43,10 @@ type BookingLike = {
 
 const inr = (n: number) => `Rs. ${n.toLocaleString("en-IN")}`;
 
+const COMPANY_ADDRESS =
+  "UPTOWN INSIGNIA, Office No. 26, 4th Floor, PR-7, International Airport Road, Nabha Sahib, Zirakpur, Mohali, Punjab – 140603, India";
+const COMPANY_GSTIN = "03AAFCF2576G1ZT";
+
 // Read once at module load (not per-PDF) — the file never changes at runtime.
 // Missing asset degrades to a text-only header rather than failing the download.
 // Resolved via the repo root (not just "../assets") because tsc's build output
@@ -206,25 +210,48 @@ export async function renderTripSummaryPdf(booking: BookingLike): Promise<Uint8A
     y -= 14;
   }
 
-  // Logo top-left and invoice no/date top-right share a band above the title,
-  // so neither the text() helper's left-margin flow nor its single-column
-  // advance fits — both are placed with direct coordinates first, then `y`
-  // drops clear of whichever is taller before the normal flow resumes.
+  // Logo + registered office/GSTIN on the left, invoice no/date on the right —
+  // two independent columns sharing a band above the title, so neither the
+  // text() helper's left-margin flow nor its single-column advance fits. Both
+  // are placed with direct coordinates first, then `y` drops clear of
+  // whichever column is taller before the normal flow resumes.
   const logoWidth = 84;
   const logoHeight = logoImage ? (logoImage.height / logoImage.width) * logoWidth : 0;
+  const logoTop = y;
   if (logoImage) {
-    page.drawImage(logoImage, { x: margin, y: y - logoHeight, width: logoWidth, height: logoHeight });
+    page.drawImage(logoImage, { x: margin, y: logoTop - logoHeight, width: logoWidth, height: logoHeight });
   }
+
+  // wrap()'s "indent" param just subtracts from maxWidth — reused here to get
+  // a narrower column (the address must not run under the invoice no/date on
+  // the right) without a second wrapping implementation.
+  const addressColumnWidth = 250;
+  const addressLines = wrap(COMPANY_ADDRESS, font, 8, maxWidth - addressColumnWidth);
+  let addrY = logoTop - logoHeight - 10;
+  for (const line of addressLines) {
+    page.drawText(toPdfSafeText(line, supported), { x: margin, y: addrY, size: 8, font, color: rgb(0.45, 0.45, 0.5) });
+    addrY -= 10;
+  }
+  page.drawText(toPdfSafeText(`GSTIN: ${COMPANY_GSTIN}`, supported), {
+    x: margin,
+    y: addrY,
+    size: 8,
+    font: bold,
+    color: rgb(0.45, 0.45, 0.5),
+  });
+  addrY -= 10;
 
   const invoiceId = `INV-${booking.bookingRef}`;
   const invoiceDate = new Date().toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" });
-  [`Invoice No: ${invoiceId}`, `Invoice Date: ${invoiceDate}`].forEach((line, i) => {
+  let metaY = logoTop - 10;
+  [`Invoice No: ${invoiceId}`, `Invoice Date: ${invoiceDate}`].forEach((line) => {
     const safe = toPdfSafeText(line, supported);
     const w = font.widthOfTextAtSize(safe, 10);
-    page.drawText(safe, { x: page.getWidth() - margin - w, y: y - 10 - i * 14, size: 10, font, color: rgb(0.4, 0.4, 0.45) });
+    page.drawText(safe, { x: page.getWidth() - margin - w, y: metaY, size: 10, font, color: rgb(0.4, 0.4, 0.45) });
+    metaY -= 14;
   });
 
-  y -= Math.max(logoHeight, 28) + 12;
+  y = Math.min(addrY, metaY) - 12;
 
   text("Flying Leader — Trip Invoice", { size: 20, bold: true, gap: 26 });
   text(`Booking Ref: ${booking.bookingRef}`, { bold: true });
