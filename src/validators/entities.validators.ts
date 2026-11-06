@@ -31,8 +31,15 @@ const tourDateBaseSchema = z.object({
   appliesToChild: zStrictBoolean.optional(),
   appliesToInfant: zStrictBoolean.optional(),
   label: z.string().trim().optional(),
-  // Seats remaining for this date. Blank clears it (null = untracked).
-  seatsAvailable: z.coerce.number().int().min(0).optional().nullable(),
+  // Seats remaining for this date. Blank clears it (null = untracked). An empty
+  // string is normalised to null FIRST: without this `z.coerce.number("")`
+  // would turn a cleared field into 0 (sold out) instead of untracked. null
+  // stays null, a real value coerces as usual, and an omitted key is left
+  // untouched by the update (keeps the existing value).
+  seatsAvailable: z.preprocess(
+    (v) => (v === "" ? null : v),
+    z.coerce.number().int().min(0).optional().nullable(),
+  ),
   isActive: zStrictBoolean.optional(),
   sortOrder: z.coerce.number().min(0).optional(),
 });

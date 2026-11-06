@@ -11,9 +11,12 @@ export type FieldConfig =
       required?: boolean;
       // What to send when the field is left blank. By default blank optional
       // fields are omitted, which on an EDIT means "keep the old value" — so a
-      // limit that was once set could never be cleared. Set this (e.g. 0 for
-      // "no limit") for fields where blank must mean something.
-      blankAs?: string | number;
+      // limit that was once set could never be cleared. Set this for fields
+      // where blank must mean something: `null` explicitly CLEARS a value the
+      // backend treats null as "unset" (e.g. tour-date seatsAvailable — null =
+      // not tracked), without conflating it with 0 (which there means sold out).
+      // A number/string (e.g. 0) sends that literal value on blank instead.
+      blankAs?: string | number | null;
     }
   | { name: string; label: string; type: "checkbox" }
   // `previewUrlKey` is the field on the item holding the existing image's URL,

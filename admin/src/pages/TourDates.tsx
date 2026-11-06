@@ -168,8 +168,13 @@ export function TourDatesPage() {
         { name: "label", label: "Label (optional)", type: "text" },
         {
           name: "seatsAvailable",
+          // Blank sends null (not omitted), so clearing a previously-set count
+          // on an edit actually removes it (null = not tracked) instead of the
+          // old value silently sticking. 0 stays a real, distinct value (sold
+          // out) — see blankAs docs in resourceForm.ts.
           label: "Seats left (optional) — leave blank if not tracking; 0 = sold out",
           type: "number",
+          blankAs: null,
         },
         { name: "isActive", label: "Active", type: "checkbox" },
       ]}
