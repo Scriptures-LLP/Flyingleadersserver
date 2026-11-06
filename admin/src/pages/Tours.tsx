@@ -46,13 +46,14 @@ type Tour = {
   groupSizeLabel?: string;
   hotelClassLabel?: string;
   isActive?: boolean;
+  createdAt?: string;
   mysqlSync?: { status?: "pending" | "synced" | "failed" | "disabled"; lastError?: string };
 };
 
 type ChildPricingTier = { minAge: number; maxAge: number; price: number };
 type Category = { _id: string; label: string; slug: string };
 type Country = { _id: string; name: string };
-type SortKey = "title" | "category" | "price" | "active";
+type SortKey = "title" | "category" | "price" | "active" | "created";
 
 const SEATS_REMARKS = ["Available", "Fast Selling", "Almost Sold Out", "Hot Selling", "Sold Out"];
 
@@ -107,8 +108,10 @@ export function ToursPage() {
   const catLabel = (slug?: string) => categories?.find((c) => c.slug === slug)?.label ?? slug ?? "";
 
   // Click-to-sort the tours table. Sorts the full list (before pagination) so
-  // the order is consistent across pages. Defaults to title A→Z.
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "title", dir: "asc" });
+  // the order is consistent across pages. Defaults to newest-added first (the
+  // "latest tours" the admin most often wants at the top), matching the order
+  // the API returns them in.
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "created", dir: "desc" });
   const sortedTours = useMemo(() => {
     if (!tours) return tours;
     const dir = sort.dir === "asc" ? 1 : -1;
@@ -120,6 +123,10 @@ export function ToursPage() {
           return t.isActive ? 1 : 0;
         case "category":
           return catLabel(t.category).toLowerCase();
+        case "created":
+          // Newest-first = largest timestamp first (with dir "desc"). Missing
+          // timestamps sort as oldest.
+          return t.createdAt ? new Date(t.createdAt).getTime() : 0;
         case "title":
         default:
           return (t.title ?? "").toLowerCase();
@@ -349,6 +356,7 @@ export function ToursPage() {
                 <SortTh label="Category" k="category" sort={sort} onSort={toggleSort} />
                 <SortTh label="Price" k="price" sort={sort} onSort={toggleSort} />
                 <SortTh label="Active" k="active" sort={sort} onSort={toggleSort} />
+                <SortTh label="Added" k="created" sort={sort} onSort={toggleSort} />
                 <th className="px-4 py-2 font-medium">Website</th>
                 <th className="px-4 py-2" />
               </tr>
@@ -363,6 +371,16 @@ export function ToursPage() {
                   <td className="px-4 py-2 text-neutral-700">₹{tour.price?.toLocaleString("en-IN")}</td>
                   <td className="px-4 py-2 text-neutral-700">
                     <StatusBadge active={tour.isActive} />
+                  </td>
+                  <td className="px-4 py-2 text-neutral-500">
+                    {tour.createdAt
+                      ? new Date(tour.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          timeZone: "Asia/Kolkata",
+                        })
+                      : "—"}
                   </td>
                   <td className="px-4 py-2 text-neutral-700">
                     <SyncStatusCell resourcePath="/admin/tours" id={tour._id} mysqlSync={tour.mysqlSync} />
@@ -393,7 +411,7 @@ export function ToursPage() {
               ))}
               {tours.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-neutral-400">
+                  <td colSpan={7} className="px-4 py-6 text-center text-neutral-400">
                     No tours yet.
                   </td>
                 </tr>
