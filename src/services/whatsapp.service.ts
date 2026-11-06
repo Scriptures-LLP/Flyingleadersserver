@@ -82,12 +82,12 @@ export async function sendWhatsAppTemplate(
  * Sends an approved template whose HEADER is a document (e.g. a PDF invoice/
  * trip summary) — same 24h-window rule as sendWhatsAppTemplate, so this is for
  * a Meta-approved template with a Document header component, not a plain-text
- * one. EXPERIMENTAL, like createWhatsAppTemplate below: Gupshup's exact field
- * for a per-send (dynamic) header media URL isn't confirmed from a real send
- * yet. Current best guess, based on the most common BSP convention: the
- * header's URL goes first in `params`, before the body's {{1}}, {{2}}… values
- * — verify with a live test send before relying on this, the same way the
- * plain-text template send and template creation were worked out earlier.
+ * one. Per Gupshup's own docs (https://docs.gupshup.io/reference/sending-document-template),
+ * the header's media URL is NOT part of `template.params` (that's body
+ * {{1}}, {{2}}… only) — it's a separate `message` field. An earlier version of
+ * this function guessed the URL belonged in `params[0]` instead; that shipped,
+ * and a real payment's PDF never arrived, which is what exposed the guess as
+ * wrong — this is now the documented shape, not a guess.
  *
  * `documentUrl` must be a public URL (no login) — see bookingPdfPublicUrl.
  */
@@ -109,7 +109,8 @@ export async function sendWhatsAppDocumentTemplate(
     source: env.GUPSHUP_SOURCE_NUMBER,
     destination,
     "src.name": env.GUPSHUP_APP_NAME,
-    template: JSON.stringify({ id: templateId, params: [documentUrl, ...bodyParams] }),
+    template: JSON.stringify({ id: templateId, params: bodyParams }),
+    message: JSON.stringify({ type: "document", document: { link: documentUrl, filename: "trip-summary.pdf" } }),
   });
 
   let res: Response;

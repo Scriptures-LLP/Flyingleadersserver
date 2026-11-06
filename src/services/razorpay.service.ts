@@ -97,3 +97,14 @@ export async function createRefund(paymentId: string, amountRupees?: number) {
     getClient().payments.refund(paymentId, amountRupees ? { amount: toPaise(amountRupees) } : {}),
   );
 }
+
+/**
+ * "Authorized" only means the customer's bank/UPI app approved the charge —
+ * on a Razorpay account without automatic capture, that money never actually
+ * reaches the merchant until this is called (it can also sit un-captured for
+ * a few seconds on an auto-capture account, before Razorpay's own job runs).
+ * Call this before ever telling a customer a payment is done.
+ */
+export async function capturePayment(paymentId: string, amountRupees: number) {
+  return callRazorpay(() => getClient().payments.capture(paymentId, toPaise(amountRupees), "INR"));
+}

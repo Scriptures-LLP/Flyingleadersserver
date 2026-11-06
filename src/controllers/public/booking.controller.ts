@@ -5,6 +5,7 @@ import type { Request, Response } from "express";
 import { Booking } from "../../models/Booking.js";
 import { Tour } from "../../models/Tour.js";
 import { TourDate } from "../../models/TourDate.js";
+import { Transaction } from "../../models/Transaction.js";
 import { categorizeAge, getAgeCategoryConfig } from "../../services/ageCategory.service.js";
 import { computeBaseAmount, computeTcs, validatePromoCode } from "../../services/pricing.service.js";
 import { claimPromoUse, promoHoldExpiry } from "../../services/promoUsage.service.js";
@@ -240,16 +241,24 @@ export const getOne = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Builds the trip summary PDF bytes for a booking, shared by both the
- * logged-in download route and the token-authorised one WhatsApp's document
- * delivery fetches from (see tripSummaryPdfByToken). Only worth having once
- * money has actually changed hands — an unpaid or cancelled booking has
- * nothing confirmed to summarize.
+ * Common "is this booking far enough along to have a document at all" gate —
+ * shared by both the trip summary and the invoice. An unpaid or cancelled
+ * booking has nothing confirmed to summarize or bill.
+ */
+function assertDocumentReady(booking: InstanceType<typeof Booking>) {
+  if (booking.paymentStatus === "unpaid" || booking.status === "cancelled") {
+    throw ApiError.badRequest("This document is available once at least the token/partial payment is made");
+  }
+}
+
+/**
+ * Builds the trip-content PDF bytes for a booking (itinerary, travellers,
+ * flights, hotels — no pricing/payment detail; see buildInvoicePdf for that),
+ * shared by both the logged-in download route and the token-authorised one
+ * WhatsApp's document delivery fetches from (see tripSummaryPdfByToken).
  */
 async function buildTripSummaryPdf(booking: InstanceType<typeof Booking>): Promise<Uint8Array> {
-  if (booking.paymentStatus === "unpaid" || booking.status === "cancelled") {
-    throw ApiError.badRequest("Trip summary is available once at least the token/partial payment is made");
-  }
+  assertDocumentReady(booking);
 
   // Bookings created before flight/hotel info was captured in the snapshot don't
   // carry it — backfill (in memory only) from the live tour so their summary can
@@ -274,6 +283,32 @@ async function buildTripSummaryPdf(booking: InstanceType<typeof Booking>): Promi
   return renderTripSummaryPdf(booking as any);
 }
 
+/**
+ * Builds the payment-content PDF bytes for a booking (logo/address/GSTIN,
+ * invoice no/date, itemised charges, and every payment received with its own
+ * payment id) — no itinerary/traveller detail; see buildTripSummaryPdf.
+ */
+async function buildInvoicePdf(booking: InstanceType<typeof Booking>): Promise<Uint8Array> {
+  assertDocumentReady(booking);
+
+  // Every captured payment on this booking (partial token + later balance, if
+  // that's how it was paid) — the invoice lists each one with its own
+  // reference rather than just a single lump "amount paid".
+  const paidTxns = await Transaction.find({ bookingId: booking._id, status: "paid", type: { $ne: "refund" } })
+    .sort({ createdAt: 1 })
+    .lean();
+
+  const { renderInvoicePdf } = await import("../../services/invoicePdf.service.js");
+  return renderInvoicePdf({
+    ...(booking.toObject() as any),
+    payments: paidTxns.map((p) => ({
+      date: p.channel === "office" ? p.office?.receivedAt ?? p.createdAt : p.createdAt,
+      reference: p.channel === "office" ? p.office?.reference?.trim() || "Office payment" : p.razorpayPaymentId ?? "—",
+      amount: p.amount,
+    })),
+  });
+}
+
 export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) => {
   const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
   if (!booking) throw ApiError.notFound("Booking not found");
@@ -281,6 +316,16 @@ export const tripSummaryPdf = asyncHandler(async (req: Request, res: Response) =
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-trip-summary.pdf"`);
+  res.send(Buffer.from(pdfBytes));
+});
+
+export const invoicePdf = asyncHandler(async (req: Request, res: Response) => {
+  const booking = await Booking.findOne({ _id: req.params.id, customerId: req.customer!.sub });
+  if (!booking) throw ApiError.notFound("Booking not found");
+  const pdfBytes = await buildInvoicePdf(booking);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-invoice.pdf"`);
   res.send(Buffer.from(pdfBytes));
 });
 
@@ -301,5 +346,18 @@ export const tripSummaryPdfByToken = asyncHandler(async (req: Request, res: Resp
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-trip-summary.pdf"`);
+  res.send(Buffer.from(pdfBytes));
+});
+
+/** Token-authorised counterpart of invoicePdf — see tripSummaryPdfByToken. */
+export const invoicePdfByToken = asyncHandler(async (req: Request, res: Response) => {
+  const booking = await Booking.findById(req.params.id);
+  if (!booking || req.query.token !== bookingPdfToken(String(booking._id))) {
+    throw ApiError.notFound("Booking not found");
+  }
+  const pdfBytes = await buildInvoicePdf(booking);
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${booking.bookingRef}-invoice.pdf"`);
   res.send(Buffer.from(pdfBytes));
 });

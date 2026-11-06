@@ -43,10 +43,10 @@ const remainingOf = (b: { pricing: { finalAmount: number }; amountPaid: number }
 async function notifyWhatsApp(event: string, phone: string | undefined, params: string[]) {
   if (!phone || !isWhatsAppConfigured()) return;
   const destination = toGupshupDestination(phone);
-  if (!destination) return;
+  if (!destination) return console.error(`[notify] whatsapp "${event}" skipped: "${phone}" isn't a valid Indian mobile number`);
   const setting = await Setting.findOne({ key: `whatsapp_${event}_template_id` });
   const templateId = setting?.value?.trim();
-  if (!templateId) return;
+  if (!templateId) return console.error(`[notify] whatsapp "${event}" skipped: no "whatsapp_${event}_template_id" set in Settings`);
   await sendWhatsAppTemplate(destination, templateId, params);
 }
 
@@ -59,12 +59,12 @@ async function notifyWhatsApp(event: string, phone: string | undefined, params: 
 async function notifyWhatsAppDocument(event: string, phone: string | undefined, bookingId: string, bodyParams: string[]) {
   if (!phone || !isWhatsAppConfigured()) return;
   const destination = toGupshupDestination(phone);
-  if (!destination) return;
+  if (!destination) return console.error(`[notify] whatsapp document "${event}" skipped: "${phone}" isn't a valid Indian mobile number`);
   const setting = await Setting.findOne({ key: `whatsapp_${event}_invoice_template_id` });
   const templateId = setting?.value?.trim();
-  if (!templateId) return;
+  if (!templateId) return console.error(`[notify] whatsapp document "${event}" skipped: no "whatsapp_${event}_invoice_template_id" set in Settings`);
   const documentUrl = bookingPdfPublicUrl(bookingId);
-  if (!documentUrl) return;
+  if (!documentUrl) return console.error(`[notify] whatsapp document "${event}" skipped: PUBLIC_API_BASE_URL isn't set, no public URL to hand WhatsApp`);
   await sendWhatsAppDocumentTemplate(destination, templateId, documentUrl, bodyParams);
 }
 

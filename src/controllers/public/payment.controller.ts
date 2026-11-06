@@ -128,6 +128,30 @@ async function confirmBookingPayment(
   return finalized;
 }
 
+/**
+ * "Authorized" means the customer's bank/UPI app approved the charge — it does
+ * NOT mean the merchant has been paid. Money only actually moves once a
+ * payment is "captured" (Razorpay's webhook, the one source of truth that was
+ * never wrong here, only ever trusts `payment.captured`). Explicitly capturing
+ * before confirming a booking closes that gap instead of just trusting the
+ * "authorized" label — the same payment page the customer backed out of can
+ * otherwise get reported as "authorized" even though no money has moved yet,
+ * which used to be enough on its own to mark the booking paid.
+ */
+async function ensureCaptured(payment: { id: string; status: string }, amountRupees: number): Promise<boolean> {
+  if (payment.status === "captured") return true;
+  try {
+    await razorpay.capturePayment(payment.id, amountRupees);
+    return true;
+  } catch (err) {
+    // Razorpay's own auto-capture can beat us to it between the status check
+    // above and this call — that errors here (can't capture twice) but is
+    // still a paid payment, not a failure to treat as one.
+    if (err instanceof ApiError && /already.*captur/i.test(err.message)) return true;
+    return false;
+  }
+}
+
 type OrderPayment = { id: string; order_id?: string; status: string; amount: number };
 
 /**
@@ -163,6 +187,7 @@ export async function reconcileBookingPayments(
         p.amount === Math.round(txn.amount * 100),
     );
     if (!paid) continue;
+    if (!(await ensureCaptured(paid, txn.amount))) continue; // authorized but couldn't actually capture it — not paid
     txn.razorpayPaymentId = paid.id;
     current = await confirmBookingPayment(current, txn);
     applied += 1;
@@ -217,6 +242,11 @@ export const verify = asyncHandler(async (req: Request, res: Response) => {
   const amountMatches = payment.amount === Math.round(txn.amount * 100);
   const statusOk = payment.status === "captured" || payment.status === "authorized";
   if (!amountMatches || !statusOk || payment.order_id !== body.razorpay_order_id) {
+    txn.status = "failed";
+    await txn.save();
+    throw ApiError.badRequest("Payment could not be verified");
+  }
+  if (!(await ensureCaptured(payment, txn.amount))) {
     txn.status = "failed";
     await txn.save();
     throw ApiError.badRequest("Payment could not be verified");
