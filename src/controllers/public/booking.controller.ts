@@ -26,7 +26,7 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
     airportId?: string;
     travelDate: Date;
     contactName: string;
-    contactEmail: string;
+    contactEmail?: string;
     contactPhone: string;
     travellers: { name: string; age?: number; gender?: string; type: "adult" | "child" | "infant" }[];
     promoCode?: string;

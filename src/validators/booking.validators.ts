@@ -16,7 +16,15 @@ export const createBookingSchema = z.object({
   airportId: z.string().min(1).optional(),
   travelDate: z.coerce.date(),
   contactName: z.string().trim().min(1),
-  contactEmail: z.string().trim().email(),
+  // Phone/OTP accounts have no email, and this screen never asks for one —
+  // it's always just `user?.email`, which the app sends as "" when there
+  // isn't one. An empty string isn't a valid email, so without the
+  // preprocess step below every booking from a phone-only account failed
+  // Zod's .email() check with nothing but a generic "Validation failed".
+  contactEmail: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.string().trim().email().optional(),
+  ),
   contactPhone: z.string().trim().min(1),
   travellers: z.array(travellerSchema).min(1),
   promoCode: z.string().trim().min(1).optional(),

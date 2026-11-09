@@ -14,7 +14,7 @@ type Booking = {
   customerId?: { _id: string; name: string; email: string } | string;
   travelDate: string;
   contactName: string;
-  contactEmail: string;
+  contactEmail?: string;
   contactPhone: string;
   travellers: Traveller[];
   pricing: {

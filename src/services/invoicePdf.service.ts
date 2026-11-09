@@ -18,7 +18,7 @@ type InvoiceLike = {
   paymentStatus: string;
   travelDate: Date;
   contactName: string;
-  contactEmail: string;
+  contactEmail?: string;
   contactPhone: string;
   itinerarySnapshot: { title: string };
   pricing: {
@@ -107,7 +107,7 @@ export async function renderInvoicePdf(booking: InvoiceLike): Promise<Uint8Array
 
   text(ctx, "Billed To", { size: 12, bold: true, gap: 18 });
   text(ctx, booking.contactName);
-  text(ctx, booking.contactEmail);
+  if (booking.contactEmail) text(ctx, booking.contactEmail);
   text(ctx, booking.contactPhone);
   text(ctx, `For: ${booking.itinerarySnapshot.title}`, { gap: 16 });
   text(ctx, `Travel date: ${new Date(booking.travelDate).toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })}`);
