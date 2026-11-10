@@ -21,6 +21,37 @@ type Props = {
   placeholder?: string;
 };
 
+// Migrated tours (and any other legacy-HTML source) store what's visually
+// several lines -- a heading, a paragraph, a "Meals:" line, the next day's
+// heading, and so on -- as plain text runs inside ONE <p>, separated only by
+// <br><br>. ProseMirror has no notion of a "line" inside a single textblock:
+// triple-click selects the WHOLE paragraph (every day at once, not just one),
+// and an ordinary click-drag has no paragraph boundary to snap to either.
+// Reproduced live: selecting what looked like just one day's line and hitting
+// Delete silently ate parts of the day before and after it too, while newly
+// typed text landed cleanly -- reading as "removals don't take" when what
+// actually happened was an imprecise, unbounded deletion across one giant
+// block. Splitting the double-<br> runs into real <p> tags (matching how a
+// freshly authored field already looks) gives the browser and ProseMirror an
+// actual paragraph per day, so triple-click / click-drag only ever reaches
+// the one line an admin meant to touch. Done here, when a field is first
+// loaded for editing, rather than as a one-off data migration, so it also
+// self-heals any other field with the same shape.
+export function normalizeLegacyLineBreaks(html: string): string {
+  if (typeof html !== "string" || !html) return html;
+  if ((html.match(/<p[\s>]/gi) ?? []).length !== 1) return html; // already real paragraphs (or none)
+  const match = html.match(/^\s*<p[^>]*>([\s\S]*)<\/p>\s*$/i);
+  if (!match) return html;
+  const inner = match[1];
+  if (!/(?:<br\s*\/?>\s*){2,}/i.test(inner)) return html; // no double-<br> runs to split on
+  const parts = inner
+    .split(/(?:<br\s*\/?>\s*){2,}/i)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (parts.length <= 1) return html;
+  return parts.map((p) => `<p>${p}</p>`).join("");
+}
+
 const HIGHLIGHT_COLORS = ["#FEF08A", "#BBF7D0", "#BFDBFE", "#FBCFE8"];
 const TEXT_COLORS = ["#111827", "#DC2626", "#2563EB", "#16A34A", "#9333EA"];
 
@@ -67,6 +98,11 @@ function isolateSelectedLines(editor: Editor) {
 // alignment, color, lists) rather than a plain textarea they'd have to
 // hand-write HTML into.
 export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }: Props) {
+  // See normalizeLegacyLineBreaks above -- every use of `value` below goes
+  // through this, so a legacy flat-paragraph field is split into real <p>s
+  // before it ever reaches the editor, not just on the very first mount.
+  const normalizedValue = normalizeLegacyLineBreaks(value);
+
   // The toolbar's onMouseDown below can't preventDefault for a <select> (that
   // would stop it opening at all), so opening one still lets the browser steal
   // the editor's selection the same way a plain button click used to before it
@@ -138,7 +174,7 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
   // typing (it only calls setContent when value doesn't already match what's
   // in the editor -- i.e. only for a genuinely external change, like loading
   // a different tour to edit).
-  const initialValue = useRef(value).current;
+  const initialValue = useRef(normalizedValue).current;
   // What we ourselves most recently emitted via onChange -- see the effect
   // below for why this, and not editor.getHTML(), is what `value` needs
   // comparing against.
@@ -194,12 +230,12 @@ export function RichTextEditor({ value, onChange, minHeight = 160, placeholder }
     // arrives), or does it not match anything we emitted -- which only
     // happens for a genuinely external change, like loading a different
     // tour to edit. Only that second case should ever touch the document.
-    if (value !== lastEmitted.current) {
-      lastEmitted.current = value;
-      editor.commands.setContent(value, false);
+    if (normalizedValue !== lastEmitted.current) {
+      lastEmitted.current = normalizedValue;
+      editor.commands.setContent(normalizedValue, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, editor]);
+  }, [normalizedValue, editor]);
 
   if (!editor) return null;
 
