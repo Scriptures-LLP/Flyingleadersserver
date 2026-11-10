@@ -53,13 +53,18 @@ export function SyncStatusCell({
       >
         {LABEL[status]}
       </span>
-      {status === "failed" && (
+      {/* "pending" covers both "never attempted" (e.g. catalog rows brought in
+          by the original MySQL->Mongo migration, which never ran a sync) and
+          a since-superseded in-flight attempt -- there's no scheduler that
+          ever revisits these on its own, so without this button a pending
+          row can sit unsynced forever. */}
+      {(status === "failed" || status === "pending") && (
         <button
           onClick={() => retryMutation.mutate()}
           disabled={retryMutation.isPending}
-          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+          className={`text-xs font-medium hover:underline disabled:opacity-50 ${status === "failed" ? "text-red-600" : "text-neutral-600"}`}
         >
-          {retryMutation.isPending ? "Retrying…" : "Retry"}
+          {retryMutation.isPending ? "Syncing…" : status === "failed" ? "Retry" : "Sync now"}
         </button>
       )}
       {retryMutation.isError && (

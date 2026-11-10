@@ -19,12 +19,6 @@ type PromoCodeSyncInput = {
   legacyMysqlId?: number | null;
 };
 
-/** 'Y-m-d H:i:s', matching flyingdotcom/inc/promo.php's expected format. */
-function toMysqlDatetime(date?: Date | null): string | null {
-  if (!date) return null;
-  return date.toISOString().slice(0, 19).replace("T", " ");
-}
-
 export async function syncPromoCodeUpsert(promo: PromoCodeSyncInput): Promise<number | void> {
   const pool = getMysqlPool();
   if (!pool) return;
@@ -45,8 +39,13 @@ export async function syncPromoCodeUpsert(promo: PromoCodeSyncInput): Promise<nu
     min_cart: promo.minCart ?? 0,
     usage_limit: promo.usageLimit ?? null,
     per_user_limit: promo.perUserLimit ?? null,
-    starts_at: toMysqlDatetime(promo.startsAt),
-    expires_at: toMysqlDatetime(promo.expiresAt),
+    // Pass the Date objects straight through -- mysql2 formats them using the
+    // pool's `timezone: "+05:30"` setting (see pool.ts), matching how
+    // flyingdotcom/inc/promo.php reads DATETIME columns back under its own
+    // explicit IST session. A hand-built `.toISOString()` string here used to
+    // write the UTC wall-clock digits instead, landing 5.5 hours off IST.
+    starts_at: promo.startsAt ?? null,
+    expires_at: promo.expiresAt ?? null,
     is_active: promo.isActive ? 1 : 0,
     note: promo.note ?? null,
   };

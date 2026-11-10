@@ -24,7 +24,7 @@ export const countryController = {
     const updates: Record<string, unknown> = { ...req.body };
     await attachUploadedImage(req, "countries", updates, "coverImage");
     const item = await Country.create(updates);
-    await runMysqlSync(Country, item, () => syncCountryUpsert(item));
+    void runMysqlSync(Country, item, () => syncCountryUpsert(item));
     res.status(201).json({ item });
   }),
 
@@ -37,7 +37,7 @@ export const countryController = {
 
     Object.assign(existing, updates);
     await existing.save();
-    await runMysqlSync(Country, existing, () => syncCountryUpsert(existing));
+    void runMysqlSync(Country, existing, () => syncCountryUpsert(existing));
     res.json({ item: existing });
   }),
 
