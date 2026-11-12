@@ -36,9 +36,11 @@ export function TourGalleryManager({ tourId }: { tourId: string }) {
       const body = new FormData();
       body.append("tourId", tourId);
       Array.from(files).forEach((f) => body.append("files", f));
-      return api.post("/admin/tour-media", body, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Don't set Content-Type by hand: a manual "multipart/form-data" omits the
+      // generated "; boundary=…", so the server can't parse the parts and sees no
+      // files ("At least one image file is required"). Let the browser/axios set
+      // it from the FormData body — with the boundary.
+      return api.post("/admin/tour-media", body);
     },
     onSuccess: invalidate,
   });

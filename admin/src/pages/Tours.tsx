@@ -251,9 +251,11 @@ export function ToursPage() {
         const gallery = new FormData();
         gallery.append("tourId", newId);
         galleryFiles.forEach((f) => gallery.append("files", f));
-        await api.post("/admin/tour-media", gallery, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        // No manual Content-Type: setting "multipart/form-data" by hand drops the
+        // generated boundary, so the server parses no files and rejects the
+        // upload ("At least one image file is required"). Let axios set it from
+        // the FormData body (same as the tour create above).
+        await api.post("/admin/tour-media", gallery);
       }
       return res;
     },
