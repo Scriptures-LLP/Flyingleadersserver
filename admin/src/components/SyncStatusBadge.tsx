@@ -46,21 +46,38 @@ export function SyncStatusCell({
   });
 
   return (
-    <div className="flex items-center gap-2">
-      <span
-        className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${STYLE[status]}`}
-        title={status === "failed" ? mysqlSync?.lastError : undefined}
-      >
-        {LABEL[status]}
-      </span>
-      {status === "failed" && (
-        <button
-          onClick={() => retryMutation.mutate()}
-          disabled={retryMutation.isPending}
-          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${STYLE[status]}`}>
+          {LABEL[status]}
+        </span>
+        {/* "pending" covers both "never attempted" (e.g. catalog rows brought in
+            by the original MySQL->Mongo migration, which never ran a sync) and
+            a since-superseded in-flight attempt -- there's no scheduler that
+            ever revisits these on its own, so without this button a pending
+            row can sit unsynced forever. */}
+        {(status === "failed" || status === "pending") && (
+          <button
+            onClick={() => retryMutation.mutate()}
+            disabled={retryMutation.isPending}
+            className={`text-xs font-medium hover:underline disabled:opacity-50 ${status === "failed" ? "text-red-600" : "text-neutral-600"}`}
+          >
+            {retryMutation.isPending ? "Syncing…" : status === "failed" ? "Retry" : "Sync now"}
+          </button>
+        )}
+      </div>
+      {/* Shown directly, not just on hover -- a generic "Sync failed" badge told
+          the admin something was wrong but not what, so every failure needed a
+          follow-up question to anyone who could read the server logs. The real
+          MySQL error (e.g. "Column 'price_infant' cannot be null") usually says
+          exactly which field to go fix, right on the row that needs it. */}
+      {status === "failed" && mysqlSync?.lastError && (
+        <span
+          className="max-w-[260px] truncate text-xs text-red-500"
+          title={mysqlSync.lastError}
         >
-          {retryMutation.isPending ? "Retrying…" : "Retry"}
-        </button>
+          {mysqlSync.lastError}
+        </span>
       )}
       {retryMutation.isError && (
         <span className="text-xs text-red-500">{apiErrorMessage(retryMutation.error)}</span>

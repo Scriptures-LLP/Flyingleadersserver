@@ -31,7 +31,11 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   const updates: Record<string, unknown> = { ...req.body };
   await attachUploadedImage(req, "tours", updates, "coverImage");
   const tour = await Tour.create(updates);
-  await runMysqlSync(Tour, tour, () => syncTourUpsert(tour));
+  // Don't make the admin wait on a round trip to a remote legacy host for a
+  // response to their own, already-successful Mongo write — kick the sync off
+  // and let it update mysqlSync in the background; the list/detail views pick
+  // the real status up on their next fetch.
+  void runMysqlSync(Tour, tour, () => syncTourUpsert(tour));
   res.status(201).json({ item: serializeForAdmin(tour) });
 });
 
@@ -50,7 +54,7 @@ export const update = asyncHandler(async (req: Request, res: Response) => {
 
   Object.assign(existing, updates);
   await existing.save();
-  await runMysqlSync(Tour, existing, () => syncTourUpsert(existing));
+  void runMysqlSync(Tour, existing, () => syncTourUpsert(existing));
   res.json({ item: serializeForAdmin(existing) });
 });
 

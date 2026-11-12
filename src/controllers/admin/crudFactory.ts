@@ -35,7 +35,10 @@ export function makeCrudController(
 
     create: asyncHandler(async (req: Request, res: Response) => {
       const item = await model.create(req.body);
-      if (sync) await runMysqlSync(model, item, () => sync.upsert(item));
+      // Don't block the response on a round trip to the remote legacy host —
+      // Mongo's own write already succeeded; the sync result lands in
+      // mysqlSync for the next fetch to pick up.
+      if (sync) void runMysqlSync(model, item, () => sync.upsert(item));
       res.status(201).json({ item: serialize(item) });
     }),
 
@@ -45,7 +48,7 @@ export function makeCrudController(
         runValidators: true,
       });
       if (!item) throw ApiError.notFound(`${resourceName} not found`);
-      if (sync) await runMysqlSync(model, item, () => sync.upsert(item));
+      if (sync) void runMysqlSync(model, item, () => sync.upsert(item));
       res.json({ item: serialize(item) });
     }),
 

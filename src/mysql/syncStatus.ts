@@ -73,27 +73,36 @@ type SyncableDoc = {
 
 /**
  * Runs a sync upsert/delete for one document, recording pending/disabled/success/failure
- * both in the database (via the helpers above) AND on the in-memory `doc` itself, so a
- * response serialized right after this call reflects the real outcome rather than the
- * stale pre-sync state. Never throws — a sync failure must never fail the admin request
- * that triggered it (Mongo already has the source-of-truth write). `syncFn` returns the
- * legacy row's numeric id (new or existing) on success.
+ * in the database via the helpers above. Callers never await this (see each call site) —
+ * the legacy MySQL host is a remote, sometimes-slow network round trip, and the admin
+ * request this was triggered from must respond as soon as Mongo's own write (the real
+ * source of truth) has succeeded, not wait on a second system on top of it. Because of
+ * that, the in-memory `doc` passed in may already be serialized into a response before
+ * this finishes — status/legacyMysqlId mutations on it are a best-effort courtesy for a
+ * caller that happens to read `doc` again later in the same tick, not something a
+ * response can rely on; the real outcome always lands in Mongo for the next fetch to see.
+ * Never rejects — a sync failure (including a failure to even *record* the failure) must
+ * never surface as an unhandled rejection off of a call nobody is awaiting.
  */
 export async function runMysqlSync(model: Model<any>, doc: SyncableDoc, syncFn: () => Promise<number | void>) {
-  if (!env.MYSQL_SYNC_ENABLED) {
-    doc.mysqlSync = { ...doc.mysqlSync, status: "disabled" };
-    await recordSyncDisabled(model, doc._id);
-    return;
-  }
   try {
-    const legacyMysqlId = await syncFn();
-    const now = new Date();
-    doc.mysqlSync = { status: "synced", lastAttemptAt: now, lastSyncedAt: now };
-    if (legacyMysqlId) doc.legacyMysqlId = legacyMysqlId;
-    await recordSyncSuccess(model, doc._id, legacyMysqlId ?? undefined);
+    if (!env.MYSQL_SYNC_ENABLED) {
+      doc.mysqlSync = { ...doc.mysqlSync, status: "disabled" };
+      await recordSyncDisabled(model, doc._id);
+      return;
+    }
+    try {
+      const legacyMysqlId = await syncFn();
+      const now = new Date();
+      doc.mysqlSync = { status: "synced", lastAttemptAt: now, lastSyncedAt: now };
+      if (legacyMysqlId) doc.legacyMysqlId = legacyMysqlId;
+      await recordSyncSuccess(model, doc._id, legacyMysqlId ?? undefined);
+    } catch (err) {
+      const message = describeError(err);
+      doc.mysqlSync = { ...doc.mysqlSync, status: "failed", lastAttemptAt: new Date(), lastError: message.slice(0, 500) };
+      await recordSyncFailure(model, doc._id, err);
+    }
   } catch (err) {
-    const message = describeError(err);
-    doc.mysqlSync = { ...doc.mysqlSync, status: "failed", lastAttemptAt: new Date(), lastError: message.slice(0, 500) };
-    await recordSyncFailure(model, doc._id, err);
+    console.error(`[mysql-sync] could not even record the outcome for ${model.modelName} ${doc._id}:`, describeError(err));
   }
 }

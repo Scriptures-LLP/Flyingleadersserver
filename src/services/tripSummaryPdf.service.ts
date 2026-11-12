@@ -5,7 +5,7 @@ type TripSummaryLike = {
   status: string;
   travelDate: Date;
   contactName: string;
-  contactEmail: string;
+  contactEmail?: string;
   contactPhone: string;
   travellers: { name: string; type: string; age?: number }[];
   itinerarySnapshot: {
@@ -46,7 +46,7 @@ export async function renderTripSummaryPdf(booking: TripSummaryLike): Promise<Ui
 
   text(ctx, "Contact", { size: 13, bold: true, gap: 20 });
   text(ctx, booking.contactName);
-  text(ctx, booking.contactEmail);
+  if (booking.contactEmail) text(ctx, booking.contactEmail);
   text(ctx, booking.contactPhone);
   divider(ctx);
 

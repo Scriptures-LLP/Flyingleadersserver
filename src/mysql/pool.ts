@@ -17,6 +17,15 @@ export function getMysqlPool(): mysql.Pool | null {
       password: env.MYSQL_PASSWORD,
       waitForConnections: true,
       connectionLimit: 5,
+      queueLimit: 20,
+      connectTimeout: 8000,
+      // The legacy site writes/reads every DATETIME under an explicit IST
+      // session (flyingdotcom/inc/db.php sets `time_zone = 'Asia/Kolkata'`).
+      // mysql2 defaults to the Node process's own OS timezone otherwise, so
+      // without this a server not running in IST (the usual case on EC2)
+      // reads back the wrong instant, and any value this pool writes back
+      // would drift the same way on the PHP side.
+      timezone: "+05:30",
     });
   }
 

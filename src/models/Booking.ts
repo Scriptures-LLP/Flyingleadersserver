@@ -82,7 +82,7 @@ const bookingSchema = new Schema(
     travelDate: { type: Date, required: true },
 
     contactName: { type: String, required: true, trim: true },
-    contactEmail: { type: String, required: true, trim: true, lowercase: true },
+    contactEmail: { type: String, trim: true, lowercase: true },
     contactPhone: { type: String, required: true, trim: true },
 
     travellers: { type: [travellerSchema], validate: (v: unknown[]) => v.length > 0 },

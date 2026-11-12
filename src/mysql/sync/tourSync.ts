@@ -56,7 +56,12 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     duration: tour.duration ?? null,
     country_id: legacyCountryId,
     price: tour.price,
-    price_child: tour.priceChild ?? null,
+    // NOT NULL with no default on the real legacy table (confirmed live: every
+    // tour missing this was failing to sync at all with "Column 'price_child'
+    // cannot be null"). The new admin panel leaves it optional, so a blank
+    // field has to become *something* here -- 0, same convention as the
+    // legacy site's own price/token_amount columns below.
+    price_child: tour.priceChild ?? 0,
     price_infant: tour.priceInfant ?? null,
     // Legacy has no separate "allow token payment" flag — 0 implicitly means disabled.
     token_amount: tour.allowTokenPayment ? (tour.tokenAmount ?? 0) : 0,
@@ -68,7 +73,11 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     hotel_details: tour.hotelDetails ?? null,
     show_hotel_details: tour.showHotelDetails ? 1 : 0,
     total_seats: tour.totalSeats ?? null,
-    seats_available: tour.seatsAvailable ?? null,
+    // Same NOT-NULL mismatch as price_child above (confirmed live: "Column
+    // 'seats_available' cannot be null"). Note this means a tour saved
+    // without this field filled in will show as 0 seats / sold out on the
+    // live site -- fill it in for any tour meant to be bookable there.
+    seats_available: tour.seatsAvailable ?? 0,
     seats_remark: tour.seatsRemark ?? null,
     is_active: tour.isActive ? 1 : 0,
   };

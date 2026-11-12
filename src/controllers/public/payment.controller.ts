@@ -85,7 +85,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     amount: String(order.amount),
     key: env.RAZORPAY_KEY_ID,
     name: booking.contactName,
-    email: booking.contactEmail,
+    email: booking.contactEmail ?? "",
     contact: booking.contactPhone,
     booking_id: String(booking._id),
   });
