@@ -19,6 +19,7 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
       { to: "/payments", label: "Payments", icon: "payments", roles: ["admin"] },
       { to: "/customers", label: "Customers", icon: "customers", roles: ["admin"] },
       { to: "/website-bookings", label: "Website Bookings", icon: "bookings", roles: ["admin"] },
+      { to: "/old-backup", label: "Old Backup", icon: "backup", roles: ["admin"] },
     ],
   },
   {
