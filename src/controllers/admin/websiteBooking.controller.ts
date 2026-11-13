@@ -5,7 +5,7 @@ import { getMysqlPool } from "../../mysql/pool.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
-type WebsiteBookingRow = RowDataPacket & {
+export type WebsiteBookingRow = RowDataPacket & {
   id: number;
   name: string;
   email: string;
@@ -24,7 +24,7 @@ type WebsiteBookingRow = RowDataPacket & {
   date_price: string | null;
 };
 
-const BASE_QUERY = `
+export const BASE_QUERY = `
   SELECT b.id, b.name, b.email, b.phone,
          DATE_FORMAT(b.travel_date, '%Y-%m-%d') AS travel_date,
          b.travellers, b.notes, b.created_at, b.rzp_token_order_id,
@@ -68,7 +68,7 @@ function amountFor(r: WebsiteBookingRow): number {
   return travellers > 0 ? (base + airport + date) * travellers : 0;
 }
 
-function toSummary(r: WebsiteBookingRow) {
+export function toSummary(r: WebsiteBookingRow) {
   return {
     _id: `website-${r.id}`,
     source: "website",

@@ -17,6 +17,7 @@ import { GalleryImagesPage } from "./pages/GalleryImages";
 import { HomeCoversPage } from "./pages/HomeCovers";
 import { LoginPage } from "./pages/Login";
 import { NotificationsPage } from "./pages/Notifications";
+import { OldBackupPage } from "./pages/OldBackup";
 import { PaymentsPage } from "./pages/Payments";
 import { PromoCodesPage } from "./pages/PromoCodes";
 import { ReferralsPage } from "./pages/Referrals";
@@ -64,6 +65,7 @@ const router = createBrowserRouter([
           { path: "/reviews", element: <ReviewsPage /> },
           { path: "/contact-messages", element: <ContactMessagesPage /> },
           { path: "/website-bookings", element: <WebsiteBookingsPage /> },
+          { path: "/old-backup", element: <OldBackupPage /> },
           { path: "/payments", element: <PaymentsPage /> },
           { path: "/referrals", element: <ReferralsPage /> },
           { path: "/tour-dates", element: <TourDatesPage /> },

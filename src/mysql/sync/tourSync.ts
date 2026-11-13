@@ -62,7 +62,9 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     // field has to become *something* here -- 0, same convention as the
     // legacy site's own price/token_amount columns below.
     price_child: tour.priceChild ?? 0,
-    price_infant: tour.priceInfant ?? null,
+    // Same NOT-NULL mismatch as price_child (confirmed live: "Column
+    // 'price_infant' cannot be null").
+    price_infant: tour.priceInfant ?? 0,
     // Legacy has no separate "allow token payment" flag — 0 implicitly means disabled.
     token_amount: tour.allowTokenPayment ? (tour.tokenAmount ?? 0) : 0,
     itinerary: tour.itinerary ?? null,
@@ -72,7 +74,9 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     show_flight_details: tour.showFlightDetails ? 1 : 0,
     hotel_details: tour.hotelDetails ?? null,
     show_hotel_details: tour.showHotelDetails ? 1 : 0,
-    total_seats: tour.totalSeats ?? null,
+    // Same NOT-NULL mismatch as price_child (confirmed live: "Column
+    // 'total_seats' cannot be null").
+    total_seats: tour.totalSeats ?? 0,
     // Same NOT-NULL mismatch as price_child above (confirmed live: "Column
     // 'seats_available' cannot be null"). Note this means a tour saved
     // without this field filled in will show as 0 seats / sold out on the

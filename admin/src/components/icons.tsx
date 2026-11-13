@@ -25,7 +25,8 @@ export type IconName =
   | "chevronLeft"
   | "edit"
   | "trash"
-  | "check";
+  | "check"
+  | "backup";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   bookings: (
@@ -157,6 +158,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   check: <path d="M20 6 9 17l-5-5" />,
+  backup: (
+    <>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
+      <path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" />
+    </>
+  ),
 };
 
 export function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
