@@ -276,7 +276,10 @@ export const listMine = asyncHandler(async (req: Request, res: Response) => {
     status: { $in: ["paid", "refunded"] },
   })
     .select("-office.note -office.recordedBy -office.voidedAt -office.voidedBy -office.voidReason")
-    .populate("bookingId", "bookingRef itinerarySnapshot paymentStatus status amountPaid pricing.finalAmount")
+    .populate(
+      "bookingId",
+      "bookingRef itinerarySnapshot paymentStatus status amountPaid pricing.finalAmount travellers travelDate",
+    )
     .sort({ createdAt: -1 });
   // The booking snapshot stores the raw cover-image storage KEY (copied from
   // tour.coverImage at booking time), not a URL — resolve it the same way the
