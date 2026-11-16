@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Icon } from "../components/icons";
 import { ImageCropModal } from "../components/ImageCropModal";
+import { ItineraryDayImagesManager } from "../components/ItineraryDayImagesManager";
 import { Pagination, usePagination } from "../components/Pagination";
 import { RichTextEditor } from "../components/RichTextEditor";
 import { ScrollShadowBox } from "../components/ScrollShadowBox";
@@ -572,6 +573,10 @@ export function ToursPage() {
             <Field label="Itinerary" className="mt-3">
               <RichTextEditor value={form.itinerary as string} onChange={(html) => set("itinerary", html)} minHeight={200} />
             </Field>
+
+            {/* Per-day destination images (Wikimedia). Only when editing a saved
+                tour — it reads the saved itinerary text to detect the days. */}
+            {editing?._id && <ItineraryDayImagesManager tourId={editing._id} />}
 
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Inclusions">

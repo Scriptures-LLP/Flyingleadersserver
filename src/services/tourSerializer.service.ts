@@ -2,6 +2,7 @@ import type { HydratedDocument } from "mongoose";
 
 import { s3Adapter } from "../storage/s3Adapter.js";
 import { placeholderImage } from "../utils/placeholderImage.js";
+import { serializeItineraryImages } from "./itineraryImage.service.js";
 import type { TourAvailabilityStatus } from "./tourOptions.service.js";
 
 type TourLike = HydratedDocument<any>;
@@ -74,6 +75,10 @@ export function serializeTourDetail(tour: TourLike, galleryUrls?: string[]) {
     gallery: galleryUrls && galleryUrls.length > 0 ? galleryUrls : summary.gallery,
     fullDesc: tour.fullDesc ?? "",
     itinerary: tour.itinerary ?? "",
+    // Per-day destination photos (resolved + cached by the admin save). The app
+    // maps these onto itinerary day cards; it falls back to the package gallery
+    // when a day has no image, so this is safe even when empty.
+    itineraryImages: serializeItineraryImages(tour.itineraryImages, (key) => s3Adapter.urlFor(key)),
     inclusions: tour.inclusions ?? "",
     exclusions: tour.exclusions ?? "",
     flightDetails: tour.showFlightDetails ? tour.flightDetails ?? "" : "",

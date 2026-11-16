@@ -107,6 +107,16 @@ const envSchema = z.object({
   // The OpenAI model behind the chat assistant. Change it here (no code change)
   // to trade cost for smarter answers.
   LLM_MODEL: z.string().min(1).default("gpt-4o-mini"),
+
+  // Wikimedia Commons (https://commons.wikimedia.org/w/api.php) — resolves a real
+  // destination photo per itinerary day. No API key needed (read-only), but
+  // Wikimedia's API etiquette REQUIRES an identifying User-Agent with contact
+  // info. Override if the defaults aren't right for your deployment. The feature
+  // no-ops gracefully if Wikimedia is unreachable (days fall back to the gallery).
+  WIKIMEDIA_USER_AGENT: z
+    .string()
+    .default("FlyingLeaderTours/1.0 (itinerary destination images; +https://flyingleaders.com)"),
+  WIKIMEDIA_CONTACT_EMAIL: z.string().optional().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -55,6 +55,54 @@ const tourSchema = new Schema(
     coverImage: { type: String },
 
     itinerary: { type: String },
+    // Per-day itinerary photos, resolved from each day's destination via
+    // Wikimedia Commons (see services/itineraryImage.service.ts). Cached here so
+    // the public detail endpoint never calls Wikimedia on read. Keyed by `key`
+    // ("d<dayNumber>" or "i<index>") so an edit that leaves a day's title
+    // unchanged reuses the cached photo. Purely additive: defaults to [] and
+    // resolution is best-effort, so existing tours and the package gallery are
+    // completely unaffected. `selectionMethod: "manual"` entries are never
+    // auto-overwritten by a re-resolve.
+    itineraryImages: {
+      type: [
+        {
+          _id: false,
+          key: { type: String, required: true },
+          dayNumber: { type: Number, default: null },
+          // The day title the current photo was resolved from — detects when a
+          // title edit should trigger a fresh search.
+          title: { type: String, default: "" },
+          // The search keyword that produced the photo (change detection + admin).
+          searchKeyword: { type: String, default: "" },
+          // Display URL (a Wikimedia-scaled thumbnail, or our own storage key for
+          // an uploaded override) and a smaller thumb. s3Adapter.urlFor passes
+          // absolute Wikimedia URLs through and prefixes bare storage keys.
+          imageUrl: { type: String, default: "" },
+          thumbUrl: { type: String, default: "" },
+          // Wikimedia provenance + license (required for CC attribution).
+          fileTitle: { type: String, default: "" }, // "File:…"
+          descriptionUrl: { type: String, default: "" }, // Commons file page
+          artist: { type: String, default: "" },
+          licenseName: { type: String, default: "" },
+          licenseUrl: { type: String, default: "" },
+          attribution: { type: String, default: "" }, // ready-to-display credit
+          source: { type: String, default: "" }, // "wikimedia" | "manual-url" | "manual-upload"
+          selectionMethod: { type: String, enum: ["auto", "manual"], default: "auto" },
+          // "published"   — confident auto match or admin selection (shown in app)
+          // "needs_review"— low-confidence; held for admin (not shown in app)
+          // "empty"       — no days / nothing resolved yet
+          // "failed"      — search ran but found nothing usable
+          matchStatus: {
+            type: String,
+            enum: ["published", "needs_review", "empty", "failed"],
+            default: "empty",
+          },
+          score: { type: Number, default: 0 },
+          updatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     inclusions: { type: String },
     exclusions: { type: String },
     flightDetails: { type: String },
