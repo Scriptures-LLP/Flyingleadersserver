@@ -7,6 +7,7 @@ import { adminCategoriesRoutes } from "./categories.routes.js";
 import { adminContactMessagesRoutes } from "./contactMessages.routes.js";
 import { adminCountriesRoutes } from "./countries.routes.js";
 import { adminCustomersRoutes } from "./customers.routes.js";
+import { adminDashboardRoutes } from "./dashboard.routes.js";
 import { adminGalleryImagesRoutes } from "./galleryImages.routes.js";
 import { adminHomeCoversRoutes } from "./homeCovers.routes.js";
 import { adminNotificationsRoutes } from "./notifications.routes.js";
@@ -26,6 +27,7 @@ import { adminWhatsAppRoutes } from "./whatsapp.routes.js";
 export const adminRoutes = Router();
 
 adminRoutes.use("/auth", adminAuthRoutes);
+adminRoutes.use("/dashboard", adminDashboardRoutes);
 adminRoutes.use("/tours", adminToursRoutes);
 adminRoutes.use("/countries", adminCountriesRoutes);
 adminRoutes.use("/airports", adminAirportsRoutes);
