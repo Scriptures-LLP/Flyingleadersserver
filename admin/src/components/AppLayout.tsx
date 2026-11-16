@@ -13,6 +13,10 @@ type NavItem = { to: string; label: string; icon: IconName; roles: AdminRole[] }
 // rather than one flat column.
 const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
   {
+    heading: "Overview",
+    items: [{ to: "/", label: "Dashboard", icon: "dashboard", roles: ["admin"] }],
+  },
+  {
     heading: "Operations",
     items: [
       { to: "/bookings", label: "Bookings", icon: "bookings", roles: ["admin"] },
@@ -136,6 +140,7 @@ export function AppLayout() {
                     <NavLink
                       key={item.to}
                       to={item.to}
+                      end={item.to === "/"}
                       title={compact ? item.label : undefined}
                       onClick={() => setMobileOpen(false)}
                       className={({ isActive }) =>

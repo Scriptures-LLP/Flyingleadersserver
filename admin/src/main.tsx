@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { Navigate, RouterProvider, createBrowserRouter } from "react-router-dom";
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
 import { RequireAdmin } from "./components/RequireAdmin";
@@ -13,6 +13,7 @@ import { CategoriesPage } from "./pages/Categories";
 import { ContactMessagesPage } from "./pages/ContactMessages";
 import { CountriesPage } from "./pages/Countries";
 import { CustomersPage } from "./pages/Customers";
+import { DashboardPage } from "./pages/Dashboard";
 import { GalleryImagesPage } from "./pages/GalleryImages";
 import { HomeCoversPage } from "./pages/HomeCovers";
 import { LoginPage } from "./pages/Login";
@@ -52,7 +53,7 @@ const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "/", element: <Navigate to="/tours" replace /> },
+          { path: "/", element: <DashboardPage /> },
           { path: "/bookings", element: <BookingsPage /> },
           { path: "/customers", element: <CustomersPage /> },
           { path: "/tours", element: <ToursPage /> },
