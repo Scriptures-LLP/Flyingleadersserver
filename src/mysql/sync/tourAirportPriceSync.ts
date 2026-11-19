@@ -8,6 +8,7 @@ type TourAirportPriceSyncInput = {
   tourId: { toString(): string };
   airportId: { toString(): string };
   addonPrice: number;
+  appliesTo?: { adult?: boolean; child?: boolean; infant?: boolean } | null;
   isActive: boolean;
   legacyMysqlId?: number | null;
 };
@@ -30,7 +31,15 @@ export async function syncTourAirportPriceUpsert(row: TourAirportPriceSyncInput)
 
   const legacyTourId = await resolveTourLegacyId(row.tourId.toString());
   const legacyAirportId = await resolveAirportLegacyId(row.airportId.toString());
-  const values = { tour_id: legacyTourId, airport_id: legacyAirportId, price: row.addonPrice };
+  const values = {
+    tour_id: legacyTourId,
+    airport_id: legacyAirportId,
+    price: row.addonPrice,
+    is_active: (row.isActive ?? true) ? 1 : 0,
+    applies_to_adult: (row.appliesTo?.adult ?? true) ? 1 : 0,
+    applies_to_child: (row.appliesTo?.child ?? true) ? 1 : 0,
+    applies_to_infant: (row.appliesTo?.infant ?? true) ? 1 : 0,
+  };
 
   if (row.legacyMysqlId) {
     await pool.query("UPDATE tour_airport_prices SET ? WHERE id = ?", [values, row.legacyMysqlId]);
@@ -38,7 +47,10 @@ export async function syncTourAirportPriceUpsert(row: TourAirportPriceSyncInput)
   }
 
   const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO tour_airport_prices SET ? ON DUPLICATE KEY UPDATE price = VALUES(price)",
+    `INSERT INTO tour_airport_prices SET ?
+     ON DUPLICATE KEY UPDATE price = VALUES(price), is_active = VALUES(is_active),
+       applies_to_adult = VALUES(applies_to_adult), applies_to_child = VALUES(applies_to_child),
+       applies_to_infant = VALUES(applies_to_infant)`,
     [values],
   );
   return result.insertId;

@@ -75,17 +75,24 @@ CREATE TABLE IF NOT EXISTS tour_media (
   CONSTRAINT fk_tour_media_category FOREIGN KEY (category_id) REFERENCES media_categories(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- is_active + applies_to_* added so TourAirportPrice.isActive/.appliesTo (new
+-- admin panel) have somewhere to land -- the sync used to silently drop both.
 CREATE TABLE IF NOT EXISTS tour_airport_prices (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tour_id INT UNSIGNED NOT NULL,
   airport_id INT UNSIGNED NOT NULL,
   price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_adult TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_child TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_infant TINYINT(1) NOT NULL DEFAULT 1,
   UNIQUE KEY uniq_tap (tour_id, airport_id),
   CONSTRAINT fk_tap_tour FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE,
   CONSTRAINT fk_tap_airport FOREIGN KEY (airport_id) REFERENCES airports(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Verbatim from flyingdotcom/admin/tour_airports.php's own CREATE TABLE IF NOT EXISTS.
+-- Verbatim from flyingdotcom/admin/tour_airports.php's own CREATE TABLE IF NOT EXISTS,
+-- plus applies_to_* (same reason as tour_airport_prices above).
 CREATE TABLE IF NOT EXISTS tour_airport_custom_dates (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   tour_id INT UNSIGNED NOT NULL,
@@ -93,6 +100,9 @@ CREATE TABLE IF NOT EXISTS tour_airport_custom_dates (
   travel_date DATE NOT NULL,
   price DECIMAL(10,2) NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_adult TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_child TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_infant TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_tacd (tour_id, airport_id, travel_date),
@@ -109,6 +119,9 @@ CREATE TABLE IF NOT EXISTS tour_travel_dates (
   label VARCHAR(190) DEFAULT NULL,
   price DECIMAL(10,2) NOT NULL DEFAULT 0,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_adult TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_child TINYINT(1) NOT NULL DEFAULT 1,
+  applies_to_infant TINYINT(1) NOT NULL DEFAULT 1,
   sort_order INT DEFAULT 0,
   CONSTRAINT fk_ttd_tour FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
