@@ -28,6 +28,7 @@ type TourSyncInput = {
   totalSeats?: number | null;
   seatsAvailable?: number | null;
   seatsRemark?: string | null;
+  isDomestic?: boolean;
   isActive: boolean;
   legacyMysqlId?: number | null;
 };
@@ -83,6 +84,9 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     // live site -- fill it in for any tour meant to be bookable there.
     seats_available: tour.seatsAvailable ?? 0,
     seats_remark: tour.seatsRemark ?? null,
+    // TCS (Tax Collected at Source, 2%) applies to overseas tours only --
+    // booking.php/booking_confirm.php skip it when this is set.
+    is_domestic: tour.isDomestic ? 1 : 0,
     is_active: tour.isActive ? 1 : 0,
   };
 

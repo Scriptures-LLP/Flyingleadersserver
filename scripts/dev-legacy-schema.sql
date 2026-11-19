@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS tours (
   show_hotel_details TINYINT(1) NOT NULL DEFAULT 0,
   token_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  -- TCS (Tax Collected at Source, 2%) applies to overseas tours only.
+  is_domestic TINYINT(1) NOT NULL DEFAULT 0,
   country_id INT UNSIGNED DEFAULT NULL,
   total_seats INT DEFAULT NULL,
   seats_available INT DEFAULT NULL,
