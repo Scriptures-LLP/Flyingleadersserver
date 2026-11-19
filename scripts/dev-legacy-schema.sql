@@ -54,6 +54,19 @@ CREATE TABLE IF NOT EXISTS tours (
   CONSTRAINT fk_tours_country FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Mirrors Tour.childPricingTiers -- replaced wholesale on every tour sync
+-- (see tourSync.ts), since the embedded array has no stable per-row id.
+CREATE TABLE IF NOT EXISTS tour_child_pricing_tiers (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  tour_id INT UNSIGNED NOT NULL,
+  min_age INT UNSIGNED NOT NULL,
+  max_age INT UNSIGNED NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_tcpt_tour (tour_id),
+  CONSTRAINT fk_tcpt_tour FOREIGN KEY (tour_id) REFERENCES tours(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS media_categories (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(190) NOT NULL,
