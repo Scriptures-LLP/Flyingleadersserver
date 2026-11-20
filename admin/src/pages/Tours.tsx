@@ -41,8 +41,8 @@ type Tour = {
   showFlightDetails?: boolean;
   hotelDetails?: string;
   showHotelDetails?: boolean;
-  totalSeats?: number;
-  seatsAvailable?: number;
+  totalSeats?: number | null;
+  seatsAvailable?: number | null;
   seatsRemark?: string;
   groupSizeLabel?: string;
   hotelClassLabel?: string;
@@ -231,6 +231,15 @@ export function ToursPage() {
         }
         if (Array.isArray(value)) {
           body.append(key, JSON.stringify(value));
+          continue;
+        }
+        // Seat counts are nullable and must be SENT even when blank: an empty
+        // input means null ("not tracked"), and only by transmitting it (as "")
+        // can an edit actually clear a previously-saved count. The server maps
+        // "" -> null while preserving an explicit 0. (Unlike the fields below,
+        // which are simply omitted when empty.)
+        if (key === "totalSeats" || key === "seatsAvailable") {
+          body.append(key, value === "" || value === null || value === undefined ? "" : String(value));
           continue;
         }
         // Omit blank optional fields entirely rather than sending "" — an empty
@@ -511,10 +520,10 @@ export function ToursPage() {
                 <input className="input" value={form.hotelClassLabel as string} onChange={(e) => set("hotelClassLabel", e.target.value)} />
               </Field>
               <Field label="Total seats">
-                <input type="number" min="0" className="input" value={form.totalSeats as string} onChange={(e) => set("totalSeats", e.target.value)} />
+                <input type="number" min="0" className="input" placeholder="Leave blank if not tracked" value={(form.totalSeats ?? "") as string | number} onChange={(e) => set("totalSeats", e.target.value)} />
               </Field>
               <Field label="Seats available">
-                <input type="number" min="0" className="input" value={form.seatsAvailable as string} onChange={(e) => set("seatsAvailable", e.target.value)} />
+                <input type="number" min="0" className="input" placeholder="Leave blank if not tracked" value={(form.seatsAvailable ?? "") as string | number} onChange={(e) => set("seatsAvailable", e.target.value)} />
               </Field>
               <Field label="Seats remark">
                 <select className="input" value={form.seatsRemark as string} onChange={(e) => set("seatsRemark", e.target.value)}>

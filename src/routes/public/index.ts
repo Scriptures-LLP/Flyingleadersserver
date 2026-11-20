@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { addressesRoutes } from "./addresses.routes.js";
+import { analyticsRoutes } from "./analytics.routes.js";
 import { authRoutes } from "./auth.routes.js";
 import { bookingDocsRoutes } from "./bookingDocs.routes.js";
 import { bookingsRoutes } from "./bookings.routes.js";
@@ -38,3 +39,4 @@ publicRoutes.use("/notifications", notificationsRoutes);
 publicRoutes.use("/terms", termsRoutes);
 publicRoutes.use("/config", configRoutes);
 publicRoutes.use("/webhooks", gupshupWebhookRoutes);
+publicRoutes.use("/analytics", analyticsRoutes);

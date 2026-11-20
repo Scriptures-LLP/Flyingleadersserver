@@ -2,6 +2,14 @@ import { z } from "zod";
 
 import { zStrictBoolean } from "../utils/zodHelpers.js";
 
+// A seat count that may be left blank. Empty string (how FormData carries a
+// cleared number input) and null both become null; real values are coerced to
+// numbers with 0 preserved. `.optional()` lets the field be omitted entirely on
+// a partial update without being forced to null.
+const nullableSeatCount = z
+  .preprocess((v) => (v === "" || v === null ? null : v), z.coerce.number().min(0).nullable())
+  .optional();
+
 export const idParamSchema = z.object({ id: z.string().min(1) });
 export const slugParamSchema = z.object({ slug: z.string().min(1) });
 
@@ -68,8 +76,13 @@ export const tourSchema = z.object({
   hotelDetails: z.string().optional(),
   showHotelDetails: zStrictBoolean.optional(),
 
-  totalSeats: z.coerce.number().min(0).optional(),
-  seatsAvailable: z.coerce.number().min(0).optional(),
+  // Seat counts are genuinely optional: blank means "unknown / not tracked"
+  // (null), which must be distinct from an explicit 0 (sold out). Plain
+  // z.coerce.number() turned "" and null into 0, so a blank seat count silently
+  // saved as 0. Preprocess maps "" (and null) to null first, then coerce the
+  // real numbers — so null stays null, 0 stays 0, and 30 stays 30.
+  totalSeats: nullableSeatCount,
+  seatsAvailable: nullableSeatCount,
   seatsRemark: z
     .enum(["Available", "Fast Selling", "Almost Sold Out", "Hot Selling", "Sold Out"])
     .optional(),
