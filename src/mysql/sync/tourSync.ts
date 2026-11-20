@@ -85,6 +85,13 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     // live site -- fill it in for any tour meant to be bookable there.
     seats_available: tour.seatsAvailable ?? 0,
     seats_remark: tour.seatsRemark ?? null,
+    // The legacy site's seat badge (index.php/tours.php) only renders when
+    // this is 1 -- there's no separate on/off toggle in the new admin panel,
+    // so "the admin configured a seat count for this tour" (totalSeats set at
+    // all, 0 included) is itself what turns the badge on. Without this the
+    // column just sits at its default 0 forever and the badge never shows,
+    // no matter what total_seats/seats_available/seats_remark are set to.
+    seats_module_active: tour.totalSeats != null ? 1 : 0,
     // TCS (Tax Collected at Source, 2%) applies to overseas tours only --
     // booking.php/booking_confirm.php skip it when this is set.
     is_domestic: tour.isDomestic ? 1 : 0,

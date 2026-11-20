@@ -233,6 +233,16 @@ export function ToursPage() {
           body.append(key, JSON.stringify(value));
           continue;
         }
+        // priceChild/priceInfant aren't required, and a blank field should mean
+        // "no override price" (null) — but omitting the key entirely (like every
+        // other blank field below) only works for create; on *edit* it leaves
+        // whatever price was saved before untouched, so clearing the field back
+        // to blank had no way to actually take effect. Sending "" explicitly for
+        // just these two tells the server to clear them (see tourSchema).
+        if ((key === "priceChild" || key === "priceInfant") && value === "") {
+          body.append(key, "");
+          continue;
+        }
         // Omit blank optional fields entirely rather than sending "" — an empty
         // string fails Mongoose's ObjectId cast on countryId, and is meaningless
         // for other optional numeric/text fields too.
