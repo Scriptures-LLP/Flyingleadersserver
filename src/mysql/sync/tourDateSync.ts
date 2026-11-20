@@ -10,6 +10,7 @@ type TourDateSyncInput = {
   date: Date;
   price: number;
   label?: string | null;
+  appliesTo?: { adult?: boolean; child?: boolean; infant?: boolean } | null;
   isActive: boolean;
   sortOrder?: number;
   legacyMysqlId?: number | null;
@@ -36,6 +37,12 @@ export async function syncTourDateUpsert(tourDate: TourDateSyncInput): Promise<n
   const legacyTourId = await resolveTourLegacyId(tourDate.tourId.toString());
   const dateStr = tourDate.date.toISOString().slice(0, 10);
 
+  const appliesTo = {
+    applies_to_adult: (tourDate.appliesTo?.adult ?? true) ? 1 : 0,
+    applies_to_child: (tourDate.appliesTo?.child ?? true) ? 1 : 0,
+    applies_to_infant: (tourDate.appliesTo?.infant ?? true) ? 1 : 0,
+  };
+
   if (tourDate.airportId) {
     const legacyAirportId = await resolveAirportLegacyId(tourDate.airportId.toString());
     const values = {
@@ -44,13 +51,17 @@ export async function syncTourDateUpsert(tourDate: TourDateSyncInput): Promise<n
       travel_date: dateStr,
       price: tourDate.price,
       is_active: tourDate.isActive ? 1 : 0,
+      ...appliesTo,
     };
     if (tourDate.legacyMysqlId) {
       await pool.query("UPDATE tour_airport_custom_dates SET ? WHERE id = ?", [values, tourDate.legacyMysqlId]);
       return tourDate.legacyMysqlId;
     }
     const [result] = await pool.query<ResultSetHeader>(
-      "INSERT INTO tour_airport_custom_dates SET ? ON DUPLICATE KEY UPDATE price = VALUES(price), is_active = VALUES(is_active)",
+      `INSERT INTO tour_airport_custom_dates SET ?
+       ON DUPLICATE KEY UPDATE price = VALUES(price), is_active = VALUES(is_active),
+         applies_to_adult = VALUES(applies_to_adult), applies_to_child = VALUES(applies_to_child),
+         applies_to_infant = VALUES(applies_to_infant)`,
       [values],
     );
     return result.insertId;
@@ -62,6 +73,7 @@ export async function syncTourDateUpsert(tourDate: TourDateSyncInput): Promise<n
     label: tourDate.label ?? null,
     price: tourDate.price,
     is_active: tourDate.isActive ? 1 : 0,
+    ...appliesTo,
     sort_order: tourDate.sortOrder ?? 0,
   };
   if (tourDate.legacyMysqlId) {

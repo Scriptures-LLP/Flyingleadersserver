@@ -28,6 +28,8 @@ type TourSyncInput = {
   totalSeats?: number | null;
   seatsAvailable?: number | null;
   seatsRemark?: string | null;
+  isDomestic?: boolean;
+  childPricingTiers?: { minAge: number; maxAge: number; price: number }[] | null;
   isActive: boolean;
   legacyMysqlId?: number | null;
 };
@@ -83,6 +85,16 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     // live site -- fill it in for any tour meant to be bookable there.
     seats_available: tour.seatsAvailable ?? 0,
     seats_remark: tour.seatsRemark ?? null,
+    // The legacy site's seat badge (index.php/tours.php) only renders when
+    // this is 1 -- there's no separate on/off toggle in the new admin panel,
+    // so "the admin configured a seat count for this tour" (totalSeats set at
+    // all, 0 included) is itself what turns the badge on. Without this the
+    // column just sits at its default 0 forever and the badge never shows,
+    // no matter what total_seats/seats_available/seats_remark are set to.
+    seats_module_active: tour.totalSeats != null ? 1 : 0,
+    // TCS (Tax Collected at Source, 2%) applies to overseas tours only --
+    // booking.php/booking_confirm.php skip it when this is set.
+    is_domestic: tour.isDomestic ? 1 : 0,
     is_active: tour.isActive ? 1 : 0,
   };
 
@@ -90,13 +102,26 @@ export async function syncTourUpsert(tour: TourSyncInput): Promise<number | void
     values.image = await mirrorImageToLegacy("tours", tour.coverImage);
   }
 
+  let legacyTourId: number;
   if (tour.legacyMysqlId) {
     await pool.query("UPDATE tours SET ? WHERE id = ?", [values, tour.legacyMysqlId]);
-    return tour.legacyMysqlId;
+    legacyTourId = tour.legacyMysqlId;
+  } else {
+    const [result] = await pool.query<ResultSetHeader>("INSERT INTO tours SET ?", [values]);
+    legacyTourId = result.insertId;
   }
 
-  const [result] = await pool.query<ResultSetHeader>("INSERT INTO tours SET ?", [values]);
-  return result.insertId;
+  // Age-banded child pricing has no stable per-row id to diff against (it's a
+  // plain embedded array, not its own collection like TourDate/TourAirportPrice)
+  // -- replace the whole set for this tour on every sync, same as the admin
+  // panel's "one array, saved whole" editing model.
+  await pool.query("DELETE FROM tour_child_pricing_tiers WHERE tour_id = ?", [legacyTourId]);
+  if (tour.childPricingTiers?.length) {
+    const rows = tour.childPricingTiers.map((t) => [legacyTourId, t.minAge, t.maxAge, t.price]);
+    await pool.query("INSERT INTO tour_child_pricing_tiers (tour_id, min_age, max_age, price) VALUES ?", [rows]);
+  }
+
+  return legacyTourId;
 }
 
 export async function syncTourRemove(legacyMysqlId?: number): Promise<void> {

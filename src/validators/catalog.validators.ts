@@ -51,8 +51,11 @@ export const tourSchema = z.object({
   category2: z.string().trim().optional(),
 
   price: z.coerce.number().min(0),
-  priceChild: z.coerce.number().min(0).optional(),
-  priceInfant: z.coerce.number().min(0).optional(),
+  // Not required -- "" means the admin explicitly cleared it (see Tours.tsx),
+  // as opposed to the key being absent, which leaves whatever was saved before
+  // untouched on an update.
+  priceChild: z.preprocess((v) => (v === "" ? null : v), z.coerce.number().min(0).nullable()).optional(),
+  priceInfant: z.preprocess((v) => (v === "" ? null : v), z.coerce.number().min(0).nullable()).optional(),
   // Age-banded child pricing, e.g. [{minAge:2,maxAge:5,price:8000},{minAge:6,maxAge:9,price:9500}].
   // Sent as a JSON string when this request goes through FormData (cover-image
   // upload); parsed back into an array either way.
