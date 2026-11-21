@@ -1,5 +1,7 @@
 import { Schema, model } from "mongoose";
 
+import { registerCacheInvalidation } from "../services/cache.service.js";
+
 import { mysqlSyncFields } from "./shared/mysqlSyncFields.js";
 
 const homeCoverSchema = new Schema(
@@ -16,5 +18,7 @@ const homeCoverSchema = new Schema(
   },
   { timestamps: true },
 );
+
+registerCacheInvalidation(homeCoverSchema, ["home"]);
 
 export const HomeCover = model("HomeCover", homeCoverSchema);

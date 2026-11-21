@@ -166,6 +166,9 @@ function ReferralRewardSetting() {
   );
 }
 
+// Age Categories removed from Settings — child pricing with its added age band is now
+// the single source of truth for child price. Kept commented for reference.
+/*
 function AgeCategorySettings() {
   const infant = useSetting("age_category_infant_max_age");
   const child = useSetting("age_category_child_max_age");
@@ -237,6 +240,7 @@ function AgeCategorySettings() {
     </div>
   );
 }
+*/
 
 function SocialLinksSettings() {
   const queryClient = useQueryClient();
@@ -385,7 +389,8 @@ export function SettingsPage() {
       <WhatsAppPaymentTemplateSetting />
       <WhatsAppPaymentInvoiceTemplateSetting />
       <ReferralRewardSetting />
-      <AgeCategorySettings />
+      {/* Age Categories removed — child pricing with its age band is now the single source of truth for child price. */}
+      {/* <AgeCategorySettings /> */}
       <SocialLinksSettings />
     </div>
   );

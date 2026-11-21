@@ -1,5 +1,7 @@
 import { Schema, model } from "mongoose";
 
+import { registerCacheInvalidation } from "../services/cache.service.js";
+
 import { mysqlSyncFields } from "./shared/mysqlSyncFields.js";
 
 // Mirrors legacy `tour_airport_prices` — a per-(tour,airport) price add-on.
@@ -29,5 +31,8 @@ const tourAirportPriceSchema = new Schema(
 );
 
 tourAirportPriceSchema.index({ tourId: 1, airportId: 1 }, { unique: true });
+
+// Airport add-on prices appear on the tour detail/booking flow.
+registerCacheInvalidation(tourAirportPriceSchema, ["tours"]);
 
 export const TourAirportPrice = model("TourAirportPrice", tourAirportPriceSchema);

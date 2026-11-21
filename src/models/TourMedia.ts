@@ -1,5 +1,7 @@
 import { Schema, model } from "mongoose";
 
+import { registerCacheInvalidation } from "../services/cache.service.js";
+
 import { mysqlSyncFields } from "./shared/mysqlSyncFields.js";
 
 const tourMediaSchema = new Schema(
@@ -21,5 +23,8 @@ const tourMediaSchema = new Schema(
 );
 
 tourMediaSchema.index({ tourId: 1, categoryId: 1 });
+
+// Gallery images appear on the tour detail page.
+registerCacheInvalidation(tourMediaSchema, ["tours"]);
 
 export const TourMedia = model("TourMedia", tourMediaSchema);

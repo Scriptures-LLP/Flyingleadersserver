@@ -9,6 +9,19 @@ const envSchema = z.object({
 
   MONGO_URI: z.string().min(1, "MONGO_URI is required"),
 
+  // Redis (optional) — read-through cache for public catalog endpoints. The app
+  // stays fully functional without it: unset REDIS_URL (or CACHE_ENABLED=false)
+  // and every request falls back to MongoDB. Never the source of truth.
+  REDIS_URL: z.string().optional().default(""),
+  CACHE_ENABLED: zStrictBoolean.default(true),
+  // Per-namespace TTLs in seconds (tune without a code change). Home/listings are
+  // short because seats + featured flags move; countries/categories are stable.
+  CACHE_TTL_HOME: z.coerce.number().default(300), // 5 min
+  CACHE_TTL_TOURS: z.coerce.number().default(300), // 5 min (listings/search/dates)
+  CACHE_TTL_TOUR_DETAIL: z.coerce.number().default(600), // 10 min
+  CACHE_TTL_COUNTRIES: z.coerce.number().default(3600), // 1 hour
+  CACHE_TTL_CATEGORIES: z.coerce.number().default(1800), // 30 min
+
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   JWT_CUSTOMER_EXPIRES_IN: z.string().default("30d"),
   JWT_ADMIN_EXPIRES_IN: z.string().default("8h"),

@@ -1,5 +1,7 @@
 import { Schema, model } from "mongoose";
 
+import { registerCacheInvalidation } from "../services/cache.service.js";
+
 import { mysqlSyncFields } from "./shared/mysqlSyncFields.js";
 import { uniqueSlug } from "../utils/slug.js";
 
@@ -139,5 +141,9 @@ tourSchema.pre("validate", async function () {
     this.slug = await uniqueSlug(Tour, this.title, this.isNew ? undefined : this.id);
   }
 });
+
+// A tour change ripples to the home screen (featured/listed), the tours
+// listings/detail, and the country pages that list its tours.
+registerCacheInvalidation(tourSchema, ["home", "tours", "countries"]);
 
 export const Tour = model("Tour", tourSchema);

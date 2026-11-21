@@ -1,5 +1,7 @@
 import { Schema, model } from "mongoose";
 
+import { registerCacheInvalidation } from "../services/cache.service.js";
+
 import { uniqueSlug } from "../utils/slug.js";
 
 const categorySchema = new Schema(
@@ -18,5 +20,7 @@ categorySchema.pre("validate", async function () {
     this.slug = await uniqueSlug(Category, this.label, this.isNew ? undefined : this.id);
   }
 });
+
+registerCacheInvalidation(categorySchema, ["categories", "tours", "home"]);
 
 export const Category = model("Category", categorySchema);

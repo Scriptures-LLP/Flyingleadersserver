@@ -19,6 +19,11 @@ type TourDateLike = { price?: number; appliesTo?: Applies } | null;
 // `unitPrice` came from those charges, for the admin's records only.
 export type PriceBreakdownLine = {
   type: TravellerType;
+  // For a child priced from an age band, the band shown to the customer
+  // (e.g. "Child (2–5 yrs)") so two children in different bands read as
+  // distinct lines instead of two bare "Child" lines at different prices.
+  // Absent for adults/infants and for children priced off the flat price.
+  categoryLabel?: string;
   count: number;
   unitPrice: number;
   chargesIncluded: number;
@@ -45,22 +50,24 @@ const appliesTo = (a: Applies | undefined, type: TravellerType) => a?.[type] ?? 
 // Age-banded tiers take priority when configured and the traveller's age
 // falls in one of them; otherwise falls back to the flat priceChild (or the
 // adult price if that isn't set either) so tours without tiers keep working.
-function childPrice(tour: TourLike, age: number | undefined): number {
+// `label` is set only when an age band actually matched, so the breakdown can
+// show which band a child was priced under.
+function childPrice(tour: TourLike, age: number | undefined): { price: number; label?: string } {
   const tiers = tour.childPricingTiers as ChildPricingTier[] | undefined;
   if (tiers?.length && age !== undefined) {
     const tier = tiers.find((t) => age >= t.minAge && age <= t.maxAge);
-    if (tier) return tier.price;
+    if (tier) return { price: tier.price, label: `Child (${tier.minAge}–${tier.maxAge} yrs)` };
   }
-  return tour.priceChild ?? tour.price;
+  return { price: tour.priceChild ?? tour.price };
 }
 
 // The per-person base price for one traveller, from the existing type-based
 // pricing: child tiers for a child, the infant price for an infant, otherwise
-// the adult price.
-function perPersonBase(tour: TourLike, traveller: Traveller): number {
+// the adult price. `label` rides along for children priced from an age band.
+function perPersonBase(tour: TourLike, traveller: Traveller): { price: number; label?: string } {
   if (traveller.type === "child") return childPrice(tour, traveller.age);
-  if (traveller.type === "infant") return tour.priceInfant ?? 0;
-  return tour.price;
+  if (traveller.type === "infant") return { price: tour.priceInfant ?? 0 };
+  return { price: tour.price };
 }
 
 /** The airport + travel-date charges that apply to one traveller of this type. */
@@ -93,9 +100,11 @@ export function computeBaseAmount(
   const groups = new Map<string, PriceBreakdownLine>();
   for (const t of travellers) {
     const chargesIncluded = chargesFor(t.type, tourDate, airport);
-    const unitPrice = round2(perPersonBase(tour, t) + chargesIncluded);
-    // Travellers of the same type at the same price share a line.
-    const key = `${t.type}:${unitPrice}`;
+    const base = perPersonBase(tour, t);
+    const unitPrice = round2(base.price + chargesIncluded);
+    // Travellers of the same type, band and price share a line — so two
+    // children in different age bands stay on separate, clearly-labelled lines.
+    const key = `${t.type}:${base.label ?? ""}:${unitPrice}`;
     const existing = groups.get(key);
     if (existing) {
       existing.count += 1;
@@ -103,6 +112,7 @@ export function computeBaseAmount(
     } else {
       groups.set(key, {
         type: t.type,
+        categoryLabel: base.label,
         count: 1,
         unitPrice,
         chargesIncluded,

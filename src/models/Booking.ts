@@ -39,10 +39,11 @@ const pricingSchema = new Schema(
         {
           _id: false,
           type: { type: String, enum: ["adult", "child", "infant"], required: true },
-          // Legacy: the category name a line was priced under on bookings made
-          // while age-band pricing existed (e.g. "Infant", "Child"). No longer
-          // written for new bookings; kept so older bookings still display their
-          // label. Display falls back to the humanised `type` when absent.
+          // The category name a line was priced under — for children priced
+          // from an age band, the band itself (e.g. "Child (2–5 yrs)"), so the
+          // summary/invoice shows which band produced the price. Absent for
+          // adults/infants and flat-priced children; display then falls back to
+          // the humanised `type` (see pricing.service.ts#childPrice).
           categoryLabel: { type: String, trim: true },
           count: { type: Number, required: true, min: 1 },
           unitPrice: { type: Number, required: true, min: 0 },

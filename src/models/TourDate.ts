@@ -1,5 +1,7 @@
 import { Schema, model } from "mongoose";
 
+import { registerCacheInvalidation } from "../services/cache.service.js";
+
 import { mysqlSyncFields } from "./shared/mysqlSyncFields.js";
 
 // Merges the legacy app's two overlapping date-pricing tables into one clean
@@ -45,5 +47,8 @@ tourDateSchema.pre("validate", function () {
     this.legacySourceTable = this.airportId ? "tour_airport_custom_dates" : "tour_travel_dates";
   }
 });
+
+// Dates carry per-departure seats/price shown on cards and the detail page.
+registerCacheInvalidation(tourDateSchema, ["tours", "home"]);
 
 export const TourDate = model("TourDate", tourDateSchema);
